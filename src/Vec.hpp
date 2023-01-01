@@ -1,6 +1,8 @@
 #ifndef SRE_VEC_HPP
 #define SRE_VEC_HPP
 
+#include <cmath>
+
 template <typename T>
 struct Vec3 {
   T x, y, z;
@@ -24,13 +26,16 @@ struct Vec3 {
     return Vec3<T>(x - other.x, y - other.y, z - other.z);
   }
   Vec3<T> operator+(const Vec3<T>& other) const {
-    return Vec3<T>(x - other.x, y - other.y, z - other.z);
+    return Vec3<T>(x + other.x, y + other.y, z + other.z);
   }
   template <typename K>
   Vec3<T> operator*(const K& k) const {
     return Vec3<T>(x * k, y * k, z * k);
   }
-
+  template <typename K>
+  Vec3<T> operator/(const K& k) const {
+    return Vec3<T>(x / k, y / k, z / k);
+  }
   Vec3<T>& operator-=(const Vec3<T>& other) {
     x -= other.x;
     y -= other.y;
@@ -43,13 +48,15 @@ struct Vec3 {
     z += other.z;
     return *this;
   }
-};
 
-template <typename T>
-Vec3<T> normalize(Vec3<T> v) {
-  float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  return Vec3<T>(v.x / d, v.y / d, v.z / d);
-}
+  Vec3<T>& normalize() {
+    float d = sqrt(x * x + y * y + z * z);
+    x /= d;
+    y /= d;
+    z /= d;
+    return *this;
+  }
+};
 
 template <typename T>
 Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {
