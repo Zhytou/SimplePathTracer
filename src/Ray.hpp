@@ -25,11 +25,17 @@ class Ray {
   Vec3<float> pointAt(const float &t) const { return origin + direction * t; }
 };
 
-Ray randomRay(const Vec3<float> &point, const Vec3<float> &normal) {
+Ray standardReflectRay(const Vec3<float> &point, const Vec3<float> &normal) {
   Vec3<float> direction = normal;
   direction.normalize();
   direction += Vec3<float>(randFloat(1), randFloat(1), randFloat(1));
 
+  return Ray(point, direction);
+}
+
+Ray randomReflectRay(const Vec3<float> &point, const Vec3<float> &normal) {
+  Vec3<float> direction = normalize(normal);
+  direction += normalize(Vec3<float>(randFloat(1), randFloat(1), randFloat(1)));
   return Ray(point, direction);
 }
 

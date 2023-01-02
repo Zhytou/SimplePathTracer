@@ -23,13 +23,15 @@ class Tracer {
   std::vector<Triangle> triangles;
   Camera camera;
   size_t maxDepth;
+  size_t samples;
 
-  Vec3<unsigned char> cast(const Ray &ray);
-  Vec3<unsigned char> trace(const Ray &ray, size_t depth);
-  HitResult shoot(const Ray &ray);
+  Vec3<float> cast(const Ray &ray);
+  Vec3<float> trace(const Ray &ray, size_t depth);
+  void shoot(const Ray &ray, HitResult &res);
 
  public:
-  Tracer() {}
+  Tracer(size_t _depth = 3, size_t _samples = 256)
+      : maxDepth(_depth), samples(_samples) {}
 
   void loadExampleScene();
   void load(const std::string &, const std::string &);
@@ -41,17 +43,70 @@ void Tracer::loadExampleScene() {
   camera.setWidth(500);
   camera.setHeight(500);
   camera.setFovy(90);
-  camera.setPosition(0, 0, -100);
+  camera.setPosition(0, 0, -50);
   camera.setTarget(0, 0, -9);
   camera.setWorld(0, 1, 0);
   camera.printStatus();
 
-  // Scene
+  // Scene-Light
   Material m;
-  Vec3<float> p1(0, 0, 0);
-  Vec3<float> p2(0, 50, 0);
-  Vec3<float> p3(10, 50, 0);
-  triangles.emplace_back(Triangle(p1, p2, p3, m));
+  m.setColor(Vec3<float>(255, 255, 255));
+  m.setEmissive(true);
+  triangles.emplace_back(Triangle(Vec3<float>(-10, 50, 30),
+                                  Vec3<float>(-10, 50, 10),
+                                  Vec3<float>(10, 50, 10), m));
+  triangles.emplace_back(Triangle(Vec3<float>(-10, 50, 30),
+                                  Vec3<float>(10, 50, 30),
+                                  Vec3<float>(10, 50, 10), m));
+
+  // Scene-Ground
+  m.setColor(Vec3<float>(255, 255, 255));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(-50, -50, 50),
+                                  Vec3<float>(-50, -50, -10),
+                                  Vec3<float>(50, -50, -10), m));
+  triangles.emplace_back(Triangle(Vec3<float>(-50, -50, 50),
+                                  Vec3<float>(50, -50, 50),
+                                  Vec3<float>(50, -50, -10), m));
+  // Scene-BackWall
+  m.setColor(Vec3<float>(255, 0, 255));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(-50, -50, 50),
+                                  Vec3<float>(-50, 50, 50),
+                                  Vec3<float>(50, 50, 50), m));
+  triangles.emplace_back(Triangle(Vec3<float>(-50, -50, 50),
+                                  Vec3<float>(50, -50, 50),
+                                  Vec3<float>(50, 50, 50), m));
+  // Scene-RightWall
+  m.setColor(Vec3<float>(255, 255, 0));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(-50, 50, 0),
+                                  Vec3<float>(-50, -50, 0),
+                                  Vec3<float>(-50, 50, 50), m));
+  triangles.emplace_back(Triangle(Vec3<float>(-50, 50, 50),
+                                  Vec3<float>(-50, -50, 50),
+                                  Vec3<float>(-50, -50, 0), m));
+  // Scene-LeftWall
+  m.setColor(Vec3<float>(0, 255, 255));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(50, 50, 0),
+                                  Vec3<float>(50, -50, 0),
+                                  Vec3<float>(50, 50, 50), m));
+  triangles.emplace_back(Triangle(Vec3<float>(50, 50, 50),
+                                  Vec3<float>(50, -50, 50),
+                                  Vec3<float>(50, -50, 0), m));
+  // Scene-Shape
+  m.setColor(Vec3<float>(255, 0, 0));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(-30, 20, 20),
+                                  Vec3<float>(-30, -20, 20),
+                                  Vec3<float>(-10, -10, 100), m));
+
+  m.setColor(Vec3<float>(0, 0, 255));
+  m.setEmissive(false);
+  triangles.emplace_back(Triangle(Vec3<float>(30, 20, 20),
+                                  Vec3<float>(30, -20, 20),
+                                  Vec3<float>(10, -10, 100), m));
 }
 
 void Tracer::load(const std::string &pathName, const std::string &fileName) {
@@ -95,7 +150,9 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
     Material actualMaterial;
 
     if (lights.find(material.name) != lights.end()) {
-      actualMaterial.setRadiance(lights[material.name]);
+      actualMaterial.setAmbient(lights[material.name].x,
+                                lights[material.name].y,
+                                lights[material.name].z);
     }
     actualMaterial.setDiffuse(material.diffuse[0], material.diffuse[1],
                               material.diffuse[2]);
@@ -160,65 +217,80 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
 }
 
 cv::Mat Tracer::render() {
-  int height = camera.getWidth(), width = camera.getHeight();
-  cv::Mat img(cv::Size(width, height), CV_8UC3, cv::Scalar(0, 0, 0));
+  int height = camera.getHeight(), width = camera.getWidth();
+  cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
 
-#pragma omp parallel for num_threads(1000)
+#pragma omp parallel for num_threads(100)
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
-      Ray ray = camera.getRay(row, col);
-      Vec3<unsigned char> color = cast(ray);
-      break;
-      // std::cout << static_cast<int>(color.x) << ' ' <<
-      // static_cast<int>(color.y)
-      //           << ' ' << static_cast<int>(color.z) << '\n';
-      img.at<cv::Vec3b>(row, col)[0] = color.x;
-      img.at<cv::Vec3b>(row, col)[1] = color.y;
-      img.at<cv::Vec3b>(row, col)[2] = color.z;
+      Vec3<float> color;
+      for (int k = 0; k < samples; k++) {
+        Ray ray = camera.getRay(row, col);
+        color += cast(ray);
+      }
+      color /= samples;
+
+      img.at<cv::Vec3f>(row, col)[2] = color.x;
+      img.at<cv::Vec3f>(row, col)[1] = color.y;
+      img.at<cv::Vec3f>(row, col)[0] = color.z;
     }
   }
-  std::cout << std::endl;
+
   return img;
 }
 
-HitResult Tracer::shoot(const Ray &ray) {
-  HitResult res;
+void Tracer::shoot(const Ray &ray, HitResult &res) {
+  HitResult curRes;
   for (size_t i = 0; i < triangles.size(); i++) {
-    auto curRes = triangles[i].hit(ray);
-    if (curRes.isHit && res.distance > curRes.distance) {
+    triangles[i].hit(ray, curRes);
+    if (!res.isHit || curRes.isHit && res.distance > curRes.distance) {
       res = curRes;
     }
   }
-  return res;
+  return;
 }
 
-Vec3<unsigned char> Tracer::cast(const Ray &ray) {
-  HitResult res = shoot(ray);
+Vec3<float> Tracer::cast(const Ray &ray) {
+  HitResult res;
+  shoot(ray, res);
 
   if (!res.isHit) {
-    return Vec3<unsigned char>(0, 255, 0);
+    return Vec3<float>(0, 0, 0);
   }
+  // return res.material.getColor();
 
-  if (res.material.illuminated()) {
+  if (res.material.emissive()) {
     return res.material.getColor();
   } else {
-    return Vec3<unsigned char>(0, 0, 255);
+    Ray nray = randomReflectRay(res.hitPoint, res.normal);
+    Vec3<float> ncolor = trace(nray, 0);
+    return cross(ncolor, res.material.getColor());
   }
 }
 
-Vec3<unsigned char> Tracer::trace(const Ray &ray, size_t depth) {
+Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   if (depth > maxDepth) {
-    return Vec3<unsigned char>(0, 0, 0);
+    return Vec3<float>(0, 0, 0);
   }
 
-  HitResult res = shoot(ray);
+  HitResult res;
+  shoot(ray, res);
   if (!res.isHit) {
-    return Vec3<unsigned char>(0, 0, 0);
+    return Vec3<float>(0, 0, 0);
   }
 
-  Ray nray = randomRay(res.hitPoint, res.normal);
+  float possibility = randFloat(1);
+  if (possibility > 0.8) {
+    return Vec3<float>(0, 0, 0);
+  }
 
-  return Vec3<unsigned char>(0, 0, 0);
+  if (res.material.emissive()) {
+    return res.material.getColor();
+  } else {
+    Ray nray = randomReflectRay(res.hitPoint, res.normal);
+    Vec3<float> ncolor = trace(nray, depth + 1);
+    return cross(ncolor, res.material.getColor());
+  }
 }
 
 #endif

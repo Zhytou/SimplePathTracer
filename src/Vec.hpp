@@ -48,6 +48,20 @@ struct Vec3 {
     z += other.z;
     return *this;
   }
+  template <typename K>
+  Vec3<T>& operator*=(const K& k) {
+    x *= k;
+    y *= k;
+    z *= k;
+    return *this;
+  }
+  template <typename K>
+  Vec3<T>& operator/=(const K& k) {
+    x /= k;
+    y /= k;
+    z /= k;
+    return *this;
+  }
 
   Vec3<T>& normalize() {
     float d = sqrt(x * x + y * y + z * z);
@@ -57,6 +71,12 @@ struct Vec3 {
     return *this;
   }
 };
+
+template <typename T>
+Vec3<T> normalize(const Vec3<T>& v) {
+  float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  return Vec3<T>(v.x / d, v.y / d, v.z / d);
+}
 
 template <typename T>
 Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {

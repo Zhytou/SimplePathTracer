@@ -27,10 +27,9 @@ struct HitResult {
 // 三角形
 class Triangle {
  private:
-  Vec3<float> p1, p2, p3;     // 三顶点
-  Vec3<float> normal;         // 法向量
-  Vec3<unsigned char> color;  //
-  Material material;          // 材质
+  Vec3<float> p1, p2, p3;  // 三顶点
+  Vec3<float> normal;      // 法向量
+  Material material;       // 材质
 
  public:
   Triangle(const Vec3<float>& _p1, const Vec3<float>& _p2,
@@ -50,32 +49,41 @@ class Triangle {
   ~Triangle() {}
 
   // 与光线求交
-  HitResult hit(const Ray& ray) const {
-    HitResult res;
-
+  void hit(const Ray& ray, HitResult& res) const {
     Vec3<float> origin = ray.getOrigin();
     Vec3<float> direction = ray.getDirection();
+    Vec3<float> normal = this->normal;
 
-    if (dot(normal, direction) == 0) {
-      return res;
+    if (dot(normal, direction) > 0) {
+      // 入射光线与法线必须呈钝角，但后续判断交点是否在三角形内部，需要使用原生法向量
+      normal = -normal;
     }
 
-    float t = (dot(normal, p1) - dot(normal, origin) / dot(normal, direction));
+    if (dot(normal, direction) == 0) {
+      res.isHit = false;
+      res.normal = normal;
+      return;
+    }
+
+    float t = (dot(normal, p1) - dot(normal, origin)) / dot(normal, direction);
     if (t < 0) {
-      // std::cout << t << '\n';
-      return res;
+      res.isHit = false;
+      res.normal = normal;
+      res.distance = t;
+      return;
     }
 
     Vec3<float> p = ray.pointAt(t);
     Vec3<float> c1 = cross(p2 - p1, p - p1);
     Vec3<float> c2 = cross(p3 - p2, p - p2);
     Vec3<float> c3 = cross(p1 - p3, p - p3);
-    if (dot(c1, normal) < 0 || dot(c2, normal) < 0 || dot(c3, normal) < 0) {
-      // std::cout << origin.x << ' ' << origin.y << ' ' << origin.z << '\n';
-      // std::cout << direction.x << ' ' << direction.y << ' ' << direction.z
-      //           << '\n';
-      // std::cout << t << ' ' << p.x << ' ' << p.y << ' ' << p.z << '\n';
-      return res;
+    if (dot(c1, this->normal) < 0 || dot(c2, this->normal) < 0 ||
+        dot(c3, this->normal) < 0) {
+      res.isHit = false;
+      res.normal = normal;
+      res.distance = t;
+      res.hitPoint = p;
+      return;
     }
 
     res.isHit = true;
@@ -83,7 +91,7 @@ class Triangle {
     res.normal = normal;
     res.distance = t;
     res.material = material;
-    return res;
+    return;
   };
 };
 
