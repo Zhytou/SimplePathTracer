@@ -21,6 +21,12 @@ struct Vec3 {
   }
 
   // 运算符
+  bool operator==(const Vec3<T>& other) const {
+    return x == other.x && y == other.y && z == other.z;
+  }
+  bool operator!=(const Vec3<T>& other) const {
+    return x != other.x || y != other.y || z == other.z;
+  }
   Vec3<T> operator-() const { return Vec3<T>(-x, -y, -z); }
   Vec3<T> operator-(const Vec3<T>& other) const {
     return Vec3<T>(x - other.x, y - other.y, z - other.z);
@@ -31,6 +37,9 @@ struct Vec3 {
   template <typename K>
   Vec3<T> operator*(const K& k) const {
     return Vec3<T>(x * k, y * k, z * k);
+  }
+  Vec3<T> operator*(const Vec3<T>& other) const {
+    return Vec3<T>(x * other.x, y * other.y, z * other.z);
   }
   template <typename K>
   Vec3<T> operator/(const K& k) const {

@@ -10,6 +10,7 @@ add_subdirectory(./third-parties/tinyobjloader/)
 
 add_executable(main ./src/main.cpp ./third-parties/tinyxml2/tinyxml2.cpp)
 
-add_executable(test ./test/hitTest.cpp)
+add_executable(hittest ./test/hitTest.cpp)
+add_executable(reflecttest ./test/reflectTest.cpp)
 
 target_link_libraries(main /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)

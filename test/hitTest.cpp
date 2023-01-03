@@ -7,7 +7,7 @@
 int main() {
   std::vector<Triangle> triangles;
   Material m;
-  m.setEmission(Vec3<float>(255, 255, 255));
+  // m.setEmission(Vec3<float>(255, 255, 255));
   triangles.emplace_back(
       Triangle(Vec3<float>(-10, 40, 30), Vec3<float>(-10, 40, 10),
                Vec3<float>(10, 40, 10), Vec3<float>(0, -1, 0), m));

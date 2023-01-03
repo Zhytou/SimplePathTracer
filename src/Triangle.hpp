@@ -66,7 +66,7 @@ class Triangle {
     }
 
     float t = (dot(normal, p1) - dot(normal, origin)) / dot(normal, direction);
-    if (t < 0) {
+    if (t < 0.001) {
       res.isHit = false;
       res.normal = normal;
       res.distance = t;
