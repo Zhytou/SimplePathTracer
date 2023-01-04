@@ -12,8 +12,8 @@ struct Material {
   Vec3<float> diffusion;       // Kd 漫射光
   Vec3<float> specularity;     // Ks 镜面光
   Vec3<float> transmittance;   // Tr 投射光
-  double shiness;              // Ns 反射
-  double refraction;           // Ni 折射
+  float shiness;               // Ns 反射
+  float refraction;            // Ni 折射
   bool emisssive;              // 是否发光
   std::string ambientTexure;   // map_Ka 纹理
   std::string diffuseTexure;   // map_Kd 纹理
@@ -40,6 +40,8 @@ struct Material {
   Vec3<float> getDiffusion() const { return diffusion; }
   Vec3<float> getSpecularity() const { return specularity; }
   Vec3<float> getTransmittance() const { return transmittance; }
+  float getShiness() const { return shiness; }
+  float getRefraction() const { return refraction; }
 
   // Setter
   void setEmissive(bool e) { emisssive = e; }
@@ -64,6 +66,8 @@ struct Material {
     transmittance.y = y;
     transmittance.z = z;
   }
+  void setShiness(float s) { shiness = s; }
+  void setRefraction(float r) { refraction = r; }
 };
 
 #endif

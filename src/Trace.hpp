@@ -59,18 +59,22 @@ void Tracer::loadExampleScene() {
   Material m;
   m.setEmissive(true);
   m.setDiffusion(0, 0, 0);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(0, 0, 0);
   triangles.emplace_back(Triangle(Vec3<float>(-0.5, 2, 2),
                                   Vec3<float>(-0.5, 2, 0.5),
                                   Vec3<float>(0.5, 2, 0.5), m));
   triangles.emplace_back(Triangle(Vec3<float>(-0.5, 2, 2),
                                   Vec3<float>(0.5, 2, 2),
                                   Vec3<float>(0.5, 2, 0.5), m));
+  /*
   triangles.emplace_back(Triangle(Vec3<float>(-0.5, 2, -2),
                                   Vec3<float>(-0.5, 2, -0.5),
                                   Vec3<float>(0.5, 2, -0.5), m));
   triangles.emplace_back(Triangle(Vec3<float>(-0.5, 2, -2),
                                   Vec3<float>(0.5, 2, -2),
                                   Vec3<float>(0.5, 2, -0.5), m));
+  */
 
   // Scene-Ground
   m.setEmissive(false);
@@ -83,13 +87,14 @@ void Tracer::loadExampleScene() {
                                   Vec3<float>(w * 3, -h, -1), m));
 
   // Scene-Top
+  /*
   m.setEmissive(false);
   m.setDiffusion(0.79, 0.76, 0.73);
   triangles.emplace_back(Triangle(Vec3<float>(-w, h, l), Vec3<float>(-w, h, -1),
                                   Vec3<float>(w, h, -1), m));
   triangles.emplace_back(Triangle(Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
                                   Vec3<float>(w, h, -1), m));
-
+  */
   // Scene-BackWall
   m.setEmissive(false);
   m.setDiffusion(0.79, 0.76, 0.73);
@@ -100,14 +105,15 @@ void Tracer::loadExampleScene() {
 
   // Scene-RightWall
   m.setEmissive(false);
-  m.setDiffusion(0.67, 0.67, 0);
+  m.setDiffusion(0.2, 0.76, 0);
   triangles.emplace_back(Triangle(Vec3<float>(-w, h, 0), Vec3<float>(-w, -h, 0),
                                   Vec3<float>(-w, h, l), m));
   triangles.emplace_back(Triangle(Vec3<float>(-w, h, l), Vec3<float>(-w, -h, l),
                                   Vec3<float>(-w, -h, 0), m));
+
   // Scene-LeftWall
   m.setEmissive(false);
-  m.setDiffusion(0, 0.8, 0.8);
+  m.setDiffusion(0, 0.24, 0.9);
   triangles.emplace_back(Triangle(Vec3<float>(w, h, 0), Vec3<float>(w, -h, 0),
                                   Vec3<float>(w, h, l), m));
   triangles.emplace_back(Triangle(Vec3<float>(w, h, l), Vec3<float>(w, -h, l),
@@ -117,20 +123,23 @@ void Tracer::loadExampleScene() {
 
   m.setEmissive(false);
   m.setDiffusion(1, 0, 0);
-  triangles.emplace_back(Triangle(Vec3<float>(-1, -h + 1, 3),
-                                  Vec3<float>(1, -h + 1, 3),
-                                  Vec3<float>(0, -h + 1, 1), m));
+  m.setSpecularity(0, 0, 0);
+  triangles.emplace_back(Triangle(Vec3<float>(-1, -h + 1, 1.5),
+                                  Vec3<float>(1, -h + 1, 1.5),
+                                  Vec3<float>(0, -h + 1, 0.5), m));
   /*
   m.setEmissive(false);
   m.setDiffusion(0.8, 0, 0);
-  triangles.emplace_back(Triangle(Vec3<float>(-0.5, 1, 1),
-                                  Vec3<float>(-0.25, -1, 1),
-                                  Vec3<float>(-1.5, -0.5, 3), m));
+  m.setSpecularity(0, 0, 0);
+  triangles.emplace_back(Triangle(Vec3<float>(-1.2, 1, 1),
+                                  Vec3<float>(-0.25, -1.5, 1),
+                                  Vec3<float>(-1.5, -1.5, 3), m));
   m.setEmissive(false);
   m.setDiffusion(0, 0, 0.8);
-  triangles.emplace_back(Triangle(Vec3<float>(0.5, 1, 1),
-                                  Vec3<float>(0.25, -1, 1),
-                                  Vec3<float>(1.5, -0.5, 3), m));
+  m.setSpecularity(0, 0, 0);
+  triangles.emplace_back(Triangle(Vec3<float>(1.2, 1, 1),
+                                  Vec3<float>(0.25, -1.5, 1),
+                                  Vec3<float>(1.5, -1.5, 3), m));
   */
 }
 
@@ -140,15 +149,17 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
   std::unordered_map<std::string, Vec3<float>> lights = {
       {"Light", Vec3<float>(34, 24, 8)}};
 
+  /*
   tinyxml2::XMLDocument doc;
   int errorId = doc.LoadFile(configName.c_str());
-  /*
+
   if (errorId != 0) {
     std::cout << "load " << configName
               << " xml file failed at error id:" << errorId << std::endl;
     return;
   }
-  tinyxml2::XMLElement *root = doc.RootElement();*/
+  tinyxml2::XMLElement *root = doc.RootElement();
+  */
 
   camera.setWidth(1024);
   camera.setHeight(1024);
@@ -183,6 +194,9 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
                                 material.diffuse[2]);
     actualMaterial.setSpecularity(material.specular[0], material.specular[1],
                                   material.specular[2]);
+    actualMaterial.setTransmittance(material.transmittance[0],
+                                    material.transmittance[1],
+                                    material.transmittance[2]);
 
     actualMaterials.emplace_back(actualMaterial);
   }
@@ -243,6 +257,7 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
 
 cv::Mat Tracer::render() {
   int height = camera.getHeight(), width = camera.getWidth();
+  // 注意：CV_32F白色为（1，1，1）对应CV_8U的白色（255，255，255）
   cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
 
 #pragma omp parallel for num_threads(500)
@@ -256,7 +271,11 @@ cv::Mat Tracer::render() {
         color += cast(ray);
       }
       color /= samples;
-
+      /*
+      if (color.x >= 0.01 || color.y >= 0.01 || color.z >= 0.01) {
+        std::cout << color.x << ' ' << color.y << ' ' << color.z << '\n';
+      }
+      */
       img.at<cv::Vec3f>(row, col)[2] = color.x;
       img.at<cv::Vec3f>(row, col)[1] = color.y;
       img.at<cv::Vec3f>(row, col)[0] = color.z;
@@ -285,28 +304,34 @@ Vec3<float> Tracer::cast(const Ray &ray) {
     return Vec3<float>(0, 0, 0);
   }
 
+  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion();
   if (res.material.isEmissive()) {
     // 发光
-    return Vec3<float>(255, 255, 255);
-  } else if (res.material.isDiffusive()) {
+    return Vec3<float>(1, 1, 1);
+  }
+
+  Vec3<float> color(0, 0, 0);
+  if (res.material.isDiffusive()) {
     // 漫反射
     Ray reflectRay = randomReflectRay(res.hitPoint, res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getDiffusion();
-  } else if (res.material.isSpecular()) {
+    Vec3<float> reflectLightColor = trace(reflectRay, 2);
+    color += reflectLightColor * res.material.getDiffusion();
+  }
+  if (res.material.isSpecular()) {
     // 镜面反射
     Ray reflectRay =
         standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
     Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getSpecularity();
-  } else if (res.material.isTransmissive()) {
-    // 折射
-    Ray reflectRay = randomReflectRay(res.hitPoint, res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getDiffusion();
-  } else {
-    return Vec3<float>(0, 0, 0);
+    color += reflectLightColor * res.material.getSpecularity();
   }
+  if (res.material.isTransmissive()) {
+    // 折射
+    Ray refractRay = randomReflectRay(res.hitPoint, res.normal);
+    Vec3<float> refractLightColor = trace(refractRay, 0);
+    color += refractLightColor * res.material.getTransmittance();
+  }
+
+  return color;
 }
 
 Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
@@ -321,7 +346,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   if (res.material.isEmissive()) {
-    return Vec3<float>(255, 255, 255);
+    return Vec3<float>(1, 1, 1);
   }
 
   float possibility = randFloat(1);
@@ -329,23 +354,27 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
+  Vec3<float> color(0, 0, 0);
   if (res.material.isDiffusive()) {
     // 漫反射
     Ray reflectRay = randomReflectRay(res.hitPoint, res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getDiffusion();
-  } else if (res.material.isSpecular()) {
-    // 镜面反射
-    Ray reflectRay = randomReflectRay(res.hitPoint, res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getDiffusion();
-  } else if (res.material.isTransmissive()) {
-    // 折射
-    Ray reflectRay = randomReflectRay(res.hitPoint, res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    return reflectLightColor * res.material.getDiffusion();
-  } else {
-    return Vec3<float>(0, 0, 0);
+    Vec3<float> reflectLightColor = trace(reflectRay, 2);
+    color += reflectLightColor * res.material.getDiffusion();
   }
+  if (res.material.isSpecular()) {
+    // 镜面反射
+    Ray reflectRay =
+        standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Vec3<float> reflectLightColor = trace(reflectRay, 0);
+    color += reflectLightColor * res.material.getSpecularity();
+  }
+  if (res.material.isTransmissive()) {
+    // 折射
+    Ray refractRay = randomReflectRay(res.hitPoint, res.normal);
+    Vec3<float> refractLightColor = trace(refractRay, 0);
+    color += refractLightColor * res.material.getTransmittance();
+  }
+
+  return color;
 }
 #endif

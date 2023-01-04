@@ -27,16 +27,19 @@ class Ray {
 
 Ray standardReflectRay(const Vec3<float> &point, const Vec3<float> &direction,
                        const Vec3<float> &normal) {
-  Vec3<float> ndirection = normal;
-
-  return Ray(point, direction);
+  // 分解入射光
+  Vec3<float> directionParallelN = normal * dot(normal, direction);
+  Vec3<float> directionVerticalN = direction - directionParallelN;
+  // 反射光
+  Vec3<float> ndirection = -directionParallelN + directionVerticalN;
+  return Ray(point, ndirection);
 }
 
 Ray randomReflectRay(const Vec3<float> &point, const Vec3<float> &normal) {
   Vec3<float> direction =
       normalize(normal) +
       normalize(
-          Vec3<float>(randFloat(1, -1), randFloat(1, -1), randFloat(1, -1)));
+          Vec3<float>(randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
   return Ray(point, direction);
 }
 
