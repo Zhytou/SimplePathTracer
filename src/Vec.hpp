@@ -98,4 +98,10 @@ T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
   return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
+template <typename T>
+T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
+  return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
+              (v1.z - v2.z) * (v1.z - v2.z));
+}
+
 #endif

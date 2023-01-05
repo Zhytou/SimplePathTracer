@@ -8,8 +8,10 @@ include_directories(/usr/local/include/opencv4)
 
 add_subdirectory(./third-parties/tinyobjloader/)
 
-add_executable(main ./src/main.cpp ./third-parties/tinyxml2/tinyxml2.cpp)
+add_executable(main ./src/main.cpp)
 
+
+add_executable(xmltest ./test/xmlTest.cpp ./third-parties/tinyxml2/tinyxml2.cpp ./third-parties/pugixml/src/pugixml.cpp)
 add_executable(hittest ./test/hitTest.cpp)
 add_executable(reflecttest ./test/reflectTest.cpp)
 
