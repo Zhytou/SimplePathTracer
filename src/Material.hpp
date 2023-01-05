@@ -1,6 +1,7 @@
 #ifndef SRE_MATERIAL_HPP
 #define SRE_MATERIAL_HPP
 
+#include <iostream>
 #include <string>
 
 #include "Vec.hpp"
@@ -11,9 +12,9 @@ struct Material {
   Vec3<float> ambience;        // Ka 环境光
   Vec3<float> diffusion;       // Kd 漫射光
   Vec3<float> specularity;     // Ks 镜面光
-  Vec3<float> transmittance;   // Tr 投射光
-  float shiness;               // Ns 反射
-  float refraction;            // Ni 折射
+  Vec3<float> transmittance;   // Tr 透射光
+  float shiness;               // Ns 反光强度
+  float refraction;            // Ni 折射率
   bool emisssive;              // 是否发光
   std::string ambientTexure;   // map_Ka 纹理
   std::string diffuseTexure;   // map_Kd 纹理
@@ -31,9 +32,7 @@ struct Material {
   bool isSpecular() const {
     return specularity.x != 0 || specularity.y != 0 || specularity.z != 0;
   }
-  bool isTransmissive() const {
-    return transmittance.x != 0 || transmittance.y != 0 || transmittance.z != 0;
-  }
+  bool isTransmissive() const { return refraction >= 1; }
 
   // Vec3<float> getEmission() const { return emission; }
   Vec3<float> getAambience() const { return ambience; }
@@ -42,7 +41,13 @@ struct Material {
   Vec3<float> getTransmittance() const { return transmittance; }
   float getShiness() const { return shiness; }
   float getRefraction() const { return refraction; }
-
+  void printStatus() {
+    std::cout << "material" << '\n'
+              << "diffuse: " << diffusion.x << '\t' << diffusion.y << '\t'
+              << diffusion.z << '\n'
+              << "specular: " << specularity.x << '\t' << specularity.y << '\t'
+              << specularity.z << '\n';
+  }
   // Setter
   void setEmissive(bool e) { emisssive = e; }
   // void setEmission(const Vec3<float>& r) { emission = r; }
