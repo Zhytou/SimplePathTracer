@@ -51,12 +51,16 @@ Ray standardReflectRay(const Vec3<float> &point, const Vec3<float> &direction,
 }
 
 // 漫反射光线
-Ray randomReflectRay(const Vec3<float> &point, const Vec3<float> &normal) {
-  Vec3<float> direction =
-      normalize(normal) +
-      normalize(
-          Vec3<float>(randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
-  return Ray(point, direction);
+Ray randomReflectRay(const Vec3<float> &point, const Vec3<float> &direction,
+                     const Vec3<float> &normal) {
+  Vec3<float> ndirection(0, 0, 0);
+  do {
+    ndirection = normalize(normal) +
+                 normalize(Vec3<float>(randFloat(1, -1), randFloat(1, -1),
+                                       randFloat(1, -0.95)));
+    ndirection.normalize();
+  } while (dot(direction, ndirection) == -1);
+  return Ray(point, ndirection);
 }
 
 #endif
