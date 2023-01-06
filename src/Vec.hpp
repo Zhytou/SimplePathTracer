@@ -79,6 +79,8 @@ struct Vec3 {
     z /= d;
     return *this;
   }
+
+  T length() const { return sqrt(x * x + y * y + z * z); }
 };
 
 template <typename T>

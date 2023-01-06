@@ -11,7 +11,7 @@
 class Camera {
  private:
   int width, height;
-  float actualWidth, actualHeight;
+  float actualDepth, actualWidth, actualHeight;
   double fovy;
   Vec3<float> eye;
   Vec3<float> lookat;
@@ -41,7 +41,6 @@ class Camera {
               << '\n';
     std::cout << "low left corner: " << lowerLeftCorner.x << '\t'
               << lowerLeftCorner.y << '\t' << lowerLeftCorner.z << '\n';
-
     std::cout << std::endl;
   }
 
@@ -101,11 +100,13 @@ class Camera {
     axisY.normalize();
 
     // view port
+    actualDepth = distance(eye, lookat);
     actualWidth =
-        fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * eye.z) * 2;
+        fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * actualDepth) * 2;
     actualHeight =
         static_cast<float>(height) / static_cast<float>(width) * actualWidth;
-    lowerLeftCorner = -axisX * actualWidth / 2 - axisY * actualHeight / 2;
+    lowerLeftCorner =
+        lookat - axisX * actualWidth / 2 - axisY * actualHeight / 2;
   }
 };
 
