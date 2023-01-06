@@ -37,15 +37,11 @@ class Triangle {
       : p1(_p1),
         p2(_p2),
         p3(_p3),
-        normal(cross(p2 - p1, p3 - p1)),
-        material(_m) {
-    normal.normalize();
-  }
+        normal(normalize(cross(p2 - p1, p3 - p1))),
+        material(_m) {}
   Triangle(const Vec3<float>& _p1, const Vec3<float>& _p2,
            const Vec3<float>& _p3, const Vec3<float>& _n, const Material& _m)
-      : p1(_p1), p2(_p2), p3(_p3), normal(_n), material(_m) {
-    normal.normalize();
-  }
+      : p1(_p1), p2(_p2), p3(_p3), normal(normalize(_n)), material(_m) {}
   ~Triangle() {}
 
   // 与光线求交
