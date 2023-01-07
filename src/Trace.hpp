@@ -34,7 +34,7 @@ class Tracer {
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 1, size_t _samples = 10, float _p = 0.8)
+  Tracer(size_t _depth = 8, size_t _samples = 100, float _p = 0.8)
       : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
   void loadExampleScene();
@@ -98,6 +98,7 @@ void Tracer::loadExampleScene() {
                          Vec3<float>(w, h, -1), m);
   triangles.emplace_back(Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
                          Vec3<float>(w, h, -1), m);
+
   // Scene-BackWall
   m.setEmissive(false);
   m.setDiffusion(0.79, 0.76, 0.73);
@@ -147,7 +148,7 @@ void Tracer::loadExampleScene() {
                          Vec3<float>(0, -h + 1, 0.5), m);
   */
   m.setEmissive(false);
-  m.setDiffusion(0.8, 0, 0);
+  m.setDiffusion(0, 0.9, 0);
   m.setSpecularity(0, 0, 0);
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
@@ -273,18 +274,13 @@ cv::Mat Tracer::render() {
   int height = camera.getHeight(), width = camera.getWidth();
   // 注意：CV_32F白色为（1，1，1）对应CV_8U的白色（255，255，255）
   cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
-  const float pdf = 1 / (2 * PI);
+
 #pragma omp parallel for num_threads(500)
   for (int row = 0; row < height; row++) {
 #pragma omp parallel for num_threads(500)
     for (int col = 0; col < width; col++) {
-      Vec3<float> color;
-#pragma omp parallel for num_threads(10)
-      for (int k = 0; k < samples; k++) {
-        Ray ray = camera.getRay(row, col);
-        color += cast(ray);
-      }
-      color /= samples * pdf;
+      Ray ray = camera.getRay(row, col);
+      Vec3<float> color = cast(ray);
 
       img.at<cv::Vec3f>(row, col)[2] = color.x;
       img.at<cv::Vec3f>(row, col)[1] = color.y;
@@ -328,28 +324,34 @@ Vec3<float> Tracer::cast(const Ray &ray) {
   }
 
   Vec3<float> color(0, 0, 0);
-  if (res.material.isDiffusive()) {
-    // 漫反射
-    Ray reflectRay =
-        randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    color = reflectLightColor * res.material.getDiffusion();
-  } else if (res.material.isSpecular()) {
-    // 镜面反射
-    Ray reflectRay =
-        standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, 0);
-    color = reflectLightColor * res.material.getSpecularity();
-  }
+  const float pdf = 1 / (2 * PI);
 
-  if (res.material.isTransmissive()) {
-    // 折射
-    Ray refractRay =
-        standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                           res.material.getRefraction());
-    Vec3<float> refractLightColor = trace(refractRay, 0);
-    color += refractLightColor * res.material.getTransmittance();
+#pragma omp parallel for num_threads(10)
+  for (int k = 0; k < samples; k++) {
+    if (res.material.isDiffusive()) {
+      // 漫反射
+      Ray reflectRay =
+          randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+      Vec3<float> reflectLightColor = trace(reflectRay, 0);
+      color += reflectLightColor * res.material.getDiffusion();
+    } else if (res.material.isSpecular()) {
+      // 镜面反射
+      Ray reflectRay =
+          standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+      Vec3<float> reflectLightColor = trace(reflectRay, 0);
+      color += reflectLightColor * res.material.getSpecularity();
+    }
+
+    if (res.material.isTransmissive()) {
+      // 折射
+      Ray refractRay =
+          standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
+                             res.material.getRefraction());
+      Vec3<float> refractLightColor = trace(refractRay, 0);
+      color += refractLightColor * res.material.getTransmittance();
+    }
   }
+  color /= samples * pdf;
 
   return color;
 }
