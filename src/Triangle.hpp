@@ -91,11 +91,8 @@ class Triangle {
   };
 
   // 与光线求交 只不过在之前res的基础上比较
-  void hitCompare(const Ray& ray, HitResult& res) const {
-    if (!res.isHit) {
-      return;
-    }
-
+  void hitCompare(const Ray& ray, HitResult& res,
+                  const float& curDistance) const {
     Vec3<float> origin = ray.getOrigin();
     Vec3<float> direction = ray.getDirection();
     Vec3<float> normal = this->normal;
@@ -106,11 +103,13 @@ class Triangle {
     }
 
     if (dot(normal, direction) == 0) {
+      res.isHit = false;
       return;
     }
 
     float t = (dot(normal, p1) - dot(normal, origin)) / dot(normal, direction);
-    if (t < 0.001 || t >= res.distance) {
+    if (t < 0.001 || t >= curDistance) {
+      res.isHit = false;
       return;
     }
 
@@ -120,6 +119,7 @@ class Triangle {
     Vec3<float> c3 = cross(p1 - p3, p - p3);
     if (dot(c1, this->normal) < 0 || dot(c2, this->normal) < 0 ||
         dot(c3, this->normal) < 0) {
+      res.isHit = false;
       return;
     }
 

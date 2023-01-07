@@ -298,9 +298,16 @@ cv::Mat Tracer::render() {
 void Tracer::shoot(const Ray &ray, HitResult &res) {
   HitResult curRes;
   for (size_t i = 0; i < triangles.size(); i++) {
-    triangles[i].hit(ray, curRes);
-    if (curRes.isHit && (!res.isHit || res.distance > curRes.distance)) {
-      res = curRes;
+    if (!res.isHit) {
+      triangles[i].hit(ray, curRes);
+      if (curRes.isHit) {
+        res = curRes;
+      }
+    } else {
+      triangles[i].hitCompare(ray, curRes, res.distance);
+      if (curRes.isHit && res.distance > curRes.distance) {
+        res = curRes;
+      }
     }
   }
   return;
