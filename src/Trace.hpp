@@ -34,7 +34,7 @@ class Tracer {
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 8, size_t _samples = 100, float _p = 0.8)
+  Tracer(size_t _depth = 1, size_t _samples = 10, float _p = 0.8)
       : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
   void loadExampleScene();
@@ -168,8 +168,8 @@ void Tracer::loadExampleScene() {
 }
 
 void Tracer::loadConfiguration(const std::string &configName) {
-  camera.setWidth(1024);
-  camera.setHeight(1024);
+  camera.setWidth(500);
+  camera.setHeight(500);
   camera.setFovy(39.3077);
   camera.setPosition(278, 273, -800);
   camera.setTarget(278, 273, -799);

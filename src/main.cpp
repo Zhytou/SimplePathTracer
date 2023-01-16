@@ -9,8 +9,8 @@ int main() {
   namedWindow(windName, 0);
 
   Tracer t;
-  t.loadExampleScene();
-  // t.load("../example/cornell-box/", "cornell-box");
+  // t.loadExampleScene();
+  t.load("../example/cornell-box/", "cornell-box");
   auto img = t.render();
   imshow(windName, img);
 
