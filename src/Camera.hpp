@@ -56,7 +56,8 @@ class Camera {
   }
   int getWidth() const { return width; }
   int getHeight() const { return height; }
-
+  Vec3<float> getEye() const { return eye; }
+  
   // Setter.
   void setWidth(const int& w) {
     width = w;

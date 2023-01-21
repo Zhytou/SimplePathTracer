@@ -27,6 +27,7 @@ class Tracer {
   size_t samples;
   float thresholdP;
 
+ private:
   bool loadConfiguration(const std::string &configName,
                          std::unordered_map<std::string, Vec3<float>> &lights);
   bool loadModel(const std::string &modelName, const std::string &pathName,
@@ -295,8 +296,10 @@ bool Tracer::loadModel(
   for (const auto &material : materials) {
     Material actualMaterial;
 
-    if (lights.find(material.name) != lights.end()) {
+    auto itr = lights.find(material.name);
+    if (itr != lights.end()) {
       actualMaterial.setEmissive(true);
+      actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
     }
     actualMaterial.setDiffusion(material.diffuse[0], material.diffuse[1],
                                 material.diffuse[2]);
@@ -342,7 +345,6 @@ bool Tracer::loadModel(
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
-
       triangles.emplace_back(points[0], points[1], points[2], normal, material);
     }
   }
@@ -372,9 +374,9 @@ cv::Mat Tracer::render() {
   // 注意：CV_32F白色为（1，1，1）对应CV_8U的白色（255，255，255）
   cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
 
-#pragma omp parallel for num_threads(500)
+#pragma omp parallel for num_threads(100)
   for (int row = 0; row < height; row++) {
-#pragma omp parallel for num_threads(500)
+#pragma omp parallel for num_threads(100)
     for (int col = 0; col < width; col++) {
       Ray ray = camera.getRay(row, col);
       Vec3<float> color = cast(ray);
@@ -390,7 +392,8 @@ cv::Mat Tracer::render() {
 
 void Tracer::shoot(const Ray &ray, HitResult &res) {
   HitResult curRes;
-  for (size_t i = 0; i < std::min(size_t(15), triangles.size()); i++) {
+#pragma omp parallel for num_threads(10)
+  for (size_t i = 0; i < triangles.size(); i++) {
     if (!res.isHit) {
       triangles[i].hit(ray, curRes);
       if (curRes.isHit) {
@@ -468,7 +471,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   if (res.material.isEmissive()) {
-    return Vec3<float>(34.0 / 255, 24.0 / 255, 8.0 / 255);
+    return Vec3<float>(1, 1, 1);
   }
 
   float possibility = randFloat(1);

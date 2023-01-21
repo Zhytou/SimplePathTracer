@@ -8,7 +8,7 @@
 
 struct Material {
  private:
-  Vec3<float> emission;        // Ke 自射光
+  Vec3<float> emission;        // Ke 自射光 对应xml文件中radiance
   Vec3<float> ambience;        // Ka 环境光
   Vec3<float> diffusion;       // Kd 漫射光
   Vec3<float> specularity;     // Ks 镜面光
@@ -34,7 +34,7 @@ struct Material {
   }
   bool isTransmissive() const { return refraction >= 1; }
 
-  // Vec3<float> getEmission() const { return emission; }
+  Vec3<float> getEmission() const { return emission; }
   Vec3<float> getAambience() const { return ambience; }
   Vec3<float> getDiffusion() const { return diffusion; }
   Vec3<float> getSpecularity() const { return specularity; }
@@ -50,7 +50,11 @@ struct Material {
   }
   // Setter
   void setEmissive(bool e) { emisssive = e; }
-  // void setEmission(const Vec3<float>& r) { emission = r; }
+  void setEmission(float x, float y, float z) {
+    emission.x = x;
+    emission.y = y;
+    emission.z = z;
+  }
   void setAmbience(float x, float y, float z) {
     ambience.x = x;
     ambience.y = y;
