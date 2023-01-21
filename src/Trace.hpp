@@ -28,17 +28,23 @@ class Tracer {
   float thresholdP;
 
  private:
+  // 加载设置
   bool loadConfiguration(const std::string &configName,
                          std::unordered_map<std::string, Vec3<float>> &lights);
+  // 加载模型
   bool loadModel(const std::string &modelName, const std::string &pathName,
                  const std::unordered_map<std::string, Vec3<float>> &lights);
+  // 着色
+  Vec3<float> shade(const int &row, const int &col);
+  // 光线投射
   Vec3<float> cast(const Ray &ray);
+  // 路径追踪
   Vec3<float> trace(const Ray &ray, size_t depth);
   void shoot(const Ray &ray, HitResult &res);
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 1, size_t _samples = 10, float _p = 0.8)
+  Tracer(size_t _depth = 1, size_t _samples = 10, float _p = 0.7)
       : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
   void loadExampleScene();
@@ -64,6 +70,7 @@ void Tracer::loadExampleScene() {
   // Scene-Light
   Material m;
   m.setEmissive(true);
+  m.setEmission(34, 24, 8);
   m.setDiffusion(0, 0, 0);
   m.setSpecularity(0, 0, 0);
   m.setTransmittance(1, 1, 1);
@@ -80,6 +87,7 @@ void Tracer::loadExampleScene() {
 
   // Scene-Ground
   m.setEmissive(false);
+  m.setEmission(0, 0, 0);
   m.setDiffusion(0.79, 0.76, 0.73);
   m.setSpecularity(0, 0, 0);
   m.setTransmittance(1, 1, 1);
@@ -378,8 +386,7 @@ cv::Mat Tracer::render() {
   for (int row = 0; row < height; row++) {
 #pragma omp parallel for num_threads(100)
     for (int col = 0; col < width; col++) {
-      Ray ray = camera.getRay(row, col);
-      Vec3<float> color = cast(ray);
+      Vec3<float> color = shade(row, col);
 
       img.at<cv::Vec3f>(row, col)[2] = color.x;
       img.at<cv::Vec3f>(row, col)[1] = color.y;
@@ -388,6 +395,18 @@ cv::Mat Tracer::render() {
   }
 
   return img;
+}
+
+Vec3<float> Tracer::shade(const int &row, const int &col) {
+  Vec3<float> color(0, 0, 0);
+#pragma omp parallel for num_threads(10)
+  for (int k = 0; k < samples; k++) {
+    Ray ray = camera.getRay(row, col);
+    color += cast(ray);
+  }
+
+  color /= samples;
+  return color;
 }
 
 void Tracer::shoot(const Ray &ray, HitResult &res) {
@@ -417,50 +436,49 @@ Vec3<float> Tracer::cast(const Ray &ray) {
     return Vec3<float>(0, 0, 0);
   }
 
-  float dis = distance(res.hitPoint, camera.getEye());
+  float cosine = fabs(dot(ray.getDirection(), res.normal));
 
-  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion();
   if (res.material.isEmissive()) {
     // 发光
-    return Vec3<float>(1, 1, 1);
+    return res.material.getEmission() * cosine;
   }
 
-  Vec3<float> color(0, 0, 0);
+  Vec3<float> light(0, 0, 0);
   const float pdf = 1 / (2 * PI);
 
-#pragma omp parallel for num_threads(10)
-  for (int k = 0; k < samples; k++) {
-    if (res.material.isDiffusive()) {
-      // 漫反射
-      Ray reflectRay =
-          randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-      Vec3<float> reflectLightColor = trace(reflectRay, 0);
-      color += reflectLightColor * res.material.getDiffusion();
-    } else if (res.material.isSpecular()) {
-      // 镜面反射
-      Ray reflectRay =
-          standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-      Vec3<float> reflectLightColor = trace(reflectRay, 0);
-      color += reflectLightColor * res.material.getSpecularity();
-    }
-
-    if (res.material.isTransmissive()) {
-      // 折射
-      Ray refractRay =
-          standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                             res.material.getRefraction());
-      Vec3<float> refractLightColor = trace(refractRay, 0);
-      color += refractLightColor * res.material.getTransmittance();
-    }
+  if (res.material.isDiffusive()) {
+    // 漫反射
+    Ray reflectRay =
+        randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Vec3<float> reflectLight = trace(reflectRay, 0);
+    light += reflectLight * res.material.getDiffusion() * cosine;
+  } else if (res.material.isSpecular()) {
+    // 镜面反射
+    Ray reflectRay =
+        standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Vec3<float> reflectLight = trace(reflectRay, 0);
+    light += reflectLight * res.material.getSpecularity() * cosine;
   }
-  color /= samples * pdf;
-  color *= dis * dis;
+  if (res.material.isTransmissive()) {
+    // 折射
+    Ray refractRay =
+        standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
+                           res.material.getRefraction());
+    Vec3<float> refractLight = trace(refractRay, 0);
+    light += refractLight * res.material.getTransmittance() * cosine;
+  }
 
-  return color;
+  light /= pdf;
+  return light;
 }
 
 Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   if (depth >= maxDepth) {
+    return Vec3<float>(0, 0, 0);
+  }
+
+  float possibility = randFloat(1);
+  if (possibility > thresholdP) {
     return Vec3<float>(0, 0, 0);
   }
 
@@ -470,30 +488,25 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
-  if (res.material.isEmissive()) {
-    return Vec3<float>(1, 1, 1);
-  }
-
-  float possibility = randFloat(1);
-  if (possibility > thresholdP) {
-    return Vec3<float>(0, 0, 0);
-  }
-
-  Vec3<float> color(0, 0, 0);
   float cosine = fabs(dot(ray.getDirection(), res.normal));
+  Vec3<float> light(0, 0, 0);
+
+  if (res.material.isEmissive()) {
+    return res.material.getEmission() * cosine / thresholdP;
+  }
 
   if (res.material.isDiffusive()) {
     // 漫反射
     Ray reflectRay =
         randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, depth + 1) * cosine;
-    color = reflectLightColor * res.material.getDiffusion();
+    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+    light = reflectLight * res.material.getDiffusion() * cosine;
   } else if (res.material.isSpecular()) {
     // 镜面反射
     Ray reflectRay =
         standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLightColor = trace(reflectRay, depth + 1) * cosine;
-    color = reflectLightColor * res.material.getSpecularity();
+    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+    light = reflectLight * res.material.getSpecularity() * cosine;
   }
 
   if (res.material.isTransmissive()) {
@@ -501,11 +514,11 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     Ray refractRay =
         standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
                            res.material.getRefraction());
-    Vec3<float> refractLightColor = trace(refractRay, depth + 1) * cosine;
-    color += refractLightColor * res.material.getTransmittance();
+    Vec3<float> refractLight = trace(refractRay, depth + 1);
+    light += refractLight * res.material.getTransmittance() * cosine;
   }
 
-  return color / thresholdP;
+  return light / thresholdP;
 }
 
 void Tracer::printStatus() {
