@@ -4,6 +4,7 @@
 #include <omp.h>
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -22,12 +23,14 @@ class Tracer {
  private:
   std::vector<Triangle> triangles;
   Camera camera;
-  std::unordered_map<std::string, Vec3<float>> lights;
   size_t maxDepth;
   size_t samples;
   float thresholdP;
 
-  void loadConfiguration(const std::string &configName);
+  bool loadConfiguration(const std::string &configName,
+                         std::unordered_map<std::string, Vec3<float>> &lights);
+  bool loadModel(const std::string &modelName, const std::string &pathName,
+                 const std::unordered_map<std::string, Vec3<float>> &lights);
   Vec3<float> cast(const Ray &ray);
   Vec3<float> trace(const Ray &ray, size_t depth);
   void shoot(const Ray &ray, HitResult &res);
@@ -136,17 +139,6 @@ void Tracer::loadExampleScene() {
                          Vec3<float>(w, -h, 0), m);
 
   // Scene-Shape
-  /*
-  m.setEmissive(false);
-  m.setDiffusion(1, 0, 0);
-  m.setSpecularity(0, 0, 0);
-  m.setTransmittance(1, 1, 1);
-  m.setShiness(1);
-  m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-1, -h + 1, 1.5),
-                         Vec3<float>(1, -h + 1, 1.5),
-                         Vec3<float>(0, -h + 1, 0.5), m);
-  */
   m.setEmissive(false);
   m.setDiffusion(0, 0.9, 0);
   m.setSpecularity(0, 0, 0);
@@ -167,24 +159,128 @@ void Tracer::loadExampleScene() {
   printStatus();
 }
 
-void Tracer::loadConfiguration(const std::string &configName) {
-  camera.setWidth(500);
-  camera.setHeight(500);
-  camera.setFovy(39.3077);
-  camera.setPosition(278, 273, -800);
-  camera.setTarget(278, 273, -799);
-  camera.setWorld(0, 1, 0);
+bool Tracer::loadConfiguration(
+    const std::string &configName,
+    std::unordered_map<std::string, Vec3<float>> &lights) {
+  std::ifstream ifs;
+  ifs.open(configName, std::ios::in);
+  if (!ifs.is_open()) {
+    return false;
+  }
 
-  lights.emplace("Light", Vec3<float>(34, 24, 8));
+  std::string buf;
+  int i, j;
+
+  int width, height;
+  float fovy;
+  float xyzs[3][3];
+
+  // xml
+  getline(ifs, buf);
+  // camera
+  getline(ifs, buf);
+  i = 0;
+  while (i < buf.size()) {
+    switch (buf[i]) {
+      case 'w':
+        assert(buf[i + 1] == 'i' && buf[i + 2] == 'd' && buf[i + 3] == 't' &&
+               buf[i + 4] == 'h' && buf[i + 5] == '=' && buf[i + 6] == '\"');
+        i += 7;
+        j = buf.find('\"', i);
+        width = stoi(buf.substr(i, j - i));
+        i = j + 1;
+        break;
+      case 'h':
+        assert(buf[i + 1] == 'e' && buf[i + 2] == 'i' && buf[i + 3] == 'g' &&
+               buf[i + 4] == 'h' && buf[i + 5] == 't' && buf[i + 6] == '=' &&
+               buf[i + 7] == '\"');
+        i += 8;
+        j = buf.find('\"', i);
+        height = stoi(buf.substr(i, j - i));
+        i = j + 1;
+        break;
+      case 'f':
+        assert(buf[i + 1] == 'o' && buf[i + 2] == 'v' && buf[i + 3] == 'y' &&
+               buf[i + 4] == '=' && buf[i + 5] == '\"');
+        i += 6;
+        j = buf.find('\"', i);
+        fovy = stof(buf.substr(i, j - i));
+        i = j + 1;
+        break;
+      default:
+        i += 1;
+        break;
+    }
+  }
+
+  // eye-lookat-up
+  for (int row = 0; row < 3; row++) {
+    getline(ifs, buf);
+    i = 0;
+
+    int col = 0;
+    while (i < buf.size()) {
+      if (i > 0 && buf[i - 1] == ' ' &&
+          (buf[i] == 'x' || buf[i] == 'y' || buf[i] == 'z')) {
+        assert(buf[i + 1] == '=' && buf[i + 2] == '\"');
+        i += 3;
+        j = buf.find('\"', i);
+        xyzs[row][col] = stof(buf.substr(i, j - i));
+        i = j + 1;
+        col += 1;
+      } else {
+        i += 1;
+      }
+    }
+  }
+
+  // lights
+  while (getline(ifs, buf)) {
+    std::string mtlname;
+    Vec3<float> radiance;
+    i = 0;
+    while (i < buf.size()) {
+      if (i > 0 && buf[i - 1] == ' ' && buf[i] == 'm') {
+        assert(buf.substr(i, 9) == "mtlname=\"");
+        i += 9;
+        j = buf.find('\"', i);
+        mtlname = buf.substr(i, j - i);
+        i = j + 1;
+      } else if (i > 0 && buf[i - 1] == ' ' && buf[i] == 'r') {
+        assert(buf.substr(i, 10) == "radiance=\"");
+        i += 10;
+        j = buf.find(',', i);
+        radiance.x = stof(buf.substr(i, j - i));
+        i = j + 1;
+
+        j = buf.find(',', i);
+        radiance.y = stof(buf.substr(i, j - i));
+        i = j + 1;
+
+        j = buf.find('\"', i);
+        radiance.z = stof(buf.substr(i, j - i));
+        i = j + 1;
+      } else {
+        i += 1;
+      }
+    }
+    if (!mtlname.empty()) {
+      lights.emplace(mtlname, radiance);
+    }
+  }
+
+  camera.setWidth(width);
+  camera.setHeight(height);
+  camera.setFovy(fovy);
+  camera.setPosition(xyzs[0][0], xyzs[0][1], xyzs[0][2]);
+  camera.setTarget(xyzs[1][0], xyzs[1][1], xyzs[1][2]);
+  camera.setWorld(xyzs[2][0], xyzs[2][1], xyzs[2][2]);
+  return true;
 }
 
-void Tracer::load(const std::string &pathName, const std::string &fileName) {
-  // Configuration -Camera
-  std::string configName = pathName + fileName + ".xml";
-  loadConfiguration(configName);
-
-  // Scene
-  std::string modelName = pathName + fileName + ".obj";
+bool Tracer::loadModel(
+    const std::string &modelName, const std::string &pathName,
+    const std::unordered_map<std::string, Vec3<float>> &lights) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -192,24 +288,8 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
   std::string err;
   if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, &warn,
                         modelName.c_str(), pathName.c_str())) {
-    throw std::runtime_error(warn + err);
+    return false;
   }
-  /*
-  for (int i = 0; i < 100; i += 3) {
-    std::cout << "No." << i / 3 << " vertex: " << attrib.vertices[i] << '\t'
-              << attrib.vertices[i + 1] << '\t' << attrib.vertices[i + 2]
-              << '\n';
-  }
-  std::cout << std::endl;
-
-  for (int i = 0; i < 100; i += 3) {
-    std::cout << "No." << i / 3
-              << " face: " << shapes[0].mesh.indices[i].vertex_index + 1 << '\t'
-              << shapes[0].mesh.indices[i + 1].vertex_index + 1 << '\t'
-              << shapes[0].mesh.indices[i + 2].vertex_index + 1 << '\n';
-  }
-  std::cout << std::endl;
-  */
 
   std::vector<Material> actualMaterials;
   for (const auto &material : materials) {
@@ -266,7 +346,24 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
       triangles.emplace_back(points[0], points[1], points[2], normal, material);
     }
   }
+  return true;
+}
 
+void Tracer::load(const std::string &pathName, const std::string &fileName) {
+  // Configuration -Camera
+  std::unordered_map<std::string, Vec3<float>> lights;
+  std::string configName = pathName + fileName + ".xml";
+  if (!loadConfiguration(configName, lights)) {
+    std::cout << "Camera config loading fails!" << std::endl;
+    return;
+  }
+
+  // Scene
+  std::string modelName = pathName + fileName + ".obj";
+  if (!loadModel(modelName, pathName, lights)) {
+    std::cout << "Model loading fails!" << std::endl;
+    return;
+  }
   printStatus();
 }
 
@@ -293,7 +390,7 @@ cv::Mat Tracer::render() {
 
 void Tracer::shoot(const Ray &ray, HitResult &res) {
   HitResult curRes;
-  for (size_t i = 0; i < triangles.size(); i++) {
+  for (size_t i = 0; i < std::min(size_t(15), triangles.size()); i++) {
     if (!res.isHit) {
       triangles[i].hit(ray, curRes);
       if (curRes.isHit) {
@@ -316,6 +413,8 @@ Vec3<float> Tracer::cast(const Ray &ray) {
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
+
+  float dis = distance(res.hitPoint, camera.getEye());
 
   // return Vec3<float>(1, 1, 1) * res.material.getDiffusion();
   if (res.material.isEmissive()) {
@@ -352,6 +451,7 @@ Vec3<float> Tracer::cast(const Ray &ray) {
     }
   }
   color /= samples * pdf;
+  color *= dis * dis;
 
   return color;
 }
@@ -368,7 +468,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   if (res.material.isEmissive()) {
-    return Vec3<float>(1, 1, 1);
+    return Vec3<float>(34.0 / 255, 24.0 / 255, 8.0 / 255);
   }
 
   float possibility = randFloat(1);
