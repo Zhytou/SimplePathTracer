@@ -10,7 +10,8 @@ int main() {
 
   Tracer t;
   // t.loadExampleScene();
-  t.load("../example/cornell-box/", "cornell-box");
+  t.load("../example/veach-mis/", "veach-mis");
+  // t.load("../example/cornell-box/", "cornell-box");
   auto img = t.render();
   imshow(windName, img);
 

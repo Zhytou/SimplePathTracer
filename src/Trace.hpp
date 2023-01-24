@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "Camera.hpp"
+#include "Light.hpp"
 #include "Ray.hpp"
 #include "Triangle.hpp"
 #include "Vec.hpp"
@@ -23,17 +24,20 @@ class Tracer {
  private:
   std::vector<Triangle> triangles;
   Camera camera;
+  Light light;
   size_t maxDepth;
   size_t samples;
   float thresholdP;
 
  private:
   // 加载设置
-  bool loadConfiguration(const std::string &configName,
-                         std::unordered_map<std::string, Vec3<float>> &lights);
+  bool loadConfiguration(
+      const std::string &configName,
+      std::unordered_map<std::string, Vec3<float>> &lightRadiances);
   // 加载模型
-  bool loadModel(const std::string &modelName, const std::string &pathName,
-                 const std::unordered_map<std::string, Vec3<float>> &lights);
+  bool loadModel(
+      const std::string &modelName, const std::string &pathName,
+      const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
   // 着色
   Vec3<float> shade(const int &row, const int &col);
   // 光线投射
@@ -44,7 +48,7 @@ class Tracer {
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 1, size_t _samples = 10, float _p = 0.7)
+  Tracer(size_t _depth = 3, size_t _samples = 10, float _p = 0.5)
       : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
   void loadExampleScene();
@@ -84,6 +88,10 @@ void Tracer::loadExampleScene() {
                          Vec3<float>(0.5, 2, -0.5), m);
   triangles.emplace_back(Vec3<float>(-0.5, 2, -2), Vec3<float>(0.5, 2, -2),
                          Vec3<float>(0.5, 2, -0.5), m);
+  light.setLight(Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
+                 Vec3<float>(0.5, 2, 0.5), m);
+  light.setLight(Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
+                 Vec3<float>(0.5, 2, 0.5), m);
 
   // Scene-Ground
   m.setEmissive(false);
@@ -170,7 +178,7 @@ void Tracer::loadExampleScene() {
 
 bool Tracer::loadConfiguration(
     const std::string &configName,
-    std::unordered_map<std::string, Vec3<float>> &lights) {
+    std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
   std::ifstream ifs;
   ifs.open(configName, std::ios::in);
   if (!ifs.is_open()) {
@@ -243,7 +251,7 @@ bool Tracer::loadConfiguration(
     }
   }
 
-  // lights
+  // lightRadiances
   while (getline(ifs, buf)) {
     std::string mtlname;
     Vec3<float> radiance;
@@ -274,7 +282,7 @@ bool Tracer::loadConfiguration(
       }
     }
     if (!mtlname.empty()) {
-      lights.emplace(mtlname, radiance);
+      lightRadiances.emplace(mtlname, radiance);
     }
   }
 
@@ -289,7 +297,7 @@ bool Tracer::loadConfiguration(
 
 bool Tracer::loadModel(
     const std::string &modelName, const std::string &pathName,
-    const std::unordered_map<std::string, Vec3<float>> &lights) {
+    const std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -304,8 +312,8 @@ bool Tracer::loadModel(
   for (const auto &material : materials) {
     Material actualMaterial;
 
-    auto itr = lights.find(material.name);
-    if (itr != lights.end()) {
+    auto itr = lightRadiances.find(material.name);
+    if (itr != lightRadiances.end()) {
       actualMaterial.setEmissive(true);
       actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
     }
@@ -354,6 +362,9 @@ bool Tracer::loadModel(
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
       triangles.emplace_back(points[0], points[1], points[2], normal, material);
+      if (material.isEmissive()) {
+        light.setLight(points[0], points[1], points[2], material);
+      }
     }
   }
   return true;
@@ -361,16 +372,16 @@ bool Tracer::loadModel(
 
 void Tracer::load(const std::string &pathName, const std::string &fileName) {
   // Configuration -Camera
-  std::unordered_map<std::string, Vec3<float>> lights;
+  std::unordered_map<std::string, Vec3<float>> lightRadiances;
   std::string configName = pathName + fileName + ".xml";
-  if (!loadConfiguration(configName, lights)) {
+  if (!loadConfiguration(configName, lightRadiances)) {
     std::cout << "Camera config loading fails!" << std::endl;
     return;
   }
 
   // Scene
   std::string modelName = pathName + fileName + ".obj";
-  if (!loadModel(modelName, pathName, lights)) {
+  if (!loadModel(modelName, pathName, lightRadiances)) {
     std::cout << "Model loading fails!" << std::endl;
     return;
   }
@@ -402,7 +413,7 @@ Vec3<float> Tracer::shade(const int &row, const int &col) {
 #pragma omp parallel for num_threads(10)
   for (int k = 0; k < samples; k++) {
     Ray ray = camera.getRay(row, col);
-    color += cast(ray);
+    color += trace(ray, 0);
   }
 
   color /= samples;
@@ -411,7 +422,7 @@ Vec3<float> Tracer::shade(const int &row, const int &col) {
 
 void Tracer::shoot(const Ray &ray, HitResult &res) {
   HitResult curRes;
-#pragma omp parallel for num_threads(10)
+#pragma omp parallel for num_threads(100)
   for (size_t i = 0; i < triangles.size(); i++) {
     if (!res.isHit) {
       triangles[i].hit(ray, curRes);
@@ -438,9 +449,18 @@ Vec3<float> Tracer::cast(const Ray &ray) {
 
   float cosine = fabs(dot(ray.getDirection(), res.normal));
 
+  Vec3<float> directLight, IndirectLight;
+
+  // 直接光照
   if (res.material.isEmissive()) {
     // 发光
     return res.material.getEmission() * cosine;
+  } else {
+    float pdfLight = 1 / light.getArea();
+    auto [pos, radiance] = light.getRandomPointAndRadiance();
+    float dis = distance(res.hitPoint, pos);
+    return radiance * res.material.getDiffusion() * cosine / dis / dis /
+           pdfLight;
   }
 
   Vec3<float> light(0, 0, 0);
@@ -489,36 +509,62 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   float cosine = fabs(dot(ray.getDirection(), res.normal));
-  Vec3<float> light(0, 0, 0);
+  Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
   if (res.material.isEmissive()) {
-    return res.material.getEmission() * cosine / thresholdP;
+    // 直接光照 ——发光物
+    directLight = res.material.getEmission() * cosine;
+  } else {
+    // 直接光照 ——节省路径（自己打过去）
+    static float pdfLight = 1 / light.getArea();
+    auto [lightPoint, radiance] = light.getRandomPointAndRadiance();
+    float dis = distance(res.hitPoint, lightPoint);
+
+    // 检查是否有障碍
+    Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
+    HitResult tmpRes;
+    shoot(tmpRay, tmpRes);
+    if (tmpRes.isHit && lightPoint == tmpRes.hitPoint) {
+      directLight = radiance * res.material.getDiffusion() * cosine /
+                    (dis * dis * pdfLight);
+    }
+
+    static float pdf = 1 / (2 * PI);
+
+    // 间接光照
+    if (res.material.isDiffusive()) {
+      // 漫反射
+      Ray reflectRay =
+          randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+      float dis = distance(res.hitPoint, ray.getOrigin());
+      indirectLight =
+          reflectLight * res.material.getDiffusion() * cosine / (dis * dis);
+    } else if (res.material.isSpecular()) {
+      // 镜面反射
+      Ray reflectRay =
+          standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+      float dis = distance(res.hitPoint, ray.getOrigin());
+      indirectLight =
+          reflectLight * res.material.getSpecularity() * cosine / (dis * dis);
+    }
+
+    if (res.material.isTransmissive()) {
+      // 折射
+      Ray refractRay =
+          standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
+                             res.material.getRefraction());
+      Vec3<float> refractLight = trace(refractRay, depth + 1);
+      float dis = distance(res.hitPoint, ray.getOrigin());
+      indirectLight +=
+          refractLight * res.material.getTransmittance() * cosine / (dis * dis);
+    }
+
+    indirectLight /= pdf;
   }
 
-  if (res.material.isDiffusive()) {
-    // 漫反射
-    Ray reflectRay =
-        randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-    light = reflectLight * res.material.getDiffusion() * cosine;
-  } else if (res.material.isSpecular()) {
-    // 镜面反射
-    Ray reflectRay =
-        standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-    light = reflectLight * res.material.getSpecularity() * cosine;
-  }
-
-  if (res.material.isTransmissive()) {
-    // 折射
-    Ray refractRay =
-        standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                           res.material.getRefraction());
-    Vec3<float> refractLight = trace(refractRay, depth + 1);
-    light += refractLight * res.material.getTransmittance() * cosine;
-  }
-
-  return light / thresholdP;
+  return (directLight + indirectLight) / thresholdP;
 }
 
 void Tracer::printStatus() {

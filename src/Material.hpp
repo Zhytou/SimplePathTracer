@@ -41,7 +41,7 @@ struct Material {
   Vec3<float> getTransmittance() const { return transmittance; }
   float getShiness() const { return shiness; }
   float getRefraction() const { return refraction; }
-  void printStatus() {
+  void printStatus() const {
     std::cout << "material" << '\n'
               << "diffuse: " << diffusion.x << '\t' << diffusion.y << '\t'
               << diffusion.z << '\n'

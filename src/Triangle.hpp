@@ -131,7 +131,20 @@ class Triangle {
     return;
   };
 
-  void printStatus() {
+  // getter
+  Vec3<float> getRandomPoint() const {
+    Vec3<float> e1 = p2 - p1, e2 = p3 - p1;
+    float a = randFloat(1), b = randFloat(1);
+    float c = 1 - a, d = 1 - b;
+    if (sqrt(a * a + b * b) > sqrt(c * c + d * d)) {
+      a = c;
+      b = d;
+    }
+    return e1 * a + e2 * b + p1;
+  }
+  Material getMaterial() const { return material; }
+
+  void printStatus() const {
     std::cout << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
               << "vertex 2: " << p2.x << '\t' << p2.y << '\t' << p2.z << '\n'
               << "vertex 3: " << p3.x << '\t' << p3.y << '\t' << p3.z << '\n'
