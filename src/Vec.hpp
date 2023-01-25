@@ -2,6 +2,7 @@
 #define SRE_VEC_HPP
 
 #include <cmath>
+#include <functional>
 
 template <typename T>
 struct Vec3 {
@@ -106,4 +107,15 @@ T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
               (v1.z - v2.z) * (v1.z - v2.z));
 }
 
+template <typename T>
+struct std::hash<Vec3<T>> {
+  std::size_t operator()(Vec3<T> const& v) const noexcept {
+    std::hash<T> hasher;
+    std::size_t h1 = hasher(v.x);
+    std::size_t h2 = hasher(v.y);
+    std::size_t h3 = hasher(v.z);
+
+    return h1 ^ (h2 << 1) ^ (h3 << 2);  // or use boost::hash_combine
+  }
+};
 #endif
