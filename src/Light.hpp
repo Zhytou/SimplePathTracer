@@ -42,9 +42,11 @@ class Light {
   }
   // 获取光源面积
   float getLightAreaAt(const int& idx) const { return lightAreas[idx]; }
+  // 获取任意发光网格（三角形）
   int getRandomTriangleId(const int& lightId) const {
-    int triangleId = randInt(triangleIds[lightId].size());
-    return triangleId;
+    int idx = randInt(triangleIds[lightId].size());
+    return triangleIds[lightId][idx];
   }
 };
+
 #endif
