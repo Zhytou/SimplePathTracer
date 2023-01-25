@@ -8,6 +8,7 @@
 #include "Vec.hpp"
 
 struct HitResult {
+  int triangleId;
   bool isHit;
   double distance;
   Vec3<float> hitPoint;
@@ -133,14 +134,9 @@ class Triangle {
 
   // getter
   Vec3<float> getRandomPoint() const {
-    Vec3<float> e1 = p2 - p1, e2 = p3 - p1;
-    float a = randFloat(1), b = randFloat(1);
-    float c = 1 - a, d = 1 - b;
-    if (sqrt(a * a + b * b) > sqrt(c * c + d * d)) {
-      a = c;
-      b = d;
-    }
-    return e1 * a + e2 * b + p1;
+    Vec3<float> e1 = p2 - p1, e2 = p3 - p2;
+    float a = sqrt(randFloat(1)), b = randFloat(1);
+    return e1 * a + e2 * a * b + p1;
   }
   Material getMaterial() const { return material; }
 
