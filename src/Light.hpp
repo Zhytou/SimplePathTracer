@@ -6,32 +6,45 @@
 
 #include "Material.hpp"
 #include "Random.hpp"
-#include "Triangle.hpp"
 #include "Vec.hpp"
 
 class Light {
  private:
-  std::vector<Triangle> triangles;
-  float area;
+  std::unordered_map<Vec3<float>, int> lightIds;
+  std::vector<std::vector<int>> triangleIds;
+  std::vector<float> lightAreas;
 
  public:
-  Light() : area(0){};
+  Light() = default;
   ~Light() = default;
 
   // setter
-  void setLight(const Vec3<float>& p1, const Vec3<float>& p2,
-                const Vec3<float>& p3, const Material& material) {
-    assert(material.isEmissive());
-    triangles.emplace_back(p1, p2, p3, material);
-    area += cross(p2 - p1, p3 - p1).length();
+  void setLight(const int& triangleId, const float& area,
+                const Vec3<float>& radiance) {
+    assert(radiance.x != 0 && radiance.y != 0 && radiance.z != 0);
+    assert(lightAreas.size() == triangleIds.size());
+    int id = triangleIds.size();
+    if (lightIds.find(radiance) == lightIds.end()) {
+      triangleIds.emplace_back(0);
+      lightAreas.push_back(0);
+    } else {
+      id = lightIds[radiance];
+    }
+    triangleIds[id].push_back(triangleId);
+    lightAreas[id] += area;
   }
 
   // getter
-  float getArea() const { return area; }
-  std::pair<Vec3<float>, Vec3<float>> getRandomPointAndRadiance() const {
-    int idx = randInt(triangles.size());
-    return {triangles[idx].getRandomPoint(),
-            triangles[idx].getMaterial().getEmission()};
+  // 获取光源数量
+  int getLightSize() const {
+    assert(lightAreas.size() == triangleIds.size());
+    return lightAreas.size();
+  }
+  // 获取光源面积
+  float getLightAreaAt(const int& idx) const { return lightAreas[idx]; }
+  int getRandomTriangleId(const int& lightId) const {
+    int triangleId = randInt(triangleIds[lightId].size());
+    return triangleId;
   }
 };
 #endif
