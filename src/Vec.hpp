@@ -25,7 +25,7 @@ struct Vec3 {
     return x == other.x && y == other.y && z == other.z;
   }
   bool operator!=(const Vec3<T>& other) const {
-    return x != other.x || y != other.y || z == other.z;
+    return x != other.x || y != other.y || z != other.z;
   }
   Vec3<T> operator-() const { return Vec3<T>(-x, -y, -z); }
   Vec3<T> operator-(const Vec3<T>& other) const {
