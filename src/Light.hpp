@@ -25,6 +25,7 @@ class Light {
     assert(lightAreas.size() == triangleIds.size());
     int id = triangleIds.size();
     if (lightIds.find(radiance) == lightIds.end()) {
+      lightIds[radiance] = id;
       triangleIds.emplace_back(0);
       lightAreas.push_back(0);
     } else {
