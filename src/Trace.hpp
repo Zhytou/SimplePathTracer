@@ -30,25 +30,19 @@ class Tracer {
   float thresholdP;
 
  private:
-  // 加载设置
   bool loadConfiguration(
       const std::string &configName,
       std::unordered_map<std::string, Vec3<float>> &lightRadiances);
-  // 加载模型
   bool loadModel(
       const std::string &modelName, const std::string &pathName,
       const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
-  // 着色
   Vec3<float> shade(const int &row, const int &col);
-  // 光线投射
-  Vec3<float> cast(const Ray &ray);
-  // 路径追踪
   Vec3<float> trace(const Ray &ray, size_t depth);
   void shoot(const Ray &ray, HitResult &res);
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 3, size_t _samples = 10, float _p = 0.5)
+  Tracer(size_t _depth = 3, size_t _samples = 5, float _p = 0.5)
       : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
   void loadExampleScene();
@@ -88,10 +82,10 @@ void Tracer::loadExampleScene() {
                          Vec3<float>(0.5, 2, -0.5), m);
   triangles.emplace_back(Vec3<float>(-0.5, 2, -2), Vec3<float>(0.5, 2, -2),
                          Vec3<float>(0.5, 2, -0.5), m);
-  light.setLight(Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
-                 Vec3<float>(0.5, 2, 0.5), m);
-  light.setLight(Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
-                 Vec3<float>(0.5, 2, 0.5), m);
+  light.setLight(0, 0.75, m.getEmission());
+  light.setLight(1, 0.75, m.getEmission());
+  light.setLight(2, 0.75, m.getEmission());
+  light.setLight(3, 0.75, m.getEmission());
 
   // Scene-Ground
   m.setEmissive(false);
@@ -251,7 +245,7 @@ bool Tracer::loadConfiguration(
     }
   }
 
-  // lightRadiances
+  // light radiance
   while (getline(ifs, buf)) {
     std::string mtlname;
     Vec3<float> radiance;
@@ -361,10 +355,13 @@ bool Tracer::loadModel(
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
-      triangles.emplace_back(points[0], points[1], points[2], normal, material);
       if (material.isEmissive()) {
-        light.setLight(points[0], points[1], points[2], material);
+        int id = triangles.size();
+        float area =
+            cross(points[1] - points[0], points[2] - points[0]).length() / 2;
+        light.setLight(id, area, material.getEmission());
       }
+      triangles.emplace_back(points[0], points[1], points[2], normal, material);
     }
   }
   return true;
@@ -410,7 +407,7 @@ cv::Mat Tracer::render() {
 
 Vec3<float> Tracer::shade(const int &row, const int &col) {
   Vec3<float> color(0, 0, 0);
-#pragma omp parallel for num_threads(10)
+#pragma omp parallel for num_threads(5)
   for (int k = 0; k < samples; k++) {
     Ray ray = camera.getRay(row, col);
     color += trace(ray, 0);
@@ -424,6 +421,7 @@ void Tracer::shoot(const Ray &ray, HitResult &res) {
   HitResult curRes;
 #pragma omp parallel for num_threads(100)
   for (size_t i = 0; i < triangles.size(); i++) {
+    curRes.triangleId = i;
     if (!res.isHit) {
       triangles[i].hit(ray, curRes);
       if (curRes.isHit) {
@@ -437,59 +435,6 @@ void Tracer::shoot(const Ray &ray, HitResult &res) {
     }
   }
   return;
-}
-
-Vec3<float> Tracer::cast(const Ray &ray) {
-  HitResult res;
-  shoot(ray, res);
-
-  if (!res.isHit) {
-    return Vec3<float>(0, 0, 0);
-  }
-
-  float cosine = fabs(dot(ray.getDirection(), res.normal));
-
-  Vec3<float> directLight, IndirectLight;
-
-  // 直接光照
-  if (res.material.isEmissive()) {
-    // 发光
-    return res.material.getEmission() * cosine;
-  } else {
-    float pdfLight = 1 / light.getArea();
-    auto [pos, radiance] = light.getRandomPointAndRadiance();
-    float dis = distance(res.hitPoint, pos);
-    return radiance * res.material.getDiffusion() * cosine / dis / dis /
-           pdfLight;
-  }
-
-  Vec3<float> light(0, 0, 0);
-  const float pdf = 1 / (2 * PI);
-
-  if (res.material.isDiffusive()) {
-    // 漫反射
-    Ray reflectRay =
-        randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLight = trace(reflectRay, 0);
-    light += reflectLight * res.material.getDiffusion() * cosine;
-  } else if (res.material.isSpecular()) {
-    // 镜面反射
-    Ray reflectRay =
-        standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-    Vec3<float> reflectLight = trace(reflectRay, 0);
-    light += reflectLight * res.material.getSpecularity() * cosine;
-  }
-  if (res.material.isTransmissive()) {
-    // 折射
-    Ray refractRay =
-        standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                           res.material.getRefraction());
-    Vec3<float> refractLight = trace(refractRay, 0);
-    light += refractLight * res.material.getTransmittance() * cosine;
-  }
-
-  light /= pdf;
-  return light;
 }
 
 Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
@@ -509,27 +454,35 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   float cosine = fabs(dot(ray.getDirection(), res.normal));
+  float dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
+
+  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion();
 
   if (res.material.isEmissive()) {
     // 直接光照 ——发光物
-    directLight = res.material.getEmission() * cosine;
+    directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
     // 直接光照 ——节省路径（自己打过去）
-    static float pdfLight = 1 / light.getArea();
-    auto [lightPoint, radiance] = light.getRandomPointAndRadiance();
-    float dis = distance(res.hitPoint, lightPoint);
+    int lightId = randInt(light.getLightSize());
+    int triangleId = light.getRandomTriangleId(lightId);
+    static float pdfLight = 1 / light.getLightAreaAt(lightId);
+    Vec3<float> lightPoint = triangles[triangleId].getRandomPoint();
+    assert(triangles[triangleId].getMaterial().isEmissive());
+    Vec3<float> radiance = triangles[triangleId].getMaterial().getEmission();
+    dis = distance(res.hitPoint, lightPoint);
 
     // 检查是否有障碍
     Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
     HitResult tmpRes;
     shoot(tmpRay, tmpRes);
-    if (tmpRes.isHit && lightPoint == tmpRes.hitPoint) {
-      directLight = radiance * res.material.getDiffusion() * cosine /
-                    (dis * dis * pdfLight);
+    if (tmpRes.isHit && tmpRes.triangleId == triangleId) {
+      directLight += radiance * res.material.getDiffusion() * cosine /
+                     (dis * dis * pdfLight);
     }
 
     static float pdf = 1 / (2 * PI);
+    dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
 
     // 间接光照
     if (res.material.isDiffusive()) {
@@ -537,17 +490,17 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
       Ray reflectRay =
           randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      float dis = distance(res.hitPoint, ray.getOrigin());
-      indirectLight =
+      indirectLight +=
           reflectLight * res.material.getDiffusion() * cosine / (dis * dis);
-    } else if (res.material.isSpecular()) {
+    }
+
+    if (res.material.isSpecular()) {
       // 镜面反射
       Ray reflectRay =
           standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      float dis = distance(res.hitPoint, ray.getOrigin());
-      indirectLight =
-          reflectLight * res.material.getSpecularity() * cosine / (dis * dis);
+      indirectLight += reflectLight * res.material.getSpecularity() *
+                       pow(cosine, res.material.getShiness()) / (dis * dis);
     }
 
     if (res.material.isTransmissive()) {
@@ -556,7 +509,6 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
           standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
                              res.material.getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
-      float dis = distance(res.hitPoint, ray.getOrigin());
       indirectLight +=
           refractLight * res.material.getTransmittance() * cosine / (dis * dis);
     }
