@@ -3,30 +3,14 @@
 
 #include <iostream>
 
-#include "Material.hpp"
-#include "Ray.hpp"
-#include "Vec.hpp"
+#include "Hittable.hpp"
 
-struct HitResult {
-  int triangleId;
-  bool isHit;
-  double distance;
-  Vec3<float> hitPoint;
-  Vec3<float> normal;
-  Material material;
-
-  HitResult() : isHit(false), distance(0) {}
-  HitResult(const bool& _hit, const double& _dis, const Vec3<float>& _point,
-            const Vec3<float>& _n, const Material& _m)
-      : isHit(_hit),
-        distance(_dis),
-        hitPoint(_point),
-        normal(_n),
-        material(_m) {}
-};
+class AABB;
 
 // 三角形
-class Triangle {
+class Triangle : Hittable {
+  friend AABB;
+
  private:
   Vec3<float> p1, p2, p3;  // 三顶点
   Vec3<float> normal;      // 法向量
@@ -45,8 +29,28 @@ class Triangle {
       : p1(_p1), p2(_p2), p3(_p3), normal(normalize(_n)), material(_m) {}
   ~Triangle() {}
 
+ public:
+  // getter
+  Vec3<float> getRandomPoint() const {
+    Vec3<float> e1 = p2 - p1, e2 = p3 - p2;
+    float a = sqrt(randFloat(1)), b = randFloat(1);
+    return e1 * a + e2 * a * b + p1;
+  }
+  Material getMaterial() const { return material; }
+
+  void printStatus() const {
+    std::cout << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
+              << "vertex 2: " << p2.x << '\t' << p2.y << '\t' << p2.z << '\n'
+              << "vertex 3: " << p3.x << '\t' << p3.y << '\t' << p3.z << '\n'
+              << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
+              << '\n';
+    material.printStatus();
+    std::cout << std::endl;
+  }
+
+ public:
   // 与光线求交
-  void hit(const Ray& ray, HitResult& res) const {
+  virtual void hit(const Ray& ray, HitResult& res) const override {
     Vec3<float> origin = ray.getOrigin();
     Vec3<float> direction = ray.getDirection();
     Vec3<float> normal = this->normal;
@@ -131,24 +135,6 @@ class Triangle {
     res.material = material;
     return;
   };
-
-  // getter
-  Vec3<float> getRandomPoint() const {
-    Vec3<float> e1 = p2 - p1, e2 = p3 - p2;
-    float a = sqrt(randFloat(1)), b = randFloat(1);
-    return e1 * a + e2 * a * b + p1;
-  }
-  Material getMaterial() const { return material; }
-
-  void printStatus() const {
-    std::cout << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
-              << "vertex 2: " << p2.x << '\t' << p2.y << '\t' << p2.z << '\n'
-              << "vertex 3: " << p3.x << '\t' << p3.y << '\t' << p3.z << '\n'
-              << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
-              << '\n';
-    material.printStatus();
-    std::cout << std::endl;
-  }
 };
 
 #endif
