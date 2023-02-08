@@ -41,7 +41,73 @@ class AABB : Hittable {
   }
 
  public:
-  virtual void hit(const Ray& ray, HitResult& res) const override {}
+  virtual void hit(const Ray& ray, HitResult& res) const override {
+    Vec3<float> origin = ray.getOrigin();
+    Vec3<float> direction = ray.getDirection();
+    Vec3<float> tMin, tMax;
+
+    double tx_min, ty_min, tz_min;
+    double tx_max, ty_max, tz_max;
+
+    if (abs(direction.x) < 0.000001f) {
+      // 若射线方向矢量的x轴分量为0且原点不在盒体内
+      if (origin.x < minXYZ.x || origin.x > maxXYZ.x) {
+        res.isHit = false;
+        return;
+      }
+    } else {
+      if (direction.x >= 0) {
+        tx_min = (minXYZ.x - origin.x) / direction.x;
+        tx_max = (maxXYZ.x - origin.x) / direction.x;
+      } else {
+        tx_min = (maxXYZ.x - origin.x) / direction.x;
+        tx_max = (minXYZ.x - origin.x) / direction.x;
+      }
+    }
+
+    if (abs(direction.y) < 0.000001f) {
+      // 若射线方向矢量的x轴分量为0且原点不在盒体内
+      if (origin.y < maxXYZ.y || origin.y > minXYZ.y) {
+        res.isHit = false;
+        return;
+      }
+    } else {
+      if (direction.y >= 0) {
+        tMin.y = (minXYZ.y - origin.y) / direction.y;
+        tMax.y = (maxXYZ.y - origin.y) / direction.y;
+      } else {
+        tMin.y = (maxXYZ.y - origin.y) / direction.y;
+        tMax.y = (minXYZ.y - origin.y) / direction.y;
+      }
+    }
+
+    if (abs(direction.z) < 0.000001f) {
+      // 若射线方向矢量的x轴分量为0且原点不在盒体内
+      if (origin.z < maxXYZ.z || origin.z > minXYZ.z) {
+        res.isHit = false;
+        return;
+      }
+    } else {
+      if (direction.z >= 0) {
+        tMin.z = (minXYZ.z - origin.z) / direction.z;
+        tMax.z = (maxXYZ.z - origin.z) / direction.z;
+      } else {
+        tMin.z = (maxXYZ.z - origin.z) / direction.z;
+        tMax.z = (minXYZ.z - origin.z) / direction.z;
+      }
+    }
+
+    float t0, t1;
+
+    // 光线进入平面处（最靠近的平面）的最大t值
+    t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
+
+    // 光线离开平面处（最远离的平面）的最小t值
+    t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
+
+    res.isHit = t0 < t1;
+    return;
+  }
 };
 
 #endif
