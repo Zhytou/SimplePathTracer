@@ -1,63 +1,85 @@
 #ifndef SRE_BVH_HPP
 #define SRE_BVH_HPP
 
+#include <algorithm>
+#include <cassert>
+
 #include "AABB.hpp"
 #include "Hittable.hpp"
 #include "Triangle.hpp"
 
-class BVHNode : Hittable {
+class BVHNode;
+
+typedef BVHNode BVH;
+
+class BVHNode : public Hittable {
  private:
   Hittable *left, *right;
   AABB aabb;
+  int nodeNum;
 
  public:
-  BVHNode(Hittable *object) : left(object), right(object) {}
-  BVHNode(const std::vector<Hittable*>& objects, int low, int high) {
-    assert(!objects.empty() && 0 <= low && low < high && high <= object.size());
+  BVHNode(Hittable *object)
+      : left(object), right(object), aabb(object), nodeNum(1) {}
+  BVHNode(const std::vector<Hittable *> &objects, int low, int high)
+      : nodeNum(high - low) {
+    assert(!objects.empty() && 0 <= low && low < high &&
+           high <= objects.size());
 
-    sort(objects.begin(), objects.end(), zCmp);
-    if (objects.size() == 1) {
+    if (high - low == 1) {
       left = objects[0];
       right = objects[0];
-      // TODO: add AABB method which allows Hittable* construction 
+      aabb = AABB(objects[0]);
     } else {
       int mid = low + (high - low) / 2;
       left = new BVHNode(objects, low, mid);
       right = new BVHNode(objects, mid, high);
-      aabb = AABB::getSurroundingAABB(left->getAABB(), right->getAABB());
+      aabb = AABB::getSurroundingAABB(AABB(left), AABB(right));
+    }
+  }
+  ~BVHNode() {
+    if (left != nullptr) {
+      delete left;
     }
 
+    if (right != nullptr) {
+      delete right;
+    }
   }
 
- private:
-  // TODO: cmp for BVHNode
+ public:
   static bool xCmp(Hittable *left, Hittable *right) {
-    AABB laabb = left->getAABB();
-    AABB raabb = right->getAABB();
+    assert(left != nullptr && right != nullptr);
+    AABB laabb(left);
+    AABB raabb(right);
 
-    return laabb.getMin().x < raabb.getMax().x;
+    return laabb.getMinXYZ().x < raabb.getMaxXYZ().x;
   }
 
   static bool yCmp(Hittable *left, Hittable *right) {
-    AABB laabb = left->getAABB();
-    AABB raabb = right->getAABB();
+    assert(left != nullptr && right != nullptr);
+    AABB laabb(left);
+    AABB raabb(right);
 
-    return laabb.getMin().y < raabb.getMax().y;
+    return laabb.getMinXYZ().y < raabb.getMaxXYZ().y;
   }
 
   static bool zCmp(Hittable *left, Hittable *right) {
-    AABB laabb = left->getAABB();
-    AABB raabb = right->getAABB();
+    assert(left != nullptr && right != nullptr);
 
-    return laabb.getMin().z < raabb.getMax().z;
+    // ? 编译为啥能通过，验证后修改xCmp和yCmp
+    return left->getMinXYZ().z < right->getMaxXYZ().z;
   }
 
  public:
   // getter.
-  AABB getAABB() const {return aabb;}
-  
+  virtual Vec3<float> getMinXYZ() const override { return aabb.getMinXYZ(); }
+  virtual Vec3<float> getMaxXYZ() const override { return aabb.getMaxXYZ(); }
+  AABB getAABB() const { return aabb; }
+  int getNodeNum() const { return nodeNum; }
+
  public:
-  virtual void hit(const Ray& ray, HitResult& res) const override {
+  virtual void hit(const Ray &ray, HitResult &res) const override {
     aabb.hit(ray, res);
 
     if (!res.isHit) {

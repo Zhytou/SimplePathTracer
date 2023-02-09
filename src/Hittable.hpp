@@ -24,7 +24,15 @@ struct HitResult {
 };
 
 class Hittable {
-  public:
+ public:
+  // constructor & destructor
+  Hittable() {}
+  virtual ~Hittable() {}
+
+  // getter.
+  virtual Vec3<float> getMinXYZ() const = 0;
+  virtual Vec3<float> getMaxXYZ() const = 0;
+
   virtual void hit(const Ray& ray, HitResult& res) const = 0;
 };
 

@@ -5,37 +5,43 @@
 #include "Triangle.hpp"
 #include "Vec.hpp"
 
-class AABB : Hittable {
+class AABB : public Hittable {
  private:
   Vec3<float> minXYZ, maxXYZ;
 
  public:
+  AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
   AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}
-  AABB(const Triangle& triangle) {
-    minXYZ.x = std::min(triangle.p1.x, std::min(triangle.p2.x, triangle.p3.x));
-    minXYZ.y = std::min(triangle.p1.y, std::min(triangle.p2.y, triangle.p3.y));
-    minXYZ.z = std::min(triangle.p1.z, std::min(triangle.p2.z, triangle.p3.z));
+  AABB(const Hittable* object) {
+    if (object) {
+      minXYZ = object->getMinXYZ();
+      maxXYZ = object->getMaxXYZ();
+    } else {
+      minXYZ.z = 0;
+      minXYZ.y = 0;
+      minXYZ.z = 0;
 
-    maxXYZ.x = std::max(triangle.p1.x, std::max(triangle.p2.x, triangle.p3.x));
-    maxXYZ.y = std::max(triangle.p1.y, std::max(triangle.p2.y, triangle.p3.y));
-    maxXYZ.z = std::max(triangle.p1.z, std::max(triangle.p2.z, triangle.p3.z));
+      maxXYZ.z = 0;
+      maxXYZ.y = 0;
+      maxXYZ.z = 0;
+    }
   }
 
  public:
   // getter.
-  Vec3<float> getMin() const { return minXYZ; }
-  Vec3<float> getMax() const { return maxXYZ; }
+  virtual Vec3<float> getMinXYZ() const override { return minXYZ; }
+  virtual Vec3<float> getMaxXYZ() const override { return maxXYZ; }
 
   static AABB getSurroundingAABB(const AABB& child1, const AABB& child2) {
     Vec3<float> minXYZ, maxXYZ;
 
-    minXYZ.x = std::min(child1.getMin().x, child2.getMin().x);
-    minXYZ.y = std::min(child1.getMin().y, child2.getMin().y);
-    minXYZ.z = std::min(child1.getMin().z, child2.getMin().z);
+    minXYZ.x = std::min(child1.getMinXYZ().x, child2.getMinXYZ().x);
+    minXYZ.y = std::min(child1.getMinXYZ().y, child2.getMinXYZ().y);
+    minXYZ.z = std::min(child1.getMinXYZ().z, child2.getMinXYZ().z);
 
-    maxXYZ.x = std::max(child1.getMax().x, child2.getMax().x);
-    maxXYZ.y = std::max(child1.getMax().y, child2.getMax().y);
-    maxXYZ.z = std::max(child1.getMax().z, child2.getMax().z);
+    maxXYZ.x = std::max(child1.getMaxXYZ().x, child2.getMaxXYZ().x);
+    maxXYZ.y = std::max(child1.getMaxXYZ().y, child2.getMaxXYZ().y);
+    maxXYZ.z = std::max(child1.getMaxXYZ().z, child2.getMaxXYZ().z);
 
     return AABB(minXYZ, maxXYZ);
   }
