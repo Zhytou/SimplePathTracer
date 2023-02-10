@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "BVH.hpp"
 #include "Camera.hpp"
 #include "Light.hpp"
 #include "Ray.hpp"
@@ -22,7 +23,7 @@
 
 class Tracer {
  private:
-  std::vector<Triangle> triangles;
+  BVH *scenes;
   Camera camera;
   Light light;
   size_t maxDepth;
@@ -43,7 +44,12 @@ class Tracer {
 
  public:
   Tracer(size_t _depth = 3, size_t _samples = 5, float _p = 0.5)
-      : maxDepth(_depth), samples(_samples), thresholdP(_p) {}
+      : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
+  ~Tracer() {
+    if (scenes != nullptr) {
+      delete scenes;
+    }
+  }
 
   void loadExampleScene();
   void load(const std::string &pathName, const std::string &fileName);
@@ -64,6 +70,8 @@ void Tracer::loadExampleScene() {
   float w = eyePosZ;
   float h = eyePosZ;
   float l = eyePosZ * 2;
+
+  std::vector<Triangle> triangles;
 
   // Scene-Light
   Material m;
@@ -310,7 +318,10 @@ bool Tracer::loadModel(
     if (itr != lightRadiances.end()) {
       actualMaterial.setEmissive(true);
       actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
+    } else {
+      actualMaterial.setEmissive(false);
     }
+
     actualMaterial.setDiffusion(material.diffuse[0], material.diffuse[1],
                                 material.diffuse[2]);
     actualMaterial.setSpecularity(material.specular[0], material.specular[1],
@@ -323,6 +334,7 @@ bool Tracer::loadModel(
     actualMaterials.emplace_back(actualMaterial);
   }
 
+  std::vector<Hittable *> triangles;
   for (const auto &shape : shapes) {
     assert(shape.mesh.material_ids.size() ==
            shape.mesh.num_face_vertices.size());
@@ -361,9 +373,16 @@ bool Tracer::loadModel(
             cross(points[1] - points[0], points[2] - points[0]).length() / 2;
         light.setLight(id, area, material.getEmission());
       }
-      triangles.emplace_back(points[0], points[1], points[2], normal, material);
+      Hittable *triangle =
+          new Triangle(points[0], points[1], points[2], normal, material);
+      if (triangle == nullptr) {
+        continue;
+      }
+      triangles.emplace_back(triangle);
     }
   }
+  std::sort(triangles.begin(), triangles.end(), BVH::zCmp);
+  scenes = new BVH(triangles, 0, triangles.size());
   return true;
 }
 
@@ -417,27 +436,8 @@ Vec3<float> Tracer::shade(const int &row, const int &col) {
   return color;
 }
 
-void Tracer::shoot(const Ray &ray, HitResult &res) {
-  HitResult curRes;
-#pragma omp parallel for num_threads(100)
-  for (size_t i = 0; i < triangles.size(); i++) {
-    curRes.triangleId = i;
-    if (!res.isHit) {
-      triangles[i].hit(ray, curRes);
-      if (curRes.isHit) {
-        res = curRes;
-      }
-    } else {
-      triangles[i].hitCompare(ray, curRes, res.distance);
-      if (curRes.isHit && res.distance > curRes.distance) {
-        res = curRes;
-      }
-    }
-  }
-  return;
-}
-
 Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
+  assert(scenes != nullptr);
   if (depth >= maxDepth) {
     return Vec3<float>(0, 0, 0);
   }
@@ -448,38 +448,36 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   HitResult res;
-  shoot(ray, res);
+  scenes->hit(ray, res);
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
 
-  float cosine = fabs(dot(ray.getDirection(), res.normal));
+  float cosine = std::max(dot(-ray.getDirection(), res.normal), 0.0f);
   float dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
-
-  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion();
 
   if (res.material.isEmissive()) {
     // 直接光照 ——发光物
     directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
-    // 直接光照 ——节省路径（自己打过去）
-    int lightId = randInt(light.getLightSize());
-    int triangleId = light.getRandomTriangleId(lightId);
-    static float pdfLight = 1 / light.getLightAreaAt(lightId);
-    Vec3<float> lightPoint = triangles[triangleId].getRandomPoint();
-    assert(triangles[triangleId].getMaterial().isEmissive());
-    Vec3<float> radiance = triangles[triangleId].getMaterial().getEmission();
-    dis = distance(res.hitPoint, lightPoint);
+    // // 直接光照 ——节省路径（自己打过去）
+    // int lightId = randInt(light.getLightSize());
+    // int triangleId = light.getRandomTriangleId(lightId);
+    // static float pdfLight = 1 / light.getLightAreaAt(lightId);
+    // Vec3<float> lightPoint = triangles[triangleId].getRandomPoint();
+    // assert(triangles[triangleId].getMaterial().isEmissive());
+    // Vec3<float> radiance = triangles[triangleId].getMaterial().getEmission();
+    // dis = distance(res.hitPoint, lightPoint);
 
-    // 检查是否有障碍
-    Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
-    HitResult tmpRes;
-    shoot(tmpRay, tmpRes);
-    if (tmpRes.isHit && tmpRes.triangleId == triangleId) {
-      directLight += radiance * res.material.getDiffusion() * cosine /
-                     (dis * dis * pdfLight);
-    }
+    // // 检查是否有障碍
+    // Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
+    // HitResult tmpRes;
+    // shoot(tmpRay, tmpRes);
+    // if (tmpRes.isHit && tmpRes.triangleId == triangleId) {
+    //   directLight += radiance * res.material.getDiffusion() * cosine /
+    //                  (dis * dis * pdfLight);
+    // }
 
     static float pdf = 1 / (2 * PI);
     dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
@@ -527,11 +525,7 @@ void Tracer::printStatus() {
 
   // shapes
   std::cout << "shapes" << '\n'
-            << "triange number: " << triangles.size() << '\n';
-  for (int i = 0; i < std::min(size_t(1), triangles.size()); i++) {
-    std::cout << "No." << i << " triangle is following" << '\n';
-    triangles[i].printStatus();
-  }
-  std::cout << std::endl;
+            << "triange number: "
+            << (scenes == nullptr ? 0 : scenes->getNodeNum()) << '\n';
 }
 #endif
