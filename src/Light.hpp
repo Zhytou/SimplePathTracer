@@ -11,7 +11,7 @@
 class Light {
  private:
   std::unordered_map<Vec3<float>, int> lightIds;
-  std::vector<std::vector<int>> triangleIds;
+  std::vector<std::vector<Triangle>> lightTriangles;
   std::vector<float> lightAreas;
 
  public:
@@ -19,34 +19,31 @@ class Light {
   ~Light() = default;
 
   // setter
-  void setLight(const int& triangleId, const float& area,
-                const Vec3<float>& radiance) {
+  void setLight(const Triangle& triangle) {
+    Vec3<float> radiance = triangle.getMaterial().getEmission();
     assert(radiance.x != 0 && radiance.y != 0 && radiance.z != 0);
-    assert(lightAreas.size() == triangleIds.size());
-    int id = triangleIds.size();
+    assert(lightAreas.size() == lightTriangles.size());
+    int id = lightTriangles.size();
     if (lightIds.find(radiance) == lightIds.end()) {
       lightIds[radiance] = id;
-      triangleIds.emplace_back(0);
       lightAreas.push_back(0);
     } else {
       id = lightIds[radiance];
     }
-    triangleIds[id].push_back(triangleId);
-    lightAreas[id] += area;
+    lightTriangles[id].emplace_back(triangle);
+    lightAreas[id] += triangle.getSize();
   }
 
   // getter
-  // 获取光源数量
-  int getLightSize() const {
-    assert(lightAreas.size() == triangleIds.size());
-    return lightAreas.size();
-  }
-  // 获取光源面积
-  float getLightAreaAt(const int& idx) const { return lightAreas[idx]; }
-  // 获取任意发光网格（三角形）
-  int getRandomTriangleId(const int& lightId) const {
-    int idx = randInt(triangleIds[lightId].size());
-    return triangleIds[lightId][idx];
+  void getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance, float& area) const {
+    assert(lightAreas.size() == lightTriangles.size());
+    int idx = randInt(lightAreas.size());
+    int triangleIdx = randInt(lightTriangles[idx].size());
+
+    id = lightTriangles[idx][triangleIdx].getId();
+    pos = lightTriangles[idx][triangleIdx].getRandomPoint();
+    radiance = lightTriangles[idx][triangleIdx].getMaterial().getEmission();
+    area = lightAreas[idx];
   }
 };
 
