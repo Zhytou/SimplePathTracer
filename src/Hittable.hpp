@@ -6,7 +6,7 @@
 #include "Vec.hpp"
 
 struct HitResult {
-  int triangleId;
+  int id;
   bool isHit;
   double distance;
   Vec3<float> hitPoint;
@@ -24,12 +24,16 @@ struct HitResult {
 };
 
 class Hittable {
+ private:
+  size_t id;
  public:
   // constructor & destructor
-  Hittable() {}
+  Hittable(size_t _id = -1) : id(_id) {}
   virtual ~Hittable() {}
 
+ public:
   // getter.
+  size_t getId() const { return id; }
   virtual Vec3<float> getMinXYZ() const = 0;
   virtual Vec3<float> getMaxXYZ() const = 0;
 

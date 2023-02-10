@@ -8,7 +8,7 @@
 class AABB;
 
 // 三角形
-class Triangle : Hittable {
+class Triangle : public Hittable {
   friend AABB;
 
  private:
@@ -17,16 +17,17 @@ class Triangle : Hittable {
   Material material;       // 材质
 
  public:
-  Triangle(const Vec3<float>& _p1, const Vec3<float>& _p2,
+  Triangle(size_t id, const Vec3<float>& _p1, const Vec3<float>& _p2,
            const Vec3<float>& _p3, const Material& _m)
-      : p1(_p1),
+      : Hittable(id),
+        p1(_p1),
         p2(_p2),
         p3(_p3),
         normal(normalize(cross(p2 - p1, p3 - p1))),
         material(_m) {}
-  Triangle(const Vec3<float>& _p1, const Vec3<float>& _p2,
+  Triangle(size_t id, const Vec3<float>& _p1, const Vec3<float>& _p2,
            const Vec3<float>& _p3, const Vec3<float>& _n, const Material& _m)
-      : p1(_p1), p2(_p2), p3(_p3), normal(normalize(_n)), material(_m) {}
+      : Hittable(id), p1(_p1), p2(_p2), p3(_p3), normal(normalize(_n)), material(_m) {}
   ~Triangle() {}
 
  public:
@@ -37,6 +38,9 @@ class Triangle : Hittable {
     return e1 * a + e2 * a * b + p1;
   }
   Material getMaterial() const { return material; }
+  float getSize() const {
+    return cross(p2 - p1, p3 - p1).length() / 2;
+  }
 
   void printStatus() const {
     std::cout << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
