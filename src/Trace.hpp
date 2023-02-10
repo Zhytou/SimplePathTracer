@@ -335,6 +335,7 @@ bool Tracer::loadModel(
   }
 
   std::vector<Hittable *> triangles;
+  size_t id = 0;
   for (const auto &shape : shapes) {
     assert(shape.mesh.material_ids.size() ==
            shape.mesh.num_face_vertices.size());
@@ -367,11 +368,9 @@ bool Tracer::loadModel(
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
+      Triangle triangle(id, points[0], points[1], points[2], normal, material);
       if (material.isEmissive()) {
-        int id = triangles.size();
-        float area =
-            cross(points[1] - points[0], points[2] - points[0]).length() / 2;
-        light.setLight(id, area, material.getEmission());
+        light.setLight(triangle);
       }
       Hittable *triangle =
           new Triangle(points[0], points[1], points[2], normal, material);
@@ -461,23 +460,24 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     // 直接光照 ——发光物
     directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
-    // // 直接光照 ——节省路径（自己打过去）
-    // int lightId = randInt(light.getLightSize());
-    // int triangleId = light.getRandomTriangleId(lightId);
-    // static float pdfLight = 1 / light.getLightAreaAt(lightId);
-    // Vec3<float> lightPoint = triangles[triangleId].getRandomPoint();
-    // assert(triangles[triangleId].getMaterial().isEmissive());
-    // Vec3<float> radiance = triangles[triangleId].getMaterial().getEmission();
-    // dis = distance(res.hitPoint, lightPoint);
+    // 直接光照 ——节省路径（自己打过去）
+    size_t id = -1;
+    float area = 0;
+    Vec3<float> lightPoint;
+    Vec3<float> radiance;
+    light.getRandomPoint(id, lightPoint, radiance, area);
 
-    // // 检查是否有障碍
-    // Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
-    // HitResult tmpRes;
-    // shoot(tmpRay, tmpRes);
-    // if (tmpRes.isHit && tmpRes.triangleId == triangleId) {
-    //   directLight += radiance * res.material.getDiffusion() * cosine /
-    //                  (dis * dis * pdfLight);
-    // }
+    static float pdfLight = 1 / area;
+    dis = distance(res.hitPoint, lightPoint);
+
+    // 检查是否有障碍
+    Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
+    HitResult tmpRes;
+    shoot(tmpRay, tmpRes);
+    if (tmpRes.isHit && tmpRes.id == id) {
+      directLight += radiance * res.material.getDiffusion() * cosine /
+                     (dis * dis * pdfLight);
+    }
 
     static float pdf = 1 / (2 * PI);
     dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
