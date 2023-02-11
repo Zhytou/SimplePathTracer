@@ -13,25 +13,25 @@ class AABB : public Hittable {
   AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
   AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}
   AABB(const Hittable* object) {
-    if (object) {
-      minXYZ = object->getMinXYZ();
-      maxXYZ = object->getMaxXYZ();
-    } else {
-      minXYZ.z = 0;
-      minXYZ.y = 0;
-      minXYZ.z = 0;
+    assert(object != nullptr);
+    // if (object) {
+    minXYZ = object->getMinXYZ();
+    maxXYZ = object->getMaxXYZ();
+    // } else {
+    //   minXYZ.z = 0;
+    //   minXYZ.y = 0;
+    //   minXYZ.z = 0;
 
-      maxXYZ.z = 0;
-      maxXYZ.y = 0;
-      maxXYZ.z = 0;
-    }
+    //   maxXYZ.z = 0;
+    //   maxXYZ.y = 0;
+    //   maxXYZ.z = 0;
+    // }
   }
 
  public:
   // getter.
   virtual Vec3<float> getMinXYZ() const override { return minXYZ; }
   virtual Vec3<float> getMaxXYZ() const override { return maxXYZ; }
-
   static AABB getSurroundingAABB(const AABB& child1, const AABB& child2) {
     Vec3<float> minXYZ, maxXYZ;
 
@@ -46,34 +46,41 @@ class AABB : public Hittable {
     return AABB(minXYZ, maxXYZ);
   }
 
+  // print.
+  virtual void printStatus() const override {
+    std::cout << "AABB:\n"
+              << "minXYZ: " << minXYZ.x << '\t' << minXYZ.y << '\t' << minXYZ.z
+              << '\n'
+              << "maxXYZ: " << maxXYZ.x << '\t' << maxXYZ.y << '\t' << maxXYZ.z
+              << '\n';
+    std::cout << std::endl;
+  }
+
  public:
   virtual void hit(const Ray& ray, HitResult& res) const override {
     Vec3<float> origin = ray.getOrigin();
     Vec3<float> direction = ray.getDirection();
     Vec3<float> tMin, tMax;
 
-    double tx_min, ty_min, tz_min;
-    double tx_max, ty_max, tz_max;
-
     if (abs(direction.x) < 0.000001f) {
       // 若射线方向矢量的x轴分量为0且原点不在盒体内
-      if (origin.x < minXYZ.x || origin.x > maxXYZ.x) {
+      if (!(minXYZ.x <= origin.x && origin.x <= maxXYZ.x)) {
         res.isHit = false;
         return;
       }
     } else {
       if (direction.x >= 0) {
-        tx_min = (minXYZ.x - origin.x) / direction.x;
-        tx_max = (maxXYZ.x - origin.x) / direction.x;
+        tMin.x = (minXYZ.x - origin.x) / direction.x;
+        tMax.x = (maxXYZ.x - origin.x) / direction.x;
       } else {
-        tx_min = (maxXYZ.x - origin.x) / direction.x;
-        tx_max = (minXYZ.x - origin.x) / direction.x;
+        tMin.x = (maxXYZ.x - origin.x) / direction.x;
+        tMax.x = (minXYZ.x - origin.x) / direction.x;
       }
     }
 
     if (abs(direction.y) < 0.000001f) {
       // 若射线方向矢量的x轴分量为0且原点不在盒体内
-      if (origin.y < maxXYZ.y || origin.y > minXYZ.y) {
+      if (!(minXYZ.y <= origin.y && origin.y <= maxXYZ.y)) {
         res.isHit = false;
         return;
       }
@@ -89,7 +96,7 @@ class AABB : public Hittable {
 
     if (abs(direction.z) < 0.000001f) {
       // 若射线方向矢量的x轴分量为0且原点不在盒体内
-      if (origin.z < maxXYZ.z || origin.z > minXYZ.z) {
+      if (!(minXYZ.z <= origin.z && origin.z <= maxXYZ.z)) {
         res.isHit = false;
         return;
       }
@@ -104,14 +111,12 @@ class AABB : public Hittable {
     }
 
     float t0, t1;
-
     // 光线进入平面处（最靠近的平面）的最大t值
     t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
-
     // 光线离开平面处（最远离的平面）的最小t值
     t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
-
-    res.isHit = t0 < t1;
+    // 当光线 aabb特别薄时，等号也需要成立
+    res.isHit = t0 <= t1;
     return;
   }
 };
