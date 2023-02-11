@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 #include "AABB.hpp"
 #include "Hittable.hpp"
@@ -21,15 +22,24 @@ class BVHNode : public Hittable {
  public:
   BVHNode(Hittable *object)
       : left(object), right(object), aabb(object), nodeNum(1) {}
-  BVHNode(const std::vector<Hittable *> &objects, int low, int high)
+  BVHNode(std::vector<Hittable *> &objects, int low, int high)
       : nodeNum(high - low) {
     assert(!objects.empty() && 0 <= low && low < high &&
            high <= objects.size());
 
+    switch (randInt(3)) {
+      case 2:
+        std::sort(objects.begin(), objects.end(), BVH::xCmp);
+      case 1:
+        std::sort(objects.begin(), objects.end(), BVH::yCmp);
+      default:
+        std::sort(objects.begin(), objects.end(), BVH::zCmp);
+    }
+
     if (high - low == 1) {
-      left = objects[0];
-      right = objects[0];
-      aabb = AABB(objects[0]);
+      left = objects[low];
+      right = objects[low];
+      aabb = AABB(objects[low]);
     } else {
       int mid = low + (high - low) / 2;
       left = new BVHNode(objects, low, mid);
@@ -38,11 +48,14 @@ class BVHNode : public Hittable {
     }
   }
   ~BVHNode() {
-    if (left != nullptr) {
+    if (left != nullptr && right != nullptr) {
+      if (left != right) {
+        delete left;
+      }
+      delete right;
+    } else if (left != nullptr && right == nullptr) {
       delete left;
-    }
-
-    if (right != nullptr) {
+    } else if (left == nullptr && right != nullptr) {
       delete right;
     }
   }
@@ -50,25 +63,17 @@ class BVHNode : public Hittable {
  public:
   static bool xCmp(Hittable *left, Hittable *right) {
     assert(left != nullptr && right != nullptr);
-    AABB laabb(left);
-    AABB raabb(right);
-
-    return laabb.getMinXYZ().x < raabb.getMaxXYZ().x;
+    return left->getMinXYZ().x < right->getMinXYZ().x;
   }
 
   static bool yCmp(Hittable *left, Hittable *right) {
     assert(left != nullptr && right != nullptr);
-    AABB laabb(left);
-    AABB raabb(right);
-
-    return laabb.getMinXYZ().y < raabb.getMaxXYZ().y;
+    return left->getMinXYZ().y < right->getMinXYZ().y;
   }
 
   static bool zCmp(Hittable *left, Hittable *right) {
     assert(left != nullptr && right != nullptr);
-
-    // ? 编译为啥能通过，验证后修改xCmp和yCmp
-    return left->getMinXYZ().z < right->getMaxXYZ().z;
+    return left->getMinXYZ().z < right->getMinXYZ().z;
   }
 
  public:
@@ -77,6 +82,13 @@ class BVHNode : public Hittable {
   virtual Vec3<float> getMaxXYZ() const override { return aabb.getMaxXYZ(); }
   AABB getAABB() const { return aabb; }
   int getNodeNum() const { return nodeNum; }
+
+  // print.
+  virtual void printStatus() const override {
+    left->printStatus();
+    aabb.printStatus();
+    right->printStatus();
+  }
 
  public:
   virtual void hit(const Ray &ray, HitResult &res) const override {
@@ -98,7 +110,7 @@ class BVHNode : public Hittable {
       }
     } else if (lres.isHit && !rres.isHit) {
       res = lres;
-    } else if (lres.isHit && !rres.isHit) {
+    } else if (!lres.isHit && rres.isHit) {
       res = rres;
     } else {
       res.isHit = false;
