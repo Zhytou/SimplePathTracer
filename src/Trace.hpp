@@ -37,13 +37,11 @@ class Tracer {
   bool loadModel(
       const std::string &modelName, const std::string &pathName,
       const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
-  Vec3<float> shade(const int &row, const int &col);
   Vec3<float> trace(const Ray &ray, size_t depth);
-  void shoot(const Ray &ray, HitResult &res);
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 3, size_t _samples = 5, float _p = 0.5)
+  Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5)
       : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
   ~Tracer() {
     if (scenes != nullptr) {
@@ -63,7 +61,7 @@ void Tracer::loadExampleScene() {
   camera.setHeight(500);
   camera.setFovy(90);
   camera.setPosition(0, 0, -eyePosZ);
-  camera.setTarget(0, 0, -1);
+  camera.setTarget(0, 0, -1.5);
   camera.setWorld(0, 1, 0);
 
   // Scene-Box-h,w,l
@@ -82,18 +80,19 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
+  triangles.emplace_back(0, Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
                          Vec3<float>(0.5, 2, 0.5), m);
-  triangles.emplace_back(Vec3<float>(-0.5, 2, 2), Vec3<float>(0.5, 2, 2),
+  triangles.emplace_back(1, Vec3<float>(-0.5, 2, 2), Vec3<float>(0.5, 2, 2),
                          Vec3<float>(0.5, 2, 0.5), m);
-  triangles.emplace_back(Vec3<float>(-0.5, 2, -2), Vec3<float>(-0.5, 2, -0.5),
+  triangles.emplace_back(2, Vec3<float>(-0.5, 2, -2),
+                         Vec3<float>(-0.5, 2, -0.5), Vec3<float>(0.5, 2, -0.5),
+                         m);
+  triangles.emplace_back(3, Vec3<float>(-0.5, 2, -2), Vec3<float>(0.5, 2, -2),
                          Vec3<float>(0.5, 2, -0.5), m);
-  triangles.emplace_back(Vec3<float>(-0.5, 2, -2), Vec3<float>(0.5, 2, -2),
-                         Vec3<float>(0.5, 2, -0.5), m);
-  light.setLight(0, 0.75, m.getEmission());
-  light.setLight(1, 0.75, m.getEmission());
-  light.setLight(2, 0.75, m.getEmission());
-  light.setLight(3, 0.75, m.getEmission());
+  light.setLight(triangles[0]);
+  light.setLight(triangles[1]);
+  light.setLight(triangles[2]);
+  light.setLight(triangles[3]);
 
   // Scene-Ground
   m.setEmissive(false);
@@ -103,11 +102,12 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-w * 3, -h, l),
+  triangles.emplace_back(4, Vec3<float>(-w * 3, -h, l),
                          Vec3<float>(-w * 3, -h, -1),
                          Vec3<float>(w * 3, -h, -1), m);
-  triangles.emplace_back(Vec3<float>(-w * 3, -h, l), Vec3<float>(w * 3, -h, l),
-                         Vec3<float>(w * 3, -h, -1), m);
+  triangles.emplace_back(5, Vec3<float>(-w * 3, -h, l),
+                         Vec3<float>(w * 3, -h, l), Vec3<float>(w * 3, -h, -1),
+                         m);
 
   // Scene-Top
   m.setEmissive(false);
@@ -116,9 +116,9 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-w, h, l), Vec3<float>(-w, h, -1),
+  triangles.emplace_back(6, Vec3<float>(-w, h, l), Vec3<float>(-w, h, -1),
                          Vec3<float>(w, h, -1), m);
-  triangles.emplace_back(Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
+  triangles.emplace_back(7, Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
                          Vec3<float>(w, h, -1), m);
 
   // Scene-BackWall
@@ -128,9 +128,9 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-w, -h, l), Vec3<float>(-w, h, l),
+  triangles.emplace_back(8, Vec3<float>(-w, -h, l), Vec3<float>(-w, h, l),
                          Vec3<float>(w, h, l), m);
-  triangles.emplace_back(Vec3<float>(-w, -h, l), Vec3<float>(w, -h, l),
+  triangles.emplace_back(9, Vec3<float>(-w, -h, l), Vec3<float>(w, -h, l),
                          Vec3<float>(w, h, l), m);
 
   // Scene-RightWall
@@ -140,9 +140,9 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-w, h, 0), Vec3<float>(-w, -h, 0),
+  triangles.emplace_back(10, Vec3<float>(-w, h, 0), Vec3<float>(-w, -h, 0),
                          Vec3<float>(-w, h, l), m);
-  triangles.emplace_back(Vec3<float>(-w, h, l), Vec3<float>(-w, -h, l),
+  triangles.emplace_back(11, Vec3<float>(-w, h, l), Vec3<float>(-w, -h, l),
                          Vec3<float>(-w, -h, 0), m);
 
   // Scene-LeftWall
@@ -152,9 +152,9 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(w, h, 0), Vec3<float>(w, -h, 0),
+  triangles.emplace_back(12, Vec3<float>(w, h, 0), Vec3<float>(w, -h, 0),
                          Vec3<float>(w, h, l), m);
-  triangles.emplace_back(Vec3<float>(w, h, l), Vec3<float>(w, -h, l),
+  triangles.emplace_back(13, Vec3<float>(w, h, l), Vec3<float>(w, -h, l),
                          Vec3<float>(w, -h, 0), m);
 
   // Scene-Shape
@@ -164,7 +164,8 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(-1.2, 1, 1), Vec3<float>(-0.25, -1.5, 1),
+  triangles.emplace_back(14, Vec3<float>(-1.2, 1, 1),
+                         Vec3<float>(-0.25, -1.5, 1),
                          Vec3<float>(-1.5, -1.5, 3), m);
   m.setEmissive(false);
   m.setDiffusion(0, 0, 0.8);
@@ -172,8 +173,16 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5, 1),
+  triangles.emplace_back(15, Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5, 1),
                          Vec3<float>(1.5, -1.5, 3), m);
+
+  std::vector<Hittable *> trianglePointers;
+  for (const auto &triangle : triangles) {
+    Hittable *ptr = new Triangle(triangle);
+    trianglePointers.push_back(ptr);
+  }
+
+  scenes = new BVH(trianglePointers, 0, trianglePointers.size());
 
   printStatus();
 }
@@ -372,14 +381,14 @@ bool Tracer::loadModel(
       if (material.isEmissive()) {
         light.setLight(triangle);
       }
-      Hittable *triangle =
-          new Triangle(points[0], points[1], points[2], normal, material);
-      if (triangle == nullptr) {
-        continue;
-      }
-      triangles.emplace_back(triangle);
+      Hittable *trianglePointer =
+          new Triangle(id, points[0], points[1], points[2], normal, material);
+      assert(trianglePointer != nullptr);
+      triangles.push_back(trianglePointer);
+      id += 1;
     }
   }
+
   std::sort(triangles.begin(), triangles.end(), BVH::zCmp);
   scenes = new BVH(triangles, 0, triangles.size());
   return true;
@@ -400,6 +409,7 @@ void Tracer::load(const std::string &pathName, const std::string &fileName) {
     std::cout << "Model loading fails!" << std::endl;
     return;
   }
+
   printStatus();
 }
 
@@ -412,8 +422,13 @@ cv::Mat Tracer::render() {
   for (int row = 0; row < height; row++) {
 #pragma omp parallel for num_threads(100)
     for (int col = 0; col < width; col++) {
-      Vec3<float> color = shade(row, col);
+      Vec3<float> color(0, 0, 0);
+      for (int k = 0; k < samples; k++) {
+        Ray ray = camera.getRay(row, col);
+        color += trace(ray, 0);
+      }
 
+      color /= samples;
       img.at<cv::Vec3f>(row, col)[2] = color.x;
       img.at<cv::Vec3f>(row, col)[1] = color.y;
       img.at<cv::Vec3f>(row, col)[0] = color.z;
@@ -421,18 +436,6 @@ cv::Mat Tracer::render() {
   }
 
   return img;
-}
-
-Vec3<float> Tracer::shade(const int &row, const int &col) {
-  Vec3<float> color(0, 0, 0);
-#pragma omp parallel for num_threads(5)
-  for (int k = 0; k < samples; k++) {
-    Ray ray = camera.getRay(row, col);
-    color += trace(ray, 0);
-  }
-
-  color /= samples;
-  return color;
 }
 
 Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
@@ -452,7 +455,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
-  float cosine = std::max(dot(-ray.getDirection(), res.normal), 0.0f);
+  float cosine = abs(dot(-ray.getDirection(), res.normal));
   float dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
@@ -473,13 +476,13 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     // 检查是否有障碍
     Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
     HitResult tmpRes;
-    shoot(tmpRay, tmpRes);
+    scenes->hit(tmpRay, tmpRes);
     if (tmpRes.isHit && tmpRes.id == id) {
       directLight += radiance * res.material.getDiffusion() * cosine /
                      (dis * dis * pdfLight);
     }
 
-    static float pdf = 1 / (2 * PI);
+    float pdf = 1 / (2 * PI);
     dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
 
     // 间接光照
@@ -522,7 +525,6 @@ void Tracer::printStatus() {
   std::cout << "sample number: " << samples << '\n'
             << "tracing depth: " << maxDepth << '\n';
   camera.printStatus();
-
   // shapes
   std::cout << "shapes" << '\n'
             << "triange number: "
