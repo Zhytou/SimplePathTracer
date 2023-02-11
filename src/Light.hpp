@@ -26,6 +26,7 @@ class Light {
     int id = lightTriangles.size();
     if (lightIds.find(radiance) == lightIds.end()) {
       lightIds[radiance] = id;
+      lightTriangles.push_back({});
       lightAreas.push_back(0);
     } else {
       id = lightIds[radiance];
@@ -35,7 +36,8 @@ class Light {
   }
 
   // getter
-  void getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance, float& area) const {
+  void getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
+                      float& area) const {
     assert(lightAreas.size() == lightTriangles.size());
     int idx = randInt(lightAreas.size());
     int triangleIdx = randInt(lightTriangles[idx].size());
