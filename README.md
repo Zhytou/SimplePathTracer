@@ -39,6 +39,7 @@
 - [x] Optimization
   - [x] OpenMP acceleration
   - [x] Direct lighting
+  - [ ] Importance sampling(using cosine)
   - [ ] BVH acceleration
 - [ ] Texture support
 - [ ] Benchmark
