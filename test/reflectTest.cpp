@@ -11,7 +11,7 @@ int main() {
      if (ncolor == Vec3<float>(0, 0, 0)) {
        HitResult res;
        shoot(nray, res);
-       auto point = nray.pointAt(res.distance);
+       auto point = nray.getPointAt(res.distance);
 
        std::cout << "reflect ray origin " << nray.getOrigin().x << '\t'
                  << nray.getOrigin().y << '\t' << nray.getOrigin().z << '\n'
@@ -34,8 +34,9 @@ int main() {
  */
   Vec3<float> point(0, 0, 0);
   Vec3<float> normal(0, 0, 1);
+  Vec3<float> idirection(0, 0.5, 0.5)
 
-  Ray ray = randomReflectRay(point, normal);
+      Ray ray = randomReflectRay(point, idirection, normal);
   auto origin = ray.getOrigin();
   auto direction = ray.getDirection();
 

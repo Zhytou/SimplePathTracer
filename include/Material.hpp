@@ -6,6 +6,8 @@
 
 #include "Vec.hpp"
 
+namespace sre {
+
 struct Material {
  private:
   Vec3<float> emission;        // Ke 自射光 对应xml文件中radiance
@@ -24,7 +26,7 @@ struct Material {
   Material() = default;
   ~Material() = default;
 
-  // Getter
+  // getter.
   bool isEmissive() const { return emisssive; }
   bool isDiffusive() const {
     return diffusion.x != 0 || diffusion.y != 0 || diffusion.z != 0;
@@ -41,6 +43,8 @@ struct Material {
   Vec3<float> getTransmittance() const { return transmittance; }
   float getShiness() const { return shiness; }
   float getRefraction() const { return refraction; }
+
+  // print.
   void printStatus() const {
     std::cout << "material" << '\n'
               << "diffuse: " << diffusion.x << '\t' << diffusion.y << '\t'
@@ -48,7 +52,8 @@ struct Material {
               << "specular: " << specularity.x << '\t' << specularity.y << '\t'
               << specularity.z << '\n';
   }
-  // Setter
+
+  // setter.
   void setEmissive(bool e) { emisssive = e; }
   void setEmission(float x, float y, float z) {
     emission.x = x;
@@ -78,5 +83,6 @@ struct Material {
   void setShiness(float s) { shiness = s; }
   void setRefraction(float r) { refraction = r; }
 };
+}  // namespace sre
 
 #endif

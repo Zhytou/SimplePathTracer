@@ -34,7 +34,7 @@ int main() {
   HitResult res;
   for (auto& triangle : triangles) {
     triangle.hit(ray, res);
-    auto point = ray.pointAt(res.distance);
+    auto point = ray.getPointAt(res.distance);
     std::cout << (res.isHit ? "Yes" : "No") << '\n'
               << "t: " << res.distance << '\n'
               << "hit point: " << res.hitPoint.x << ' ' << res.hitPoint.y << ' '

@@ -4,6 +4,7 @@
 #include "Random.hpp"
 #include "Vec.hpp"
 
+namespace sre {
 class Ray {
  private:
   Vec3<float> origin;
@@ -15,12 +16,14 @@ class Ray {
   Ray(const Vec3<float> &org, const Vec3<float> &dir)
       : origin(org), direction(normalize(dir)) {}
 
-  // Getter.
+  // getter.
   Vec3<float> getOrigin() const { return origin; }
   Vec3<float> getDirection() const { return direction; }
 
   // p(t) = origin + t*direction;
-  Vec3<float> pointAt(const float &t) const { return origin + direction * t; }
+  Vec3<float> getPointAt(const float &t) const {
+    return origin + direction * t;
+  }
 };
 
 // 折射光线
@@ -62,5 +65,7 @@ Ray randomReflectRay(const Vec3<float> &point, const Vec3<float> &direction,
   } while (dot(direction, ndirection) == -1);
   return Ray(point, ndirection);
 }
+
+}  // namespace sre
 
 #endif

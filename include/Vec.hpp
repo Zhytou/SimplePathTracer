@@ -4,6 +4,8 @@
 #include <cmath>
 #include <functional>
 
+namespace sre {
+
 template <typename T>
 struct Vec3 {
   T x, y, z;
@@ -107,9 +109,11 @@ T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
               (v1.z - v2.z) * (v1.z - v2.z));
 }
 
+}  // namespace sre
+
 template <typename T>
-struct std::hash<Vec3<T>> {
-  std::size_t operator()(Vec3<T> const& v) const noexcept {
+struct std::hash<sre::Vec3<T>> {
+  std::size_t operator()(sre::Vec3<T> const& v) const noexcept {
     std::hash<T> hasher;
     std::size_t h1 = hasher(v.x);
     std::size_t h2 = hasher(v.y);
