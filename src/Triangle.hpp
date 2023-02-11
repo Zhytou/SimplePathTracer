@@ -47,7 +47,6 @@ class Triangle : public Hittable {
     maxXYZ.z = std::max(p1.z, std::max(p2.z, p3.z));
     return maxXYZ;
   }
-
   Vec3<float> getRandomPoint() const {
     Vec3<float> e1 = p2 - p1, e2 = p3 - p2;
     float a = sqrt(randFloat(1)), b = randFloat(1);
@@ -56,8 +55,11 @@ class Triangle : public Hittable {
   Material getMaterial() const { return material; }
   float getSize() const { return cross(p2 - p1, p3 - p1).length() / 2; }
 
-  void printStatus() const {
-    std::cout << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
+  // print
+  virtual void printStatus() const override {
+    std::cout << "triangle: \n"
+              << "id: " << this->getId() << '\n'
+              << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
               << "vertex 2: " << p2.x << '\t' << p2.y << '\t' << p2.z << '\n'
               << "vertex 3: " << p3.x << '\t' << p3.y << '\t' << p3.z << '\n'
               << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
@@ -80,6 +82,7 @@ class Triangle : public Hittable {
 
     if (dot(normal, direction) == 0) {
       res.isHit = false;
+      res.id = this->getId();
       res.normal = normal;
       return;
     }
@@ -87,6 +90,7 @@ class Triangle : public Hittable {
     float t = (dot(normal, p1) - dot(normal, origin)) / dot(normal, direction);
     if (t < 0.001) {
       res.isHit = false;
+      res.id = this->getId();
       res.normal = normal;
       res.distance = t;
       return;
@@ -99,6 +103,7 @@ class Triangle : public Hittable {
     if (dot(c1, this->normal) < 0 || dot(c2, this->normal) < 0 ||
         dot(c3, this->normal) < 0) {
       res.isHit = false;
+      res.id = this->getId();
       res.normal = normal;
       res.distance = t;
       res.hitPoint = p;
@@ -106,9 +111,10 @@ class Triangle : public Hittable {
     }
 
     res.isHit = true;
+    res.id = this->getId();
     res.hitPoint = p;
-    res.normal = normal;
     res.distance = t;
+    res.normal = normal;
     res.material = material;
     return;
   };
