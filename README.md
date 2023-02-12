@@ -40,7 +40,7 @@
   - [x] OpenMP acceleration
   - [x] Direct lighting
   - [ ] Importance sampling(using cosine)
-  - [ ] BVH acceleration
+  - [x] BVH acceleration
 - [ ] Texture support
 - [ ] Benchmark
 - [ ] More acceleration(e.g. CUDA)
