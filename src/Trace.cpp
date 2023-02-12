@@ -215,6 +215,7 @@ bool Tracer::loadConfiguration(
     }
   }
 
+  // TODO: 修改loadConfig逻辑，保证staircase也能被正常解读
   // light radiance
   while (getline(ifs, buf)) {
     std::string mtlname;
@@ -347,18 +348,19 @@ bool Tracer::loadModel(
   return true;
 }
 
-void Tracer::load(const std::string &pathName, const std::string &fileName) {
+void Tracer::load(const std::string &pathName, const std::string &modelName,
+                  const std::string &configName) {
   // Configuration -Camera
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
-  std::string configName = pathName + fileName + ".xml";
-  if (!loadConfiguration(configName, lightRadiances)) {
+  std::string config = pathName + configName;
+  if (!loadConfiguration(config, lightRadiances)) {
     std::cout << "Camera config loading fails!" << std::endl;
     return;
   }
 
   // Scene
-  std::string modelName = pathName + fileName + ".obj";
-  if (!loadModel(modelName, pathName, lightRadiances)) {
+  std::string model = pathName + modelName;
+  if (!loadModel(model, pathName, lightRadiances)) {
     std::cout << "Model loading fails!" << std::endl;
     return;
   }
@@ -371,9 +373,9 @@ cv::Mat Tracer::render() {
   // 注意：CV_32F白色为（1，1，1）对应CV_8U的白色（255，255，255）
   cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
 
-#pragma omp parallel for num_threads(100)
+#pragma omp parallel for num_threads(500)
   for (int row = 0; row < height; row++) {
-#pragma omp parallel for num_threads(100)
+#pragma omp parallel for num_threads(500)
     for (int col = 0; col < width; col++) {
       Vec3<float> color(0, 0, 0);
       for (int k = 0; k < samples; k++) {
@@ -476,7 +478,8 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
 void Tracer::printStatus() {
   // configuration
   std::cout << "sample number: " << samples << '\n'
-            << "tracing depth: " << maxDepth << '\n';
+            << "tracing depth: " << maxDepth << '\n'
+            << "threshod probability: " << thresholdP << '\n';
   camera.printStatus();
   // shapes
   std::cout << "shapes" << '\n'

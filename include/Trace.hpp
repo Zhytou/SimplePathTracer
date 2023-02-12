@@ -46,7 +46,8 @@ class Tracer {
   }
 
   void loadExampleScene();
-  void load(const std::string &pathName, const std::string &fileName);
+  void load(const std::string &pathName, const std::string &modelName,
+            const std::string &configName);
   cv::Mat render();
 };
 }  // namespace sre
