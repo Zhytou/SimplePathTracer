@@ -14,19 +14,23 @@ BVHNode::BVHNode(std::vector<Hittable *> &objects, int low, int high)
     : nodeNum(high - low) {
   assert(!objects.empty() && 0 <= low && low < high && high <= objects.size());
 
-  switch (randInt(3)) {
-    case 2:
-      std::sort(objects.begin(), objects.end(), BVH::xCmp);
-    case 1:
-      std::sort(objects.begin(), objects.end(), BVH::yCmp);
-    default:
-      std::sort(objects.begin(), objects.end(), BVH::zCmp);
-  }
+  // switch (randInt(3)) {
+  //   case 2:
+  //     std::sort(objects.begin() + low, objects.begin() + high, BVH::xCmp);
+  //   case 1:
+  //     std::sort(objects.begin() + low, objects.begin() + high, BVH::yCmp);
+  //   default:
+  //     std::sort(objects.begin() + low, objects.begin() + high, BVH::zCmp);
+  // }
 
   if (high - low == 1) {
     left = objects[low];
     right = objects[low];
     aabb = AABB(objects[low]);
+  } else if (high - low == 2) {
+    left = objects[low];
+    right = objects[low + 1];
+    aabb = AABB::getSurroundingAABB(AABB(left), AABB(right));
   } else {
     int mid = low + (high - low) / 2;
     left = new BVHNode(objects, low, mid);
@@ -37,15 +41,19 @@ BVHNode::BVHNode(std::vector<Hittable *> &objects, int low, int high)
 
 BVHNode::~BVHNode() {
   if (left != nullptr && right != nullptr) {
-    if (left != right) {
+    if (left == right) {
       delete left;
+    } else {
+      delete left;
+      delete right;
     }
-    delete right;
   } else if (left != nullptr && right == nullptr) {
     delete left;
   } else if (left == nullptr && right != nullptr) {
     delete right;
   }
+  left = nullptr;
+  right = nullptr;
 }
 
 bool BVHNode::xCmp(Hittable *left, Hittable *right) {
