@@ -84,31 +84,26 @@ struct Vec3 {
   }
 
   T length() const { return sqrt(x * x + y * y + z * z); }
+
+  static Vec3<T> normalize(const Vec3<T>& v) {
+    float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return Vec3<T>(v.x / d, v.y / d, v.z / d);
+  }
+
+  static Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {
+    return Vec3<T>(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z,
+                   v1.x * v2.y - v1.y * v2.x);
+  }
+
+  static T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+  }
+
+  static T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
+    return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
+                (v1.z - v2.z) * (v1.z - v2.z));
+  }
 };
-
-template <typename T>
-Vec3<T> normalize(const Vec3<T>& v) {
-  float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  return Vec3<T>(v.x / d, v.y / d, v.z / d);
-}
-
-template <typename T>
-Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {
-  return Vec3<T>(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z,
-                 v1.x * v2.y - v1.y * v2.x);
-}
-
-template <typename T>
-T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
-  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
-
-template <typename T>
-T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
-  return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
-              (v1.z - v2.z) * (v1.z - v2.z));
-}
-
 }  // namespace sre
 
 template <typename T>

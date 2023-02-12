@@ -16,13 +16,13 @@ void Camera::update() {
   // camera coordinate system
   axisZ = eye - lookat;
   axisZ.normalize();
-  axisX = cross(up, axisZ);
+  axisX = Vec3<float>::cross(up, axisZ);
   axisX.normalize();
-  axisY = cross(axisZ, axisX);
+  axisY = Vec3<float>::cross(axisZ, axisX);
   axisY.normalize();
 
   // view port
-  actualDepth = distance(eye, lookat);
+  actualDepth = Vec3<float>::distance(eye, lookat);
   actualWidth =
       fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * actualDepth) * 2;
   actualHeight =

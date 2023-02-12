@@ -20,7 +20,7 @@ class Triangle : public Hittable {
         p1(_p1),
         p2(_p2),
         p3(_p3),
-        normal(normalize(cross(p2 - p1, p3 - p1))),
+        normal(Vec3<float>::normalize(Vec3<float>::cross(p2 - p1, p3 - p1))),
         material(_m) {}
   Triangle(size_t id, const Vec3<float>& _p1, const Vec3<float>& _p2,
            const Vec3<float>& _p3, const Vec3<float>& _n, const Material& _m)
@@ -28,7 +28,7 @@ class Triangle : public Hittable {
         p1(_p1),
         p2(_p2),
         p3(_p3),
-        normal(normalize(_n)),
+        normal(Vec3<float>::normalize(_n)),
         material(_m) {}
   ~Triangle() {}
 
@@ -54,7 +54,9 @@ class Triangle : public Hittable {
     return e1 * a + e2 * a * b + p1;
   }
   Material getMaterial() const { return material; }
-  float getSize() const { return cross(p2 - p1, p3 - p1).length() / 2; }
+  float getSize() const {
+    return Vec3<float>::cross(p2 - p1, p3 - p1).length() / 2;
+  }
 
   // print
   virtual void printStatus() const override;
