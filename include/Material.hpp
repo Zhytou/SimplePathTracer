@@ -8,8 +8,9 @@
 
 namespace sre {
 
-struct Material {
+class Material {
  private:
+  std::string name;
   Vec3<float> emission;        // Ke 自射光 对应xml文件中radiance
   Vec3<float> ambience;        // Ka 环境光
   Vec3<float> diffusion;       // Kd 漫射光
@@ -36,6 +37,7 @@ struct Material {
   }
   bool isTransmissive() const { return refraction >= 1; }
 
+  std::string getName() const { return name; }
   Vec3<float> getEmission() const { return emission; }
   Vec3<float> getAambience() const { return ambience; }
   Vec3<float> getDiffusion() const { return diffusion; }
@@ -54,6 +56,7 @@ struct Material {
   }
 
   // setter.
+  void setName(const std::string& n) { name = n; }
   void setEmissive(bool e) { emisssive = e; }
   void setEmission(float x, float y, float z) {
     emission.x = x;
