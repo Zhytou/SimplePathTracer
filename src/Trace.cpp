@@ -1,5 +1,10 @@
 #include "../include/Trace.hpp"
 
+#include <omp.h>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "../third-parties/tinyobjloader/tiny_obj_loader.h"
+
 namespace sre {
 void Tracer::loadExampleScene() {
   float eyePosZ = 2;
@@ -129,6 +134,7 @@ void Tracer::loadExampleScene() {
     trianglePointers.push_back(ptr);
   }
 
+  std::sort(trianglePointers.begin(), trianglePointers.end(), BVH::zCmp);
   scenes = new BVH(trianglePointers, 0, trianglePointers.size());
 
   printStatus();
@@ -290,7 +296,7 @@ bool Tracer::loadModel(
     actualMaterials.emplace_back(actualMaterial);
   }
 
-  std::vector<Hittable *> triangles;
+  std::vector<Hittable *> trianglePointers;
   size_t id = 0;
   for (const auto &shape : shapes) {
     assert(shape.mesh.material_ids.size() ==
@@ -318,8 +324,9 @@ bool Tracer::loadModel(
         point_normals[point_i].z = attrib.normals[normal_index * 3 + 2];
       }
 
-      Vec3<float> normal = cross(points[1] - points[0], points[2] - points[0]);
-      if (dot(point_normals[0], normal) < 0) {
+      Vec3<float> normal =
+          Vec3<float>::cross(points[1] - points[0], points[2] - points[0]);
+      if (Vec3<float>::dot(point_normals[0], normal) < 0) {
         normal = -normal;
       }
 
@@ -331,13 +338,12 @@ bool Tracer::loadModel(
       Hittable *trianglePointer =
           new Triangle(id, points[0], points[1], points[2], normal, material);
       assert(trianglePointer != nullptr);
-      triangles.push_back(trianglePointer);
+      trianglePointers.push_back(trianglePointer);
       id += 1;
     }
   }
 
-  std::sort(triangles.begin(), triangles.end(), BVH::zCmp);
-  scenes = new BVH(triangles, 0, triangles.size());
+  scenes = new BVH(trianglePointers, 0, trianglePointers.size());
   return true;
 }
 
@@ -374,14 +380,12 @@ cv::Mat Tracer::render() {
         Ray ray = camera.getRay(row, col);
         color += trace(ray, 0);
       }
-
       color /= samples;
       img.at<cv::Vec3f>(row, col)[2] = color.x;
       img.at<cv::Vec3f>(row, col)[1] = color.y;
       img.at<cv::Vec3f>(row, col)[0] = color.z;
     }
   }
-
   return img;
 }
 
@@ -402,8 +406,9 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
-  float cosine = abs(dot(-ray.getDirection(), res.normal));
-  float dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
+  float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
+  float dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
+                  // ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
   if (res.material.isEmissive()) {
@@ -418,7 +423,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     light.getRandomPoint(id, lightPoint, radiance, area);
 
     static float pdfLight = 1 / area;
-    dis = distance(res.hitPoint, lightPoint);
+    dis = Vec3<float>::distance(res.hitPoint, lightPoint);
 
     // 检查是否有障碍
     Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
@@ -430,13 +435,14 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     }
 
     float pdf = 1 / (2 * PI);
-    dis = depth == 0 ? 1 : distance(res.hitPoint, ray.getOrigin());
+    dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
+              // ray.getOrigin());
 
     // 间接光照
     if (res.material.isDiffusive()) {
       // 漫反射
       Ray reflectRay =
-          randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+          Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
       indirectLight +=
           reflectLight * res.material.getDiffusion() * cosine / (dis * dis);
@@ -445,7 +451,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     if (res.material.isSpecular()) {
       // 镜面反射
       Ray reflectRay =
-          standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+          Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
       indirectLight += reflectLight * res.material.getSpecularity() *
                        pow(cosine, res.material.getShiness()) / (dis * dis);
@@ -454,8 +460,8 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     if (res.material.isTransmissive()) {
       // 折射
       Ray refractRay =
-          standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                             res.material.getRefraction());
+          Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
+                                  res.material.getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
       indirectLight +=
           refractLight * res.material.getTransmittance() * cosine / (dis * dis);
@@ -476,5 +482,7 @@ void Tracer::printStatus() {
   std::cout << "shapes" << '\n'
             << "triange number: "
             << (scenes == nullptr ? 0 : scenes->getNodeNum()) << '\n';
+  // scenes
+  // scenes->printStatus();
 }
 }  // namespace sre

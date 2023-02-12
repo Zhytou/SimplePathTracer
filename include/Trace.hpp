@@ -1,8 +1,6 @@
 #ifndef SRE_TRACE_HPP
 #define SRE_TRACE_HPP
 
-#include <omp.h>
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -17,9 +15,6 @@
 #include "Ray.hpp"
 #include "Triangle.hpp"
 #include "Vec.hpp"
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "../third-parties/tinyobjloader/tiny_obj_loader.h"
 
 namespace sre {
 class Tracer {
