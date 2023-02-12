@@ -30,7 +30,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> direction = ray.getDirection();
   Vec3<float> tMin, tMax;
 
-  if (abs(direction.x) < 0.000001f) {
+  if (fabs(direction.x) < 0.000001f) {
     // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.x <= origin.x && origin.x <= maxXYZ.x)) {
       res.isHit = false;
@@ -46,7 +46,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
     }
   }
 
-  if (abs(direction.y) < 0.000001f) {
+  if (fabs(direction.y) < 0.000001f) {
     // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.y <= origin.y && origin.y <= maxXYZ.y)) {
       res.isHit = false;
@@ -62,7 +62,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
     }
   }
 
-  if (abs(direction.z) < 0.000001f) {
+  if (fabs(direction.z) < 0.000001f) {
     // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.z <= origin.z && origin.z <= maxXYZ.z)) {
       res.isHit = false;
