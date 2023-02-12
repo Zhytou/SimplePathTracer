@@ -8,7 +8,7 @@ include_directories(/usr/local/include/opencv4)
 
 add_subdirectory(./third-parties/tinyobjloader/)
 
-add_library(sre  STATIC ./src/AABB.cpp ./src/BVH.cpp ./src/Camera.cpp ./src/Light.cpp ./src/Trace.cpp ./src/Triangle.cpp)
+add_library(sre  STATIC ./src/AABB.cpp ./src/BVH.cpp ./src/Camera.cpp ./src/Light.cpp ./src/Random.cpp ./src/Ray.cpp ./src/Trace.cpp ./src/Triangle.cpp)
 
 add_executable(main ./src/main.cpp)
 
