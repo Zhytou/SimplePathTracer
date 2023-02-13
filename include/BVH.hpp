@@ -24,7 +24,7 @@ class BVHNode : public Hittable {
  public:
   BVHNode(Hittable *object);
   BVHNode(std::vector<Hittable *> &objects, int low, int high);
-  virtual ~BVHNode() noexcept override;
+  ~BVHNode();
 
  public:
   static bool xCmp(Hittable *left, Hittable *right);
@@ -33,17 +33,13 @@ class BVHNode : public Hittable {
 
  public:
   // getter.
-  virtual Vec3<float> getMinXYZ() const override { return aabb.getMinXYZ(); }
-  virtual Vec3<float> getMaxXYZ() const override { return aabb.getMaxXYZ(); }
-  AABB getAABB() const { return aabb; }
-  int getNodeNum() const { return nodeNum; }
+  virtual Vec3<float> getMinXYZ() const override;
+  virtual Vec3<float> getMaxXYZ() const override;
+  AABB getAABB() const;
+  int getNodeNum() const;
 
   // print.
-  virtual void printStatus() const override {
-    left->printStatus();
-    aabb.printStatus();
-    right->printStatus();
-  }
+  virtual void printStatus() const override;
 
  public:
   virtual void hit(const Ray &ray, HitResult &res) const override;

@@ -71,6 +71,19 @@ bool BVHNode::zCmp(Hittable *left, Hittable *right) {
   return left->getMinXYZ().z < right->getMinXYZ().z;
 }
 
+// getter.
+Vec3<float> BVHNode::getMinXYZ() const { return aabb.getMinXYZ(); }
+Vec3<float> BVHNode::getMaxXYZ() const { return aabb.getMaxXYZ(); }
+AABB BVHNode::getAABB() const { return aabb; }
+int BVHNode::getNodeNum() const { return nodeNum; }
+
+// print.
+void BVHNode::printStatus() const {
+  left->printStatus();
+  aabb.printStatus();
+  right->printStatus();
+}
+
 void BVHNode::hit(const Ray &ray, HitResult &res) const {
   aabb.hit(ray, res);
 
