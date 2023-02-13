@@ -1,6 +1,16 @@
 #include "../include/Ray.hpp"
 
 namespace sre {
+Ray::Ray(const Vec3<float> &org, const Vec3<float> &dir)
+    : origin(org), direction(Vec3<float>::normalize(dir)) {}
+
+// getter.
+Vec3<float> Ray::getOrigin() const { return origin; }
+Vec3<float> Ray::getDirection() const { return direction; }
+Vec3<float> Ray::getPointAt(const float &t) const {
+  return origin + direction * t;
+}
+
 // 折射光线
 Ray Ray::standardRefractRay(const Vec3<float> &point,
                             const Vec3<float> &direction,

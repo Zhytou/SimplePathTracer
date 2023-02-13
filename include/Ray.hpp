@@ -13,15 +13,12 @@ class Ray {
  public:
   Ray() = default;
   ~Ray() = default;
-  Ray(const Vec3<float> &org, const Vec3<float> &dir)
-      : origin(org), direction(Vec3<float>::normalize(dir)) {}
+  Ray(const Vec3<float> &org, const Vec3<float> &dir);
 
   // getter.
-  Vec3<float> getOrigin() const { return origin; }
-  Vec3<float> getDirection() const { return direction; }
-  Vec3<float> getPointAt(const float &t) const {
-    return origin + direction * t;
-  }
+  Vec3<float> getOrigin() const;
+  Vec3<float> getDirection() const;
+  Vec3<float> getPointAt(const float &t) const;
 
   // 漫反射光线
   static Ray randomReflectRay(const Vec3<float> &point,
