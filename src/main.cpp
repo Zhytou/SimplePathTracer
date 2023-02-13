@@ -10,9 +10,10 @@ int main() {
   namedWindow(windName, 0);
 
   Tracer t;
-  t.loadExampleScene();
-  // t.load("../example/veach-mis/", "veach-mis");
-  // t.load("../example/cornell-box/", "cornell-box");
+  // t.loadExampleScene();
+  // t.load("../example/veach-mis/", "veach-mis.obj", "veach-mis.xml");
+  // t.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
+  t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
   auto img = t.render();
   imshow(windName, img);
 
