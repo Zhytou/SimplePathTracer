@@ -23,49 +23,25 @@ class Camera {
   Vec3<float> lowerLeftCorner;
 
  public:
-  Camera() {}
-  ~Camera() {}
+  Camera() = default;
+  ~Camera() = default;
 
   // print.
   void printStatus() const;
 
   // getter.
   Ray getRay(const int& row, const int& col) const;
-  int getWidth() const { return width; }
-  int getHeight() const { return height; }
-  Vec3<float> getEye() const { return eye; }
+  int getWidth() const;
+  int getHeight() const;
+  Vec3<float> getEye() const;
 
   // setter.
-  void setWidth(const int& w) {
-    width = w;
-    update();
-  }
-  void setHeight(const int& h) {
-    height = h;
-    update();
-  }
-  void setFovy(const float& theta) {
-    fovy = theta;
-    update();
-  }
-  void setPosition(const float& x, const float& y, const float& z) {
-    eye.x = x;
-    eye.y = y;
-    eye.z = z;
-    update();
-  }
-  void setTarget(const float& x, const float& y, const float& z) {
-    lookat.x = x;
-    lookat.y = y;
-    lookat.z = z;
-    update();
-  }
-  void setWorld(const float& x, const float& y, const float& z) {
-    up.x = x;
-    up.y = y;
-    up.z = z;
-    update();
-  }
+  void setWidth(const int& w);
+  void setHeight(const int& h);
+  void setFovy(const float& theta);
+  void setPosition(const float& x, const float& y, const float& z);
+  void setTarget(const float& x, const float& y, const float& z);
+  void setWorld(const float& x, const float& y, const float& z);
 
  private:
   void update();
