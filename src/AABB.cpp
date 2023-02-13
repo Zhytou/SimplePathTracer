@@ -1,7 +1,16 @@
 #include "../include/AABB.hpp"
 
 namespace sre {
+AABB::AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
+AABB::AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}
+AABB::AABB(const Hittable* object) {
+  assert(object != nullptr);
+  minXYZ = object->getMinXYZ();
+  maxXYZ = object->getMaxXYZ();
+}
 
+Vec3<float> AABB::getMinXYZ() const { return minXYZ; }
+Vec3<float> AABB::getMaxXYZ() const { return maxXYZ; }
 AABB AABB::getSurroundingAABB(const AABB& child1, const AABB& child2) {
   Vec3<float> minXYZ, maxXYZ;
 
