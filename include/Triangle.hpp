@@ -66,16 +66,26 @@ class Triangle : public Hittable {
     float a = sqrt(randFloat(1)), b = randFloat(1);
     return e1 * a + e2 * a * b + v1;
   }
+  Vec2<float> getTexCoord(const Vec3<float>& point) const {
+    Vec3<float> e1 = v2 - v1, e2 = v3 - v1;
+    Vec3<float> e = point - v1;
+    float a, b;
+    if(e1.x * e2.y != e1.y * e2.x) {
+      a = (e.y * e2.x - e.x * e2.y)/(e2.x * e1.y - e1.x * e2.y);
+      b = (e.x * e1.y - e.y * e1.x)/(e2.x * e1.y - e1.x * e2.y);
+    } else if(e1.x * e2.z != e1.z * e2.x) {
+      a = (e.y * e2.x - e.x * e2.y)/(e1.x * e2.z - e1.z * e2.x);
+      b = (e.x * e1.y - e.y * e1.x)/(e1.x * e2.z - e1.z * e2.x);
+    } else {
+      
+    }
+    Vec2<float> texCoord;
+    texCoord = vt1 + (vt2 - vt1) * a + (vt3 - vt1) * b;
+    return texCoord;
+  }
   Material getMaterial() const { return material; }
   float getSize() const {
     return Vec3<float>::cross(v2 - v1, v3 - v1).length() / 2;
-  }
-
-  // setter
-  void setTextureVertex(const Vec2<float>& _vt1, const Vec2<float>& _vt2, const Vec2<float>& _vt3) {
-    vt1 = _vt1;
-    vt2 = _vt2;
-    vt3 = _vt3;
   }
 
   // print

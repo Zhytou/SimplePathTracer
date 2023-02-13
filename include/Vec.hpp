@@ -11,9 +11,21 @@ struct Vec2 {
   T u, v;
 
   // 构造与析构
-  Vec3() = default;
-  ~Vec3() = default;
-  Vec3(const T& a, const T& b) : u(a), v(b) {}
+  Vec2() = default;
+  ~Vec2() = default;
+  Vec2(const T& a, const T& b) : u(a), v(b) {}
+
+  // 运算符
+  Vec2<T> operator-(const Vec2<T>& other) const {
+    return Vec2<T>(u - other.u, v - other.v);
+  }
+  Vec2<T> operator+(const Vec2<T>& other) const {
+    return Vec2<T>(u + other.u, v + other.v);
+  }
+  template <typename K>
+  Vec2<T> operator*(const K& k) const {
+    return Vec2<T>(u * k, v * k);
+  }
 };
 
 template <typename T>

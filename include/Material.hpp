@@ -2,10 +2,10 @@
 #define SRE_MATERIAL_HPP
 
 #include <iostream>
-#include <fstream>
 #include <string>
 
 #include "Vec.hpp"
+#include "Texture.hpp"
 
 namespace sre {
 
@@ -20,9 +20,9 @@ class Material {
   float shiness;               // Ns 反光强度
   float refraction;            // Ni 折射率
   bool emisssive;              // 是否发光
-  char* ambientTexture;    // map_Ka 纹理
-  char* diffuseTexture;   // map_Kd 纹理
-  char* specularTexture;   // map_Ks 纹理
+  Texture* ambientTexture;    // map_Ka 纹理
+  Texture* diffuseTexture;   // map_Kd 纹理
+  Texture* specularTexture;   // map_Ks 纹理
 
  public:
   Material() = default;
@@ -86,29 +86,12 @@ class Material {
   }
   void setShiness(float s) { shiness = s; }
   void setRefraction(float r) { refraction = r; }
-  void setAmbientTexture(const std::string& at) { 
-    std::ifstream ifs(at, std::ifstream::in);
-    ifs.seekg(0, ifs.end);
-    int length = ifs.tellg();
-    ifs.seekg(0, ifs.beg);
-    ambientTexture = new char[length];
-    ifs.read(ambientTexture, length);
-  }  
-  void setDiffuseTexture(const std::string& dt) {
-    std::ifstream ifs(dt, std::ifstream::in);
-    ifs.seekg(0, ifs.end);
-    int length = ifs.tellg();
-    ifs.seekg(0, ifs.beg);
-    diffuseTexture = new char[length];
-    ifs.read(diffuseTexture, length);
-  }
-  void setSpecularTexture(const std::string& st) {
-    std::ifstream ifs(st, std::ifstream::in);
-    ifs.seekg(0, ifs.end);
-    int length = ifs.tellg();
-    ifs.seekg(0, ifs.beg);
-    specularTexture = new char[length];
-    ifs.read(specularTexture, length);
+  void setAmbientTexture(const std::string& at) { ambientTexture = Texture::getInstance(at); }  
+  void setDiffuseTexture(const std::string& dt) { diffuseTexture = Texture::getInstance(dt); }
+  void setSpecularTexture(const std::string& st) { specularTexture = Texture::getInstance(st); }
+
+  Vec3<float> scatter(const Vec3<float>& in, Vec3<float>& out1, Vec3<float>& out2, Vec3<float>& out3) {
+
   }
 };
 }  // namespace sre
