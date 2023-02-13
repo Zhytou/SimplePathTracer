@@ -3,16 +3,22 @@
 namespace sre {
 std::unordered_map<std::string, Texture*> Texture::textures;
 
-Texture* Texture::getInstance(const std::string& name) {
-  if (textures.find(name) == textures.end()) {
+Texture* Texture::getInstance(const std::string& texName) {
+  if (textures.find(texName) == textures.end()) {
+    std::cout << "texture initialize success! " << texName << std::endl;
     Texture* ntex = new Texture();
-    ntex->img = cv::imread(name, cv::IMREAD_COLOR);
+    ntex->img = cv::imread(texName, cv::IMREAD_COLOR);
   }
-  return textures[name];
+  return textures[texName];
 }
 
 Vec3<float> Texture::getColorAt(const Vec2<float>& pos) {
-  return Vec3<float>(0, 0, 0);
+  Vec3<float> color(0, 0, 0);
+  int rows = img.rows, cols = img.cols;
+  color.x = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[2];
+  color.y = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[1];
+  color.z = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[0];
+  return color;
 }
 
 }  // namespace sre

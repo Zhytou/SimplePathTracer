@@ -19,9 +19,8 @@ class Texture {
 
  public:
   // getter.
+  static Texture* getInstance(const std::string& texName);
   Vec3<float> getColorAt(const Vec2<float>& pos);
-
-  static Texture* getInstance(const std::string& name);
 };
 }  // namespace sre
 

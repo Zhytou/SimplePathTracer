@@ -1,3 +1,5 @@
+#include "../include/Trace.hpp"
+
 #include <omp.h>
 
 #include <algorithm>
@@ -6,9 +8,17 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../third-parties/tinyobjloader/tiny_obj_loader.h"
 
-#include "../include/Trace.hpp"
-
 namespace sre {
+Tracer::Tracer(size_t _depth, size_t _samples, float _p)
+    : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
+
+Tracer::~Tracer() {
+  if (scenes != nullptr) {
+    delete scenes;
+  }
+  scenes = nullptr;
+}
+
 void Tracer::loadExampleScene() {
   float eyePosZ = 2;
   // Configuration
@@ -220,19 +230,18 @@ bool Tracer::loadConfiguration(
 
   // TODO: 修改loadConfig逻辑，保证staircase也能被正常解读
   // 读取一个以‘/>’结尾的xml tag
-  auto getAnXMLTag = [&ifs](std::string& buf) {
-    buf.clear();
-    char ch;
-    ifs >> ch;
-    while (ch != '\/') {
-      buf.push_back(ch);
-    }
-    ifs >> ch;
-    return !ifs.eof();
-  };
-
+  // auto getAnXMLTag = [&ifs](std::string &buf) {
+  //   buf.clear();
+  //   char ch;
+  //   ifs >> ch;
+  //   while (ch != '\/') {
+  //     buf.push_back(ch);
+  //   }
+  //   ifs >> ch;
+  //   return !ifs.eof();
+  // };
   // light radiance
-  while (getAnXMLTag(buf)) {
+  while (getline(ifs, buf)) {
     std::string mtlname;
     Vec3<float> radiance;
     i = 0;
@@ -309,6 +318,18 @@ bool Tracer::loadModel(
                                     material.transmittance[2]);
     actualMaterial.setShiness(material.shininess);
     actualMaterial.setRefraction(material.ior);
+
+    if (!material.ambient_texname.empty()) {
+      actualMaterial.setAmbientTexture(pathName + material.ambient_texname);
+    }
+    if (!material.diffuse_texname.empty()) {
+      std::cout << material.diffuse_texname << std::endl;
+      actualMaterial.setAmbientTexture(pathName + material.diffuse_texname);
+    }
+    if (!material.specular_texname.empty()) {
+      actualMaterial.setAmbientTexture(pathName + material.specular_texname);
+    }
+
     actualMaterials.emplace_back(actualMaterial);
   }
 
@@ -335,8 +356,8 @@ bool Tracer::loadModel(
         int texcoord_index =
             shape.mesh.indices[face_i * 3 + point_i].texcoord_index;
 
-        points[point_i].x = attrib.texcoords[texcoord_index * 2 + 0];
-        points[point_i].y = attrib.texcoords[texcoord_index * 2 + 1];
+        point_textures[point_i].u = attrib.texcoords[texcoord_index * 2 + 0];
+        point_textures[point_i].v = attrib.texcoords[texcoord_index * 2 + 1];
       }
 
       Vec3<float> point_normals[3];
@@ -360,17 +381,15 @@ bool Tracer::loadModel(
       if (material.isEmissive()) {
         light.setLight(triangle);
       }
-      Hittable *trianglePointer = nullptr;
-      if (shape.mesh.indices[face_i * 3].texcoord_index) {
-          trianglePointer = new Triangle(id, points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
-      } else {
-          trianglePointer = new Triangle(id, points[0], points[1], points[2], normal, material);
-      }
+      Hittable *trianglePointer =
+          new Triangle(id, points[0], points[1], points[2], point_textures[0],
+                       point_textures[1], point_textures[2], normal, material);
       trianglePointers.push_back(trianglePointer);
       id += 1;
     }
   }
 
+  // ? 为什么不排序得到的渲染结果和排序一样
   scenes = new BVH(trianglePointers, 0, trianglePointers.size());
   return true;
 }
