@@ -19,7 +19,7 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
     return;
   }
 
-  float t = (Vec3<float>::dot(normal, p1) - Vec3<float>::dot(normal, origin)) /
+  float t = (Vec3<float>::dot(normal, v1) - Vec3<float>::dot(normal, origin)) /
             Vec3<float>::dot(normal, direction);
   if (t < 0.001) {
     res.isHit = false;
@@ -30,9 +30,9 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   }
 
   Vec3<float> p = ray.getPointAt(t);
-  Vec3<float> c1 = Vec3<float>::cross(p2 - p1, p - p1);
-  Vec3<float> c2 = Vec3<float>::cross(p3 - p2, p - p2);
-  Vec3<float> c3 = Vec3<float>::cross(p1 - p3, p - p3);
+  Vec3<float> c1 = Vec3<float>::cross(v2 - v1, p - v1);
+  Vec3<float> c2 = Vec3<float>::cross(v3 - v2, p - v2);
+  Vec3<float> c3 = Vec3<float>::cross(v1 - v3, p - v3);
   if (Vec3<float>::dot(c1, this->normal) < 0 ||
       Vec3<float>::dot(c2, this->normal) < 0 ||
       Vec3<float>::dot(c3, this->normal) < 0) {
@@ -56,9 +56,9 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
 void Triangle::printStatus() const {
   std::cout << "triangle: \n"
             << "id: " << this->getId() << '\n'
-            << "vertex 1: " << p1.x << '\t' << p1.y << '\t' << p1.z << '\n'
-            << "vertex 2: " << p2.x << '\t' << p2.y << '\t' << p2.z << '\n'
-            << "vertex 3: " << p3.x << '\t' << p3.y << '\t' << p3.z << '\n'
+            << "vertex 1: " << v1.x << '\t' << v1.y << '\t' << v1.z << '\n'
+            << "vertex 2: " << v2.x << '\t' << v2.y << '\t' << v2.z << '\n'
+            << "vertex 3: " << v3.x << '\t' << v3.y << '\t' << v3.z << '\n'
             << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
             << '\n';
   material.printStatus();

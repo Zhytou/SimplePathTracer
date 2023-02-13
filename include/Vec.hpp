@@ -7,6 +7,16 @@
 namespace sre {
 
 template <typename T>
+struct Vec2 {
+  T u, v;
+
+  // 构造与析构
+  Vec3() = default;
+  ~Vec3() = default;
+  Vec3(const T& a, const T& b) : u(a), v(b) {}
+};
+
+template <typename T>
 struct Vec3 {
   T x, y, z;
 

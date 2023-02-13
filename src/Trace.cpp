@@ -315,6 +315,15 @@ bool Tracer::loadModel(
         points[point_i].z = attrib.vertices[vertex_index * 3 + 2];
       }
 
+      Vec2<float> point_textures[3];
+      for (size_t point_i = 0; point_i < 3; point_i++) {
+        int texcoord_index =
+            shape.mesh.indices[face_i * 3 + point_i].texcoord_index;
+
+        points[point_i].x = attrib.texcoords[texcoord_index * 2 + 0];
+        points[point_i].y = attrib.texcoords[texcoord_index * 2 + 1];
+      }
+
       Vec3<float> point_normals[3];
       for (size_t point_i = 0; point_i < 3; point_i++) {
         int normal_index =
@@ -336,9 +345,12 @@ bool Tracer::loadModel(
       if (material.isEmissive()) {
         light.setLight(triangle);
       }
-      Hittable *trianglePointer =
-          new Triangle(id, points[0], points[1], points[2], normal, material);
-      assert(trianglePointer != nullptr);
+      Hittable *trianglePointer = nullptr;
+      if (shape.mesh.indices[face_i * 3].texcoord_index) {
+          trianglePointer = new Triangle(id, points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
+      } else {
+          trianglePointer = new Triangle(id, points[0], points[1], points[2], normal, material);
+      }
       trianglePointers.push_back(trianglePointer);
       id += 1;
     }
