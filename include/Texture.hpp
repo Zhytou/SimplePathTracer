@@ -2,36 +2,27 @@
 #define SRE_TEXTURE_HPP
 
 #include <opencv2/opencv.hpp>
-
 #include <string>
 #include <unordered_map>
 
-namespace sre
-{
-    class Texture {
-        private :
-            cv::Mat image;
-            static std::unordered_map<std::string, Texture*> textures;
-        private :
-            Texture() {}
-            ~Texture() {}
+#include "Vec.hpp"
 
-        public:
-            // getter.
-            Vec3<float> getColorAt(const Vec2<float>& pos);
-            
-            static Texture* getInstance(const std::string& name) {
-                if (textures.find(name) == textures.end()) {
-                    Texture* ntex = new Texture();
-                    ntex->textures = cv::read(name);
-                }
-                return textures[name];
-            }
-    };
+namespace sre {
+class Texture {
+ private:
+  cv::Mat img;
+  static std::unordered_map<std::string, Texture*> textures;
 
-    std::unordered_map<std::string, Texture*> Texture::textures;
-} // namespace sre
+ private:
+  Texture() = default;
+  ~Texture() = default;
 
+ public:
+  // getter.
+  Vec3<float> getColorAt(const Vec2<float>& pos);
 
+  static Texture* getInstance(const std::string& name);
+};
+}  // namespace sre
 
 #endif
