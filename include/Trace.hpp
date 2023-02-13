@@ -1,8 +1,6 @@
 #ifndef SRE_TRACE_HPP
 #define SRE_TRACE_HPP
 
-#include <algorithm>
-#include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>

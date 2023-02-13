@@ -1,9 +1,12 @@
-#include "../include/Trace.hpp"
-
 #include <omp.h>
+
+#include <algorithm>
+#include <fstream>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../third-parties/tinyobjloader/tiny_obj_loader.h"
+
+#include "../include/Trace.hpp"
 
 namespace sre {
 void Tracer::loadExampleScene() {
@@ -216,8 +219,20 @@ bool Tracer::loadConfiguration(
   }
 
   // TODO: 修改loadConfig逻辑，保证staircase也能被正常解读
+  // 读取一个以‘/>’结尾的xml tag
+  auto getAnXMLTag = [&ifs](std::string& buf) {
+    buf.clear();
+    char ch;
+    ifs >> ch;
+    while (ch != '\/') {
+      buf.push_back(ch);
+    }
+    ifs >> ch;
+    return !ifs.eof();
+  };
+
   // light radiance
-  while (getline(ifs, buf)) {
+  while (getAnXMLTag(buf)) {
     std::string mtlname;
     Vec3<float> radiance;
     i = 0;
