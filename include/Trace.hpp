@@ -35,13 +35,8 @@ class Tracer {
   void printStatus();
 
  public:
-  Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5)
-      : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
-  ~Tracer() {
-    if (scenes != nullptr) {
-      delete scenes;
-    }
-  }
+  Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5);
+  ~Tracer();
 
   void loadExampleScene();
   void load(const std::string &pathName, const std::string &modelName,
