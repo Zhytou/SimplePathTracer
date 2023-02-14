@@ -11,7 +11,12 @@ Texture* Texture::getInstance(const std::string& texName) {
   }
   return textures[texName];
 }
-
+void Texture::realeaseAllInstances() {
+  for (auto& [name, tex] : textures) {
+    delete tex;
+    tex = nullptr;
+  }
+}
 Vec3<float> Texture::getColorAt(const Vec2<float>& pos) {
   Vec3<float> color(0, 0, 0);
   int rows = img.rows, cols = img.cols;

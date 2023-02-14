@@ -18,8 +18,10 @@ class Texture {
   ~Texture() = default;
 
  public:
-  // getter.
   static Texture* getInstance(const std::string& texName);
+  static void realeaseAllInstances();
+
+  // getter.
   Vec3<float> getColorAt(const Vec2<float>& pos);
 };
 }  // namespace sre
