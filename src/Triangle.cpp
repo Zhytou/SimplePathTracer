@@ -70,9 +70,11 @@ Vec2<float> Triangle::getTexCoord(const Vec3<float>& point) const {
     a = (e.y * e2.x - e.x * e2.y) / (e2.x * e1.y - e1.x * e2.y);
     b = (e.x * e1.y - e.y * e1.x) / (e2.x * e1.y - e1.x * e2.y);
   } else if (e1.x * e2.z != e1.z * e2.x) {
-    a = (e.y * e2.x - e.x * e2.y) / (e1.x * e2.z - e1.z * e2.x);
-    b = (e.x * e1.y - e.y * e1.x) / (e1.x * e2.z - e1.z * e2.x);
+    a = (e.x * e2.z - e.z * e2.x) / (e1.x * e2.z - e1.z * e2.x);
+    b = (e.z * e1.x - e.x * e1.z) / (e1.x * e2.z - e1.z * e2.x);
   } else {
+    a = (e.y * e2.z - e.z * e2.y) / (e1.y * e2.z - e1.z * e2.y);
+    b = (e.z * e1.z - e.y * e1.z) / (e1.y * e2.z - e1.z * e2.y);
   }
   Vec2<float> texCoord;
   texCoord = vt1 + (vt2 - vt1) * a + (vt3 - vt1) * b;
