@@ -10,22 +10,6 @@ Material::Material()
       specularTexture(nullptr) {}
 Material::~Material() {}
 
-std::unordered_map<std::string, Material*> Material::materials;
-
-Material* Material::getInstance(const std::string& materialName) {
-  if (materials.find(materialName) == materials.end()) {
-    Material* nmat = new Material();
-    materials[materialName] = nmat;
-  }
-  return materials[materialName];
-}
-void Material::releaseAllInstances() {
-  for (auto& [name, mat] : materials) {
-    delete mat;
-    mat = nullptr;
-  }
-}
-
 std::string Material::getName() const { return name; }
 Vec3<float> Material::getEmission() const { return emission; }
 Vec3<float> Material::getAmbience(const Vec2<float>& texCoord) const {

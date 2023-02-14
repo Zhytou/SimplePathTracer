@@ -41,14 +41,14 @@ void Tracer::loadExampleScene() {
   std::vector<Triangle> triangles;
 
   // Scene-Light
-  Material *m = Material::getInstance("Light");
-  m->setEmissive(true);
-  m->setEmission(34, 24, 8);
-  m->setDiffusion(0, 0, 0);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  Material m;
+  m.setEmissive(true);
+  m.setEmission(34, 24, 8);
+  m.setDiffusion(0, 0, 0);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(0, Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
                          Vec3<float>(0.5, 2, 0.5), m);
   triangles.emplace_back(1, Vec3<float>(-0.5, 2, 2), Vec3<float>(0.5, 2, 2),
@@ -64,14 +64,13 @@ void Tracer::loadExampleScene() {
   light.setLight(triangles[3]);
 
   // Scene-Ground
-  m = Material::getInstance("Wall-White");
-  m->setEmissive(false);
-  m->setEmission(0, 0, 0);
-  m->setDiffusion(0.79, 0.76, 0.73);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setEmission(0, 0, 0);
+  m.setDiffusion(0.79, 0.76, 0.73);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(4, Vec3<float>(-w * 3, -h, l),
                          Vec3<float>(-w * 3, -h, -1),
                          Vec3<float>(w * 3, -h, -1), m);
@@ -80,73 +79,69 @@ void Tracer::loadExampleScene() {
                          m);
 
   // Scene-Top
-  m->setEmissive(false);
-  m->setDiffusion(0.79, 0.76, 0.73);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0.79, 0.76, 0.73);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(6, Vec3<float>(-w, h, l), Vec3<float>(-w, h, -1),
                          Vec3<float>(w, h, -1), m);
   triangles.emplace_back(7, Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
                          Vec3<float>(w, h, -1), m);
 
   // Scene-BackWall
-  m->setEmissive(false);
-  m->setDiffusion(0.79, 0.76, 0.73);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0.79, 0.76, 0.73);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(8, Vec3<float>(-w, -h, l), Vec3<float>(-w, h, l),
                          Vec3<float>(w, h, l), m);
   triangles.emplace_back(9, Vec3<float>(-w, -h, l), Vec3<float>(w, -h, l),
                          Vec3<float>(w, h, l), m);
 
   // Scene-RightWall
-  m = Material::getInstance("Wall-Green");
-  m->setEmissive(false);
-  m->setDiffusion(0.2, 0.76, 0);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0.2, 0.76, 0);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(10, Vec3<float>(-w, h, 0), Vec3<float>(-w, -h, 0),
                          Vec3<float>(-w, h, l), m);
   triangles.emplace_back(11, Vec3<float>(-w, h, l), Vec3<float>(-w, -h, l),
                          Vec3<float>(-w, -h, 0), m);
 
   // Scene-LeftWall
-  m = Material::getInstance("Wall-Blue");
-  m->setEmissive(false);
-  m->setDiffusion(0, 0.24, 0.9);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0, 0.24, 0.9);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(12, Vec3<float>(w, h, 0), Vec3<float>(w, -h, 0),
                          Vec3<float>(w, h, l), m);
   triangles.emplace_back(13, Vec3<float>(w, h, l), Vec3<float>(w, -h, l),
                          Vec3<float>(w, -h, 0), m);
 
   // Scene-Shape
-  m = Material::getInstance("Shape-Green");
-  m->setEmissive(false);
-  m->setDiffusion(0, 0.9, 0);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0, 0.9, 0);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(14, Vec3<float>(-1.2, 1, 1),
                          Vec3<float>(-0.25, -1.5, 1),
                          Vec3<float>(-1.5, -1.5, 3), m);
-  m = Material::getInstance("Shape-Blue");
-  m->setEmissive(false);
-  m->setDiffusion(0, 0, 0.8);
-  m->setSpecularity(0, 0, 0);
-  m->setTransmittance(1, 1, 1);
-  m->setShiness(1);
-  m->setRefraction(0);
+  m.setEmissive(false);
+  m.setDiffusion(0, 0, 0.8);
+  m.setSpecularity(0, 0, 0);
+  m.setTransmittance(1, 1, 1);
+  m.setShiness(1);
+  m.setRefraction(0);
   triangles.emplace_back(15, Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5, 1),
                          Vec3<float>(1.5, -1.5, 3), m);
 
@@ -306,36 +301,36 @@ bool Tracer::loadModel(
     return false;
   }
 
-  std::vector<Material *> actualMaterials;
+  std::vector<Material> actualMaterials;
   for (const auto &material : materials) {
-    Material *actualMaterial = Material::getInstance(material.name);
+    Material actualMaterial;
 
     auto itr = lightRadiances.find(material.name);
     if (itr != lightRadiances.end()) {
-      actualMaterial->setEmissive(true);
-      actualMaterial->setEmission(itr->second.x, itr->second.y, itr->second.z);
+      actualMaterial.setEmissive(true);
+      actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
     } else {
-      actualMaterial->setEmissive(false);
+      actualMaterial.setEmissive(false);
     }
 
-    actualMaterial->setDiffusion(material.diffuse[0], material.diffuse[1],
-                                 material.diffuse[2]);
-    actualMaterial->setSpecularity(material.specular[0], material.specular[1],
-                                   material.specular[2]);
-    actualMaterial->setTransmittance(material.transmittance[0],
-                                     material.transmittance[1],
-                                     material.transmittance[2]);
-    actualMaterial->setShiness(material.shininess);
-    actualMaterial->setRefraction(material.ior);
+    actualMaterial.setDiffusion(material.diffuse[0], material.diffuse[1],
+                                material.diffuse[2]);
+    actualMaterial.setSpecularity(material.specular[0], material.specular[1],
+                                  material.specular[2]);
+    actualMaterial.setTransmittance(material.transmittance[0],
+                                    material.transmittance[1],
+                                    material.transmittance[2]);
+    actualMaterial.setShiness(material.shininess);
+    actualMaterial.setRefraction(material.ior);
 
     if (!material.ambient_texname.empty()) {
-      actualMaterial->setAmbientTexture(pathName + material.ambient_texname);
+      actualMaterial.setAmbientTexture(pathName + material.ambient_texname);
     }
     if (!material.diffuse_texname.empty()) {
-      actualMaterial->setDiffuseTexture(pathName + material.diffuse_texname);
+      actualMaterial.setDiffuseTexture(pathName + material.diffuse_texname);
     }
     if (!material.specular_texname.empty()) {
-      actualMaterial->setSpecularTexture(pathName + material.specular_texname);
+      actualMaterial.setSpecularTexture(pathName + material.specular_texname);
     }
 
     actualMaterials.emplace_back(actualMaterial);
@@ -384,10 +379,9 @@ bool Tracer::loadModel(
         normal = -normal;
       }
 
-      Material *material = actualMaterials[shape.mesh.material_ids[face_i]];
-      assert(material != nullptr);
+      Material material = actualMaterials[shape.mesh.material_ids[face_i]];
       Triangle triangle(id, points[0], points[1], points[2], normal, material);
-      if (material->isEmissive()) {
+      if (material.isEmissive()) {
         light.setLight(triangle);
       }
       Hittable *trianglePointer =
@@ -464,16 +458,16 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
   Vec2<float> texCoord(0, 0);
 
-  return Vec3<float>(1, 1, 1) * res.material->getDiffusion(texCoord);
+  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion(texCoord);
 
   float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
   float dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
                   // ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
-  if (res.material->isEmissive()) {
+  if (res.material.isEmissive()) {
     // 直接光照 ——发光物
-    directLight = res.material->getEmission() * cosine / (dis * dis);
+    directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
     // 直接光照 ——节省路径（自己打过去）
     // TODO 根据命中三角形ID找到纹理坐标
@@ -492,7 +486,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     HitResult tmpRes;
     scenes->hit(tmpRay, tmpRes);
     if (tmpRes.isHit && tmpRes.id == id) {
-      directLight += radiance * res.material->getDiffusion(texCoord) * cosine /
+      directLight += radiance * res.material.getDiffusion(texCoord) * cosine /
                      (dis * dis * pdfLight);
     }
 
@@ -501,31 +495,31 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
               // ray.getOrigin());
 
     // 间接光照
-    if (res.material->isDiffusive()) {
+    if (res.material.isDiffusive()) {
       // 漫反射
       Ray reflectRay =
           Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight += reflectLight * res.material->getDiffusion(texCoord) *
+      indirectLight += reflectLight * res.material.getDiffusion(texCoord) *
                        cosine / (dis * dis);
     }
 
-    if (res.material->isSpecular()) {
+    if (res.material.isSpecular()) {
       // 镜面反射
       Ray reflectRay =
           Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight += reflectLight * res.material->getSpecularity(texCoord) *
-                       pow(cosine, res.material->getShiness()) / (dis * dis);
+      indirectLight += reflectLight * res.material.getSpecularity(texCoord) *
+                       pow(cosine, res.material.getShiness()) / (dis * dis);
     }
 
-    if (res.material->isTransmissive()) {
+    if (res.material.isTransmissive()) {
       // 折射
       Ray refractRay =
           Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                                  res.material->getRefraction());
+                                  res.material.getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
-      indirectLight += refractLight * res.material->getTransmittance(texCoord) *
+      indirectLight += refractLight * res.material.getTransmittance(texCoord) *
                        cosine / (dis * dis);
     }
 

@@ -2,12 +2,10 @@
 
 #include <cassert>
 
-#include "../include/Material.hpp"
-
 namespace sre {
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, Material* _m)
+                   const Vec3<float>& _v3, const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -16,7 +14,8 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       material(_m) {}
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, const Vec3<float>& _n, Material* _m)
+                   const Vec3<float>& _v3, const Vec3<float>& _n,
+                   const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -27,7 +26,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
                    const Vec3<float>& _v3, const Vec2<float>& _vt1,
                    const Vec2<float>& _vt2, const Vec2<float>& _vt3,
-                   const Vec3<float>& _n, Material* _m)
+                   const Vec3<float>& _n, const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -81,10 +80,7 @@ Vec2<float> Triangle::getTexCoord(const Vec3<float>& point) const {
   return texCoord;
 }
 
-Material* Triangle::getMaterial() const {
-  assert(material != nullptr);
-  return material;
-}
+Material Triangle::getMaterial() const { return material; }
 
 float Triangle::getSize() const {
   return Vec3<float>::cross(v2 - v1, v3 - v1).length() / 2;
