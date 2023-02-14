@@ -12,17 +12,17 @@ class Triangle : public Hittable {
   Vec3<float> v1, v2, v3;     // 顶点坐标
   Vec2<float> vt1, vt2, vt3;  // 纹理坐标
   Vec3<float> normal;         // 法向量
-  Material material;          // 材质
+  Material* material;         // 材质
 
  public:
   Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-           const Vec3<float>& _v3, const Material& _m);
+           const Vec3<float>& _v3, Material* _m);
   Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-           const Vec3<float>& _v3, const Vec3<float>& _n, const Material& _m);
+           const Vec3<float>& _v3, const Vec3<float>& _n, Material*  _m);
   Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
            const Vec3<float>& _v3, const Vec2<float>& _vt1,
            const Vec2<float>& _vt2, const Vec2<float>& _vt3,
-           const Vec3<float>& _n, const Material& _m);
+           const Vec3<float>& _n, Material* _m);
   ~Triangle();
 
  public:
