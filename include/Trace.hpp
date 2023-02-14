@@ -11,7 +11,6 @@
 #include "Camera.hpp"
 #include "Light.hpp"
 #include "Ray.hpp"
-#include "Triangle.hpp"
 #include "Vec.hpp"
 
 namespace sre {
