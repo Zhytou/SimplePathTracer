@@ -3,14 +3,24 @@
 #include <iostream>
 
 namespace sre {
-bool Material::isEmissive() const { return emisssive; }
-bool Material::isDiffusive() const {
-  return diffusion.x != 0 || diffusion.y != 0 || diffusion.z != 0;
+
+Material::Material() {}
+Material::~Material() {}
+
+std::unordered_map<std::string, Material*> Material::materials;
+
+Material *Material::getInstance(const std::string& materialName) {
+  if (materials.find(materialName) == materials.end()) {
+    Material* nmat = new Material();
+  }
+  return materials[materialName];
 }
-bool Material::isSpecular() const {
-  return specularity.x != 0 || specularity.y != 0 || specularity.z != 0;
+void Material::releaseAllInstances() {
+  for (auto& [name, mat] : materials) {
+    delete mat;
+    mat = nullptr;
+  }
 }
-bool Material::isTransmissive() const { return refraction >= 1; }
 
 std::string Material::getName() const { return name; }
 Vec3<float> Material::getEmission() const { return emission; }
@@ -20,6 +30,15 @@ Vec3<float> Material::getSpecularity() const { return specularity; }
 Vec3<float> Material::getTransmittance() const { return transmittance; }
 float Material::getShiness() const { return shiness; }
 float Material::getRefraction() const { return refraction; }
+
+bool Material::isEmissive() const { return emisssive; }
+bool Material::isDiffusive() const {
+  return diffusion.x != 0 || diffusion.y != 0 || diffusion.z != 0;
+}
+bool Material::isSpecular() const {
+  return specularity.x != 0 || specularity.y != 0 || specularity.z != 0;
+}
+bool Material::isTransmissive() const { return refraction >= 1; }
 
 void Material::setName(const std::string& n) { name = n; }
 void Material::setEmissive(bool e) { emisssive = e; }

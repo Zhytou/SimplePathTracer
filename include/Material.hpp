@@ -2,6 +2,7 @@
 #define SRE_MATERIAL_HPP
 
 #include <string>
+#include <unordered_map>
 
 #include "Texture.hpp"
 #include "Vec.hpp"
@@ -10,6 +11,7 @@ namespace sre {
 
 class Material {
  private:
+  static std::unordered_map<std::string, Material*> materials;
   std::string name;           // name 材料名称
   Vec3<float> emission;       // Ke 自射光 对应xml文件中radiance
   Vec3<float> ambience;       // Ka 环境光
@@ -23,16 +25,15 @@ class Material {
   Texture* diffuseTexture;    // map_Kd 纹理
   Texture* specularTexture;   // map_Ks 纹理
 
+ private:
+  Material();
+  ~Material();
+
  public:
-  Material() = default;
-  ~Material() = default;
+  static Material *getInstance(const std::string& materialName);
+  static void releaseAllInstances();
 
   // getter.
-  bool isEmissive() const;
-  bool isDiffusive() const;
-  bool isSpecular() const;
-  bool isTransmissive() const;
-
   std::string getName() const;
   Vec3<float> getEmission() const;
   Vec3<float> getAambience() const;
@@ -41,6 +42,10 @@ class Material {
   Vec3<float> getTransmittance() const;
   float getShiness() const;
   float getRefraction() const;
+  bool isEmissive() const;
+  bool isDiffusive() const;
+  bool isSpecular() const;
+  bool isTransmissive() const;
 
   // setter.
   void setName(const std::string& n);

@@ -1,11 +1,12 @@
 #ifndef SRE_HITTABLE_HPP
 #define SRE_HITTABLE_HPP
 
-#include "Material.hpp"
 #include "Ray.hpp"
 #include "Vec.hpp"
 
 namespace sre {
+
+class Material;
 
 struct HitResult {
   bool isHit;
@@ -13,7 +14,7 @@ struct HitResult {
   double distance;
   Vec3<float> hitPoint;
   Vec3<float> normal;
-  Material material;
+  Material* material;
 
   HitResult() : isHit(false), distance(-1) {}
 };
