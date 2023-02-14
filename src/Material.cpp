@@ -1,6 +1,6 @@
-#include "../include/Material.hpp"
-
 #include <iostream>
+
+#include "../include/Material.hpp"
 
 namespace sre {
 
@@ -24,10 +24,28 @@ void Material::releaseAllInstances() {
 
 std::string Material::getName() const { return name; }
 Vec3<float> Material::getEmission() const { return emission; }
-Vec3<float> Material::getAambience() const { return ambience; }
-Vec3<float> Material::getDiffusion() const { return diffusion; }
-Vec3<float> Material::getSpecularity() const { return specularity; }
-Vec3<float> Material::getTransmittance() const { return transmittance; }
+Vec3<float> Material::getAmbience(const Vec2<float>& texCoord) const { 
+  if (ambientTexture == nullptr) {
+    return ambience; 
+  } else {
+    return ambientTexture->getColorAt(texCoord);
+  }
+}
+Vec3<float> Material::getDiffusion(const Vec2<float>& texCoord) const {
+  if (diffuseTexture == nullptr) {
+    return diffusion; 
+  } else {
+    return diffuseTexture->getColorAt(texCoord);
+  }
+}
+Vec3<float> Material::getSpecularity(const Vec2<float>& texCoord) const {
+  if (specularTexture == nullptr) {
+    return specularity; 
+  } else {
+    return specularTexture->getColorAt(texCoord);
+  }
+}
+Vec3<float> Material::getTransmittance(const Vec2<float>& texCoord) const { return transmittance; }
 float Material::getShiness() const { return shiness; }
 float Material::getRefraction() const { return refraction; }
 
@@ -88,6 +106,4 @@ void Material::printStatus() const {
             << specularity.z << '\n';
 }
 
-Vec3<float> Material::scatter(const Vec3<float>& in, Vec3<float>& out1,
-                              Vec3<float>& out2, Vec3<float>& out3) {}
 }  // namespace sre

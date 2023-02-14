@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "../include/Texture.hpp"
 
 namespace sre {

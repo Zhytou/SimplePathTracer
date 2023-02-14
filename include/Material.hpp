@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "Hittable.hpp"
+#include "Ray.hpp"
 #include "Texture.hpp"
 #include "Vec.hpp"
 
@@ -36,10 +38,10 @@ class Material {
   // getter.
   std::string getName() const;
   Vec3<float> getEmission() const;
-  Vec3<float> getAambience() const;
-  Vec3<float> getDiffusion() const;
-  Vec3<float> getSpecularity() const;
-  Vec3<float> getTransmittance() const;
+  Vec3<float> getAmbience(const Vec2<float>& texCoord) const;
+  Vec3<float> getDiffusion(const Vec2<float>& texCoord) const;
+  Vec3<float> getSpecularity(const Vec2<float>& texCoord) const;
+  Vec3<float> getTransmittance(const Vec2<float>& texCoord) const;
   float getShiness() const;
   float getRefraction() const;
   bool isEmissive() const;
@@ -63,9 +65,6 @@ class Material {
 
   // print.
   void printStatus() const;
-
-  Vec3<float> scatter(const Vec3<float>& in, Vec3<float>& out1,
-                      Vec3<float>& out2, Vec3<float>& out3);
 };
 }  // namespace sre
 

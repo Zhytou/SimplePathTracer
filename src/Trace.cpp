@@ -467,11 +467,14 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
                   // ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
-  if (res.material.isEmissive()) {
+  if (res.material->isEmissive()) {
     // 直接光照 ——发光物
-    directLight = res.material.getEmission() * cosine / (dis * dis);
+    directLight = res.material->getEmission() * cosine / (dis * dis);
   } else {
     // 直接光照 ——节省路径（自己打过去）
+    // TODO 根据命中三角形ID找到纹理坐标
+    Vec2<float> texCoord;
+
     size_t id = -1;
     float area = 0;
     Vec3<float> lightPoint;
@@ -486,7 +489,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     HitResult tmpRes;
     scenes->hit(tmpRay, tmpRes);
     if (tmpRes.isHit && tmpRes.id == id) {
-      directLight += radiance * res.material.getDiffusion() * cosine /
+      directLight += radiance * res.material->getDiffusion(texCoord) * cosine /
                      (dis * dis * pdfLight);
     }
 
@@ -495,32 +498,32 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
               // ray.getOrigin());
 
     // 间接光照
-    if (res.material.isDiffusive()) {
+    if (res.material->isDiffusive()) {
       // 漫反射
       Ray reflectRay =
           Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
       indirectLight +=
-          reflectLight * res.material.getDiffusion() * cosine / (dis * dis);
+          reflectLight * res.material->getDiffusion(texCoord) * cosine / (dis * dis);
     }
 
-    if (res.material.isSpecular()) {
+    if (res.material->isSpecular()) {
       // 镜面反射
       Ray reflectRay =
           Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight += reflectLight * res.material.getSpecularity() *
-                       pow(cosine, res.material.getShiness()) / (dis * dis);
+      indirectLight += reflectLight * res.material->getSpecularity(texCoord) *
+                       pow(cosine, res.material->getShiness()) / (dis * dis);
     }
 
-    if (res.material.isTransmissive()) {
+    if (res.material->isTransmissive()) {
       // 折射
       Ray refractRay =
           Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                                  res.material.getRefraction());
+                                  res.material->getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
       indirectLight +=
-          refractLight * res.material.getTransmittance() * cosine / (dis * dis);
+          refractLight * res.material->getTransmittance(texCoord) * cosine / (dis * dis);
     }
 
     indirectLight /= pdf;
