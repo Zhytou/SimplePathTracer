@@ -1,7 +1,8 @@
+#include "../include/Triangle.hpp"
+
 #include <cassert>
 
 #include "../include/Material.hpp"
-#include "../include/Triangle.hpp"
 
 namespace sre {
 
@@ -15,8 +16,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       material(_m) {}
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, const Vec3<float>& _n,
-                   Material* _m)
+                   const Vec3<float>& _v3, const Vec3<float>& _n, Material* _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -81,9 +81,9 @@ Vec2<float> Triangle::getTexCoord(const Vec3<float>& point) const {
   return texCoord;
 }
 
-Material Triangle::getMaterial() const { 
+Material* Triangle::getMaterial() const {
   assert(material != nullptr);
-  return *material;
+  return material;
 }
 
 float Triangle::getSize() const {

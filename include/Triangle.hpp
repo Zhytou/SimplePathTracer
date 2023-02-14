@@ -31,7 +31,7 @@ class Triangle : public Hittable {
   virtual Vec3<float> getMaxXYZ() const override;
   Vec3<float> getRandomPoint() const;
   Vec2<float> getTexCoord(const Vec3<float>& point) const;
-  Material getMaterial() const;
+  Material* getMaterial() const;
   float getSize() const;
 
   // print

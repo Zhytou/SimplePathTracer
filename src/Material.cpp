@@ -1,17 +1,21 @@
-#include <iostream>
-
 #include "../include/Material.hpp"
+
+#include <iostream>
 
 namespace sre {
 
-Material::Material() {}
+Material::Material()
+    : ambientTexture(nullptr),
+      diffuseTexture(nullptr),
+      specularTexture(nullptr) {}
 Material::~Material() {}
 
 std::unordered_map<std::string, Material*> Material::materials;
 
-Material *Material::getInstance(const std::string& materialName) {
+Material* Material::getInstance(const std::string& materialName) {
   if (materials.find(materialName) == materials.end()) {
     Material* nmat = new Material();
+    materials[materialName] = nmat;
   }
   return materials[materialName];
 }
@@ -24,28 +28,30 @@ void Material::releaseAllInstances() {
 
 std::string Material::getName() const { return name; }
 Vec3<float> Material::getEmission() const { return emission; }
-Vec3<float> Material::getAmbience(const Vec2<float>& texCoord) const { 
+Vec3<float> Material::getAmbience(const Vec2<float>& texCoord) const {
   if (ambientTexture == nullptr) {
-    return ambience; 
+    return ambience;
   } else {
     return ambientTexture->getColorAt(texCoord);
   }
 }
 Vec3<float> Material::getDiffusion(const Vec2<float>& texCoord) const {
   if (diffuseTexture == nullptr) {
-    return diffusion; 
+    return diffusion;
   } else {
     return diffuseTexture->getColorAt(texCoord);
   }
 }
 Vec3<float> Material::getSpecularity(const Vec2<float>& texCoord) const {
   if (specularTexture == nullptr) {
-    return specularity; 
+    return specularity;
   } else {
     return specularTexture->getColorAt(texCoord);
   }
 }
-Vec3<float> Material::getTransmittance(const Vec2<float>& texCoord) const { return transmittance; }
+Vec3<float> Material::getTransmittance(const Vec2<float>& texCoord) const {
+  return transmittance;
+}
 float Material::getShiness() const { return shiness; }
 float Material::getRefraction() const { return refraction; }
 

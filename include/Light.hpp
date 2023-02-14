@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Random.hpp"
 #include "Triangle.hpp"
 #include "Vec.hpp"
 

@@ -1,12 +1,13 @@
 
+#include "../include/Trace.hpp"
+
 #include <omp.h>
 
 #include <algorithm>
 #include <fstream>
 
-#include "../include/Trace.hpp"
-#include "../include/Triangle.hpp"
 #include "../include/Material.hpp"
+#include "../include/Triangle.hpp"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../third-parties/tinyobjloader/tiny_obj_loader.h"
@@ -40,7 +41,7 @@ void Tracer::loadExampleScene() {
   std::vector<Triangle> triangles;
 
   // Scene-Light
-  Material* m = Material::getInstance("Light");
+  Material *m = Material::getInstance("Light");
   m->setEmissive(true);
   m->setEmission(34, 24, 8);
   m->setDiffusion(0, 0, 0);
@@ -305,9 +306,9 @@ bool Tracer::loadModel(
     return false;
   }
 
-  std::vector<Material*> actualMaterials;
+  std::vector<Material *> actualMaterials;
   for (const auto &material : materials) {
-    Material* actualMaterial = Material::getInstance(material.name);
+    Material *actualMaterial = Material::getInstance(material.name);
 
     auto itr = lightRadiances.find(material.name);
     if (itr != lightRadiances.end()) {
@@ -318,12 +319,12 @@ bool Tracer::loadModel(
     }
 
     actualMaterial->setDiffusion(material.diffuse[0], material.diffuse[1],
-                                material.diffuse[2]);
+                                 material.diffuse[2]);
     actualMaterial->setSpecularity(material.specular[0], material.specular[1],
-                                  material.specular[2]);
+                                   material.specular[2]);
     actualMaterial->setTransmittance(material.transmittance[0],
-                                    material.transmittance[1],
-                                    material.transmittance[2]);
+                                     material.transmittance[1],
+                                     material.transmittance[2]);
     actualMaterial->setShiness(material.shininess);
     actualMaterial->setRefraction(material.ior);
 
@@ -331,11 +332,10 @@ bool Tracer::loadModel(
       actualMaterial->setAmbientTexture(pathName + material.ambient_texname);
     }
     if (!material.diffuse_texname.empty()) {
-      std::cout << material.diffuse_texname << std::endl;
-      actualMaterial->setAmbientTexture(pathName + material.diffuse_texname);
+      actualMaterial->setDiffuseTexture(pathName + material.diffuse_texname);
     }
     if (!material.specular_texname.empty()) {
-      actualMaterial->setAmbientTexture(pathName + material.specular_texname);
+      actualMaterial->setSpecularTexture(pathName + material.specular_texname);
     }
 
     actualMaterials.emplace_back(actualMaterial);
@@ -384,7 +384,8 @@ bool Tracer::loadModel(
         normal = -normal;
       }
 
-      Material* material = actualMaterials[shape.mesh.material_ids[face_i]];
+      Material *material = actualMaterials[shape.mesh.material_ids[face_i]];
+      assert(material != nullptr);
       Triangle triangle(id, points[0], points[1], points[2], normal, material);
       if (material->isEmissive()) {
         light.setLight(triangle);
@@ -461,6 +462,9 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
+  Vec2<float> texCoord(0, 0);
+
+  return Vec3<float>(1, 1, 1) * res.material->getDiffusion(texCoord);
 
   float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
   float dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
@@ -473,7 +477,6 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   } else {
     // 直接光照 ——节省路径（自己打过去）
     // TODO 根据命中三角形ID找到纹理坐标
-    Vec2<float> texCoord;
 
     size_t id = -1;
     float area = 0;
@@ -503,8 +506,8 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
       Ray reflectRay =
           Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
       Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight +=
-          reflectLight * res.material->getDiffusion(texCoord) * cosine / (dis * dis);
+      indirectLight += reflectLight * res.material->getDiffusion(texCoord) *
+                       cosine / (dis * dis);
     }
 
     if (res.material->isSpecular()) {
@@ -522,8 +525,8 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
           Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
                                   res.material->getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
-      indirectLight +=
-          refractLight * res.material->getTransmittance(texCoord) * cosine / (dis * dis);
+      indirectLight += refractLight * res.material->getTransmittance(texCoord) *
+                       cosine / (dis * dis);
     }
 
     indirectLight /= pdf;

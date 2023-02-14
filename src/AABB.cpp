@@ -1,5 +1,7 @@
 #include "../include/AABB.hpp"
 
+#include <iostream>
+
 namespace sre {
 AABB::AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
 AABB::AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}

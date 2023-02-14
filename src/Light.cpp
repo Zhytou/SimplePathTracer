@@ -1,5 +1,8 @@
 #include "../include/Light.hpp"
 
+#include "../include/Material.hpp"
+#include "../include/Random.hpp"
+
 namespace sre {
 void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
                            float& area) const {
@@ -9,12 +12,12 @@ void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
 
   id = lightTriangles[idx][triangleIdx].getId();
   pos = lightTriangles[idx][triangleIdx].getRandomPoint();
-  radiance = lightTriangles[idx][triangleIdx].getMaterial().getEmission();
+  radiance = lightTriangles[idx][triangleIdx].getMaterial()->getEmission();
   area = lightAreas[idx];
 }
 
 void Light::setLight(const Triangle& triangle) {
-  Vec3<float> radiance = triangle.getMaterial().getEmission();
+  Vec3<float> radiance = triangle.getMaterial()->getEmission();
   assert(radiance.x != 0 && radiance.y != 0 && radiance.z != 0);
   assert(lightAreas.size() == lightTriangles.size());
   int id = lightTriangles.size();
