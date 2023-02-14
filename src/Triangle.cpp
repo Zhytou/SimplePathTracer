@@ -61,9 +61,9 @@ Vec3<float> Triangle::getRandomPoint() const {
   return e1 * a + e2 * a * b + v1;
 }
 
-Vec2<float> Triangle::getTexCoord(const Vec3<float>& point) const {
+Vec2<float> Triangle::getTexCoord(const Vec3<float>& coord) const {
   Vec3<float> e1 = v2 - v1, e2 = v3 - v1;
-  Vec3<float> e = point - v1;
+  Vec3<float> e = coord - v1;
   float a, b;
   if (e1.x * e2.y != e1.y * e2.x) {
     a = (e.y * e2.x - e.x * e2.y) / (e2.x * e1.y - e1.x * e2.y);
@@ -71,12 +71,29 @@ Vec2<float> Triangle::getTexCoord(const Vec3<float>& point) const {
   } else if (e1.x * e2.z != e1.z * e2.x) {
     a = (e.x * e2.z - e.z * e2.x) / (e1.x * e2.z - e1.z * e2.x);
     b = (e.z * e1.x - e.x * e1.z) / (e1.x * e2.z - e1.z * e2.x);
-  } else {
+  } else if (e1.y * e2.z != e1.z * e2.y) {
     a = (e.y * e2.z - e.z * e2.y) / (e1.y * e2.z - e1.z * e2.y);
     b = (e.z * e1.z - e.y * e1.z) / (e1.y * e2.z - e1.z * e2.y);
+  } else {
+    a = 0;
+    b = 0;
   }
-  Vec2<float> texCoord;
+  Vec2<float> texCoord(0, 0);
   texCoord = vt1 + (vt2 - vt1) * a + (vt3 - vt1) * b;
+  // if (texCoord.u >= 0 && texCoord.u <= 1 && texCoord.v >= 0 &&
+  //     texCoord.v <= 1) {
+  //   std::cout << "tex coord fail!\n"
+  //             << "a = " << a << " b = " << b << '\n';
+  //   this->printStatus();
+  // }
+
+  // 保证纹理坐标都在[0, 1]的范围内
+  while (texCoord.u < 0 || texCoord.u > 1) {
+    texCoord.u += texCoord.u < 0 ? 1 : -1;
+  }
+  while (texCoord.v < 0 || texCoord.v > 1) {
+    texCoord.v += texCoord.v < 0 ? 1 : -1;
+  }
   return texCoord;
 }
 
@@ -143,6 +160,9 @@ void Triangle::printStatus() const {
             << "vertex 1: " << v1.x << '\t' << v1.y << '\t' << v1.z << '\n'
             << "vertex 2: " << v2.x << '\t' << v2.y << '\t' << v2.z << '\n'
             << "vertex 3: " << v3.x << '\t' << v3.y << '\t' << v3.z << '\n'
+            << "vertex 1 texture: " << vt1.u << '\t' << vt1.v << '\n'
+            << "vertex 2 texture: " << vt2.u << '\t' << vt2.v << '\n'
+            << "vertex 3 texture: " << vt3.u << '\t' << vt3.v << '\n'
             << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
             << '\n';
   std::cout << std::endl;

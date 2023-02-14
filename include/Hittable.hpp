@@ -32,6 +32,9 @@ class Hittable {
   size_t getId() const { return id; }
   virtual Vec3<float> getMinXYZ() const = 0;
   virtual Vec3<float> getMaxXYZ() const = 0;
+  virtual Vec2<float> getTexCoord(const Vec3<float>& coord) const {
+    return Vec2<float>(0, 0);
+  }
 
   // print.
   virtual void printStatus() const {}

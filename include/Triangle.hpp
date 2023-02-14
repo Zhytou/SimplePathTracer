@@ -13,7 +13,7 @@ class Triangle : public Hittable {
   Vec3<float> v1, v2, v3;     // 顶点坐标
   Vec2<float> vt1, vt2, vt3;  // 纹理坐标
   Vec3<float> normal;         // 法向量
-  Material material;         // 材质
+  Material material;          // 材质
 
  public:
   Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
@@ -30,8 +30,8 @@ class Triangle : public Hittable {
   // getter
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
+  virtual Vec2<float> getTexCoord(const Vec3<float>& coord) const override;
   Vec3<float> getRandomPoint() const;
-  Vec2<float> getTexCoord(const Vec3<float>& point) const;
   Material getMaterial() const;
   float getSize() const;
 

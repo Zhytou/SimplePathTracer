@@ -17,6 +17,7 @@ namespace sre {
 class Tracer {
  private:
   BVH *scenes;
+  std::vector<Hittable *> objects;
   Camera camera;
   Light light;
   size_t maxDepth;

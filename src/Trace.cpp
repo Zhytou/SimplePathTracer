@@ -145,14 +145,13 @@ void Tracer::loadExampleScene() {
   triangles.emplace_back(15, Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5, 1),
                          Vec3<float>(1.5, -1.5, 3), m);
 
-  std::vector<Hittable *> trianglePointers;
   for (const auto &triangle : triangles) {
-    Hittable *ptr = new Triangle(triangle);
-    trianglePointers.push_back(ptr);
+    Hittable *obj = new Triangle(triangle);
+    objects.push_back(obj);
   }
 
-  std::sort(trianglePointers.begin(), trianglePointers.end(), BVH::zCmp);
-  scenes = new BVH(trianglePointers, 0, trianglePointers.size());
+  std::sort(objects.begin(), objects.end(), BVH::zCmp);
+  scenes = new BVH(objects, 0, objects.size());
 
   printStatus();
 }
@@ -336,7 +335,6 @@ bool Tracer::loadModel(
     actualMaterials.emplace_back(actualMaterial);
   }
 
-  std::vector<Hittable *> trianglePointers;
   size_t id = 0;
   for (const auto &shape : shapes) {
     assert(shape.mesh.material_ids.size() ==
@@ -384,16 +382,16 @@ bool Tracer::loadModel(
       if (material.isEmissive()) {
         light.setLight(triangle);
       }
-      Hittable *trianglePointer =
+      Hittable *obj =
           new Triangle(id, points[0], points[1], points[2], point_textures[0],
                        point_textures[1], point_textures[2], normal, material);
-      trianglePointers.push_back(trianglePointer);
+      objects.push_back(obj);
       id += 1;
     }
   }
 
   // ? 为什么不排序得到的渲染结果和排序一样
-  scenes = new BVH(trianglePointers, 0, trianglePointers.size());
+  scenes = new BVH(objects, 0, objects.size());
   return true;
 }
 
@@ -456,13 +454,13 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
-  Vec2<float> texCoord(0, 0);
 
-  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion(texCoord);
+  Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
+  return Vec3<float>(1, 1, 1) * res.material.getDiffusion(texCoord);
 
   float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
-  float dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
-                  // ray.getOrigin());
+  float dis =
+      depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint, ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
   if (res.material.isEmissive()) {
@@ -470,8 +468,9 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
     // 直接光照 ——节省路径（自己打过去）
-    // TODO 根据命中三角形ID找到纹理坐标
-
+    assert(res.id >= 0 && res.id < objects.size());
+    Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
+    // std::cout << texCoord.u << ' ' << texCoord.v << '\n';
     size_t id = -1;
     float area = 0;
     Vec3<float> lightPoint;
@@ -491,8 +490,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     }
 
     float pdf = 1 / (2 * PI);
-    dis = 1;  // depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint,
-              // ray.getOrigin());
+    dis = depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint, ray.getOrigin());
 
     // 间接光照
     if (res.material.isDiffusive()) {
