@@ -29,8 +29,8 @@ void Tracer::loadExampleScene() {
   camera.setWidth(500);
   camera.setHeight(500);
   camera.setFovy(90);
-  camera.setPosition(0, 0, -eyePosZ);
-  camera.setTarget(0, 0, -1.5);
+  camera.setEye(0, 0, -eyePosZ);
+  camera.setLookAt(0, 0, -1.5);
   camera.setWorld(0, 1, 0);
 
   // Scene-Box-h,w,l
@@ -281,8 +281,8 @@ bool Tracer::loadConfiguration(
   camera.setWidth(width);
   camera.setHeight(height);
   camera.setFovy(fovy);
-  camera.setPosition(xyzs[0][0], xyzs[0][1], xyzs[0][2]);
-  camera.setTarget(xyzs[1][0], xyzs[1][1], xyzs[1][2]);
+  camera.setEye(xyzs[0][0], xyzs[0][1], xyzs[0][2]);
+  camera.setLookAt(xyzs[1][0], xyzs[1][1], xyzs[1][2]);
   camera.setWorld(xyzs[2][0], xyzs[2][1], xyzs[2][2]);
   return true;
 }
@@ -391,6 +391,7 @@ bool Tracer::loadModel(
   }
 
   // ? 为什么不排序得到的渲染结果和排序一样
+  // std::sort(objects.begin(), objects.end(), BVHNode::zCmp);
   scenes = new BVH(objects, 0, objects.size());
   return true;
 }
@@ -412,6 +413,30 @@ void Tracer::load(const std::string &pathName, const std::string &modelName,
     return;
   }
 
+  // Boundary
+  // Vec3<float> lookat = camera.getLookAt();
+  // Vec3<float> axisZ = camera.getAxisZ();
+  // Vec3<float> maxXYZ = scenes->getMaxXYZ();
+  // Vec3<float> minXYZ = scenes->getMinXYZ();
+
+  // float tx = 0, ty = 0, tz = 0;
+  // if (axisZ.x >= 0) {
+  //   tx = std::max(0.0f, (maxXYZ.x - lookat.x) / axisZ.x);
+  // } else {
+  //   tx = std::max(0.0f, (minXYZ.x - lookat.x) / axisZ.x);
+  // }
+  // if (axisZ.y >= 0) {
+  //   ty = std::max(0.0f, (maxXYZ.y - lookat.y) / axisZ.y);
+  // } else {
+  //   ty = std::max(0.0f, (minXYZ.y - lookat.y) / axisZ.y);
+  // }
+  // if (axisZ.z >= 0) {
+  //   tz = std::max(0.0f, (maxXYZ.z - lookat.z) / axisZ.z);
+  // } else {
+  //   tz = std::max(0.0f, (minXYZ.z - lookat.z) / axisZ.z);
+  // }
+  // lookat += axisZ * std::max(tx, std::max(ty, tz));
+  // camera.setLookAt(lookat.x, lookat.y, lookat.z);
   printStatus();
 }
 
@@ -456,6 +481,10 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
 
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
+  auto diffuse = res.material.getDiffusion(texCoord);
+  if (diffuse.x !=0 && diffuse.y != 0 && diffuse.z != 0) {
+    std::cout << "hit success, id = " << res.id << '\n';
+  }
   return Vec3<float>(1, 1, 1) * res.material.getDiffusion(texCoord);
 
   float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
