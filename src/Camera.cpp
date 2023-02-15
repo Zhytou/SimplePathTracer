@@ -14,6 +14,8 @@ Ray Camera::getRay(const int& row, const int& col) const {
 int Camera::getWidth() const { return width; }
 int Camera::getHeight() const { return height; }
 Vec3<float> Camera::getEye() const { return eye; }
+Vec3<float> Camera::getLookAt() const { return lookat; }
+Vec3<float> Camera::getAxisZ() const { return axisZ; }
 
 // setter.
 void Camera::setWidth(const int& w) {
@@ -28,13 +30,13 @@ void Camera::setFovy(const float& theta) {
   fovy = theta;
   update();
 }
-void Camera::setPosition(const float& x, const float& y, const float& z) {
+void Camera::setEye(const float& x, const float& y, const float& z) {
   eye.x = x;
   eye.y = y;
   eye.z = z;
   update();
 }
-void Camera::setTarget(const float& x, const float& y, const float& z) {
+void Camera::setLookAt(const float& x, const float& y, const float& z) {
   lookat.x = x;
   lookat.y = y;
   lookat.z = z;

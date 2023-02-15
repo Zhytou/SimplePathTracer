@@ -34,13 +34,15 @@ class Camera {
   int getWidth() const;
   int getHeight() const;
   Vec3<float> getEye() const;
+  Vec3<float> getLookAt() const;
+  Vec3<float> getAxisZ() const;
 
   // setter.
   void setWidth(const int& w);
   void setHeight(const int& h);
   void setFovy(const float& theta);
-  void setPosition(const float& x, const float& y, const float& z);
-  void setTarget(const float& x, const float& y, const float& z);
+  void setEye(const float& x, const float& y, const float& z);
+  void setLookAt(const float& x, const float& y, const float& z);
   void setWorld(const float& x, const float& y, const float& z);
 
  private:
