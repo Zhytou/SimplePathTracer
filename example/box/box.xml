@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<camera type="perspective" width="100" height="100" fovy="90">
+	<eye x="0", y="0", z="-4"/> 
+	<lookat x="0", y="0", z="-2"/> 
+	<up x="0.0", y="1.0", z="0.0"/> 
+</camera>
+<light mtlname="Light" radiance="34.0, 24.0, 8.0"/>
+
