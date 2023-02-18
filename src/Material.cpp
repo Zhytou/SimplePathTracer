@@ -23,14 +23,14 @@ Vec3<float> Material::getDiffusion(const Vec2<float>& texCoord) const {
   if (diffuseTexture == nullptr) {
     return diffusion;
   } else {
-    return diffuseTexture->getColorAt(texCoord);
+    return diffuseTexture->getColorAt(texCoord) * diffusion;
   }
 }
 Vec3<float> Material::getSpecularity(const Vec2<float>& texCoord) const {
   if (specularTexture == nullptr) {
     return specularity;
   } else {
-    return specularTexture->getColorAt(texCoord);
+    return specularTexture->getColorAt(texCoord) * specularity;
   }
 }
 Vec3<float> Material::getTransmittance(const Vec2<float>& texCoord) const {
@@ -89,7 +89,7 @@ void Material::setSpecularTexture(const std::string& st) {
 
 // print.
 void Material::printStatus() const {
-  std::cout << "material" << '\n'
+  std::cout << "material " << name << '\n'
             << "diffuse: " << diffusion.x << '\t' << diffusion.y << '\t'
             << diffusion.z << '\n'
             << "specular: " << specularity.x << '\t' << specularity.y << '\t'

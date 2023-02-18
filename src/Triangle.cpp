@@ -157,6 +157,7 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
 void Triangle::printStatus() const {
   std::cout << "triangle: \n"
             << "id: " << this->getId() << '\n'
+            << "material: " << material.getName() << '\n'
             << "vertex 1: " << v1.x << '\t' << v1.y << '\t' << v1.z << '\n'
             << "vertex 2: " << v2.x << '\t' << v2.y << '\t' << v2.z << '\n'
             << "vertex 3: " << v3.x << '\t' << v3.y << '\t' << v3.z << '\n'
