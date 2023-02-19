@@ -51,8 +51,8 @@ void Tracer::loadExampleScene() {
   m.setRefraction(0);
   triangles.emplace_back(0, Vec3<float>(-0.5, 2, 2), Vec3<float>(-0.5, 2, 0.5),
                          Vec3<float>(0.5, 2, 0.5), m);
-  triangles.emplace_back(1, Vec3<float>(-0.5, 2, 2), Vec3<float>(0.5, 2, 2),
-                         Vec3<float>(0.5, 2, 0.5), m);
+  triangles.emplace_back(1, Vec3<float>(-0.5, 2, 2), Vec3<float>(0.5, 2, 0.5),
+                         Vec3<float>(0.5, 2, 2), m);
   triangles.emplace_back(2, Vec3<float>(-0.5, 2, -2),
                          Vec3<float>(-0.5, 2, -0.5), Vec3<float>(0.5, 2, -0.5),
                          m);
@@ -72,8 +72,8 @@ void Tracer::loadExampleScene() {
   m.setShiness(1);
   m.setRefraction(0);
   triangles.emplace_back(4, Vec3<float>(-w * 3, -h, l),
-                         Vec3<float>(-w * 3, -h, -1),
-                         Vec3<float>(w * 3, -h, -1), m);
+                         Vec3<float>(w * 3, -h, -1),
+                         Vec3<float>(-w * 3, -h, -1), m);
   triangles.emplace_back(5, Vec3<float>(-w * 3, -h, l),
                          Vec3<float>(w * 3, -h, l), Vec3<float>(w * 3, -h, -1),
                          m);
@@ -87,8 +87,8 @@ void Tracer::loadExampleScene() {
   m.setRefraction(0);
   triangles.emplace_back(6, Vec3<float>(-w, h, l), Vec3<float>(-w, h, -1),
                          Vec3<float>(w, h, -1), m);
-  triangles.emplace_back(7, Vec3<float>(-w, h, l), Vec3<float>(w, h, l),
-                         Vec3<float>(w, h, -1), m);
+  triangles.emplace_back(7, Vec3<float>(-w, h, l), Vec3<float>(w, h, -1),
+                         Vec3<float>(w, h, l), m);
 
   // Scene-BackWall
   m.setEmissive(false);
@@ -99,8 +99,8 @@ void Tracer::loadExampleScene() {
   m.setRefraction(0);
   triangles.emplace_back(8, Vec3<float>(-w, -h, l), Vec3<float>(-w, h, l),
                          Vec3<float>(w, h, l), m);
-  triangles.emplace_back(9, Vec3<float>(-w, -h, l), Vec3<float>(w, -h, l),
-                         Vec3<float>(w, h, l), m);
+  triangles.emplace_back(9, Vec3<float>(-w, -h, l), Vec3<float>(w, h, l),
+                         Vec3<float>(w, -h, l), m);
 
   // Scene-RightWall
   m.setEmissive(false);
@@ -109,8 +109,8 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(1, 1, 1);
   m.setShiness(1);
   m.setRefraction(0);
-  triangles.emplace_back(10, Vec3<float>(-w, h, 0), Vec3<float>(-w, -h, 0),
-                         Vec3<float>(-w, h, l), m);
+  triangles.emplace_back(10, Vec3<float>(-w, h, 0), Vec3<float>(-w, h, l),
+                         Vec3<float>(-w, -h, 0), m);
   triangles.emplace_back(11, Vec3<float>(-w, h, l), Vec3<float>(-w, -h, l),
                          Vec3<float>(-w, -h, 0), m);
 
@@ -123,27 +123,38 @@ void Tracer::loadExampleScene() {
   m.setRefraction(0);
   triangles.emplace_back(12, Vec3<float>(w, h, 0), Vec3<float>(w, -h, 0),
                          Vec3<float>(w, h, l), m);
-  triangles.emplace_back(13, Vec3<float>(w, h, l), Vec3<float>(w, -h, l),
-                         Vec3<float>(w, -h, 0), m);
+  triangles.emplace_back(13, Vec3<float>(w, h, l), Vec3<float>(w, -h, 0),
+                         Vec3<float>(w, -h, l), m);
 
   // Scene-Shape
+  // m.setEmissive(false);
+  // m.setDiffusion(0, 0.9, 0);
+  // m.setSpecularity(0, 0, 0);
+  // m.setTransmittance(1, 1, 1);
+  // m.setShiness(1);
+  // m.setRefraction(0);
+  // triangles.emplace_back(14, Vec3<float>(-1.2, 1, 1),
+  //                        Vec3<float>(-0.25, -1.5, 1),
+  //                        Vec3<float>(-1.5, -1.5, 3), m);
+  // m.setEmissive(false);
+  // m.setDiffusion(0, 0, 0.8);
+  // m.setSpecularity(0, 0, 0);
+  // m.setTransmittance(1, 1, 1);
+  // m.setShiness(1);
+  // m.setRefraction(0);
+  // triangles.emplace_back(15, Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5,
+  // 1),
+  //                        Vec3<float>(1.5, -1.5, 3), m);
+
   m.setEmissive(false);
-  m.setDiffusion(0, 0.9, 0);
+  m.setDiffusion(0, 0, 0);
   m.setSpecularity(0, 0, 0);
-  m.setTransmittance(1, 1, 1);
+  m.setTransmittance(0.8, 1, 0.95);
   m.setShiness(1);
-  m.setRefraction(0);
-  triangles.emplace_back(14, Vec3<float>(-1.2, 1, 1),
-                         Vec3<float>(-0.25, -1.5, 1),
-                         Vec3<float>(-1.5, -1.5, 3), m);
-  m.setEmissive(false);
-  m.setDiffusion(0, 0, 0.8);
-  m.setSpecularity(0, 0, 0);
-  m.setTransmittance(1, 1, 1);
-  m.setShiness(1);
-  m.setRefraction(0);
-  triangles.emplace_back(15, Vec3<float>(1.2, 1, 1), Vec3<float>(0.25, -1.5, 1),
-                         Vec3<float>(1.5, -1.5, 3), m);
+  m.setRefraction(1.5);
+  triangles.emplace_back(14, Vec3<float>(-1.2, 1, 0.2),
+                         Vec3<float>(1.2, 1, 0.2), Vec3<float>(0, -1.5, 0.2),
+                         m);
 
   for (const auto &triangle : triangles) {
     Hittable *obj = new Triangle(triangle);
@@ -305,6 +316,8 @@ bool Tracer::loadModel(
     Material actualMaterial;
 
     auto itr = lightRadiances.find(material.name);
+    actualMaterial.setName(material.name);
+
     if (itr != lightRadiances.end()) {
       actualMaterial.setEmissive(true);
       actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
@@ -361,10 +374,17 @@ bool Tracer::loadModel(
         point_textures[point_i].v = attrib.texcoords[texcoord_index * 2 + 1];
       }
 
+      bool normalValid = true;
       Vec3<float> point_normals[3];
       for (size_t point_i = 0; point_i < 3; point_i++) {
         int normal_index =
             shape.mesh.indices[face_i * 3 + point_i].normal_index;
+
+        if (normal_index * 3 + 0 < 0 ||
+            normal_index * 3 + 2 >= attrib.normals.size()) {
+          normalValid = false;
+          break;
+        }
 
         point_normals[point_i].x = attrib.normals[normal_index * 3 + 0];
         point_normals[point_i].y = attrib.normals[normal_index * 3 + 1];
@@ -373,8 +393,19 @@ bool Tracer::loadModel(
 
       Vec3<float> normal =
           Vec3<float>::cross(points[1] - points[0], points[2] - points[0]);
-      if (Vec3<float>::dot(point_normals[0], normal) < 0) {
-        normal = -normal;
+      if (normalValid && (point_normals[0] == point_normals[1] ||
+                          point_normals[0] == point_normals[2] ||
+                          point_normals[1] == point_normals[2])) {
+        if (point_normals[0] == point_normals[1] ||
+            point_normals[0] == point_normals[2]) {
+          normal = point_normals[0];
+        } else {
+          normal = point_normals[1];
+        }
+      } else {
+        if (Vec3<float>::dot(point_normals[0], normal) < 0) {
+          normal = -normal;
+        }
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
@@ -391,7 +422,8 @@ bool Tracer::loadModel(
   }
 
   // ? 为什么不排序得到的渲染结果和排序一样
-  // std::sort(objects.begin(), objects.end(), BVHNode::zCmp);
+  // std::vector<Hittable *> objectsCopy(objects);
+  // std::sort(objectsCopy.begin(), objectsCopy.end(), BVHNode::zCmp);
   scenes = new BVH(objects, 0, objects.size());
   return true;
 }
@@ -413,30 +445,6 @@ void Tracer::load(const std::string &pathName, const std::string &modelName,
     return;
   }
 
-  // Boundary
-  // Vec3<float> lookat = camera.getLookAt();
-  // Vec3<float> axisZ = camera.getAxisZ();
-  // Vec3<float> maxXYZ = scenes->getMaxXYZ();
-  // Vec3<float> minXYZ = scenes->getMinXYZ();
-
-  // float tx = 0, ty = 0, tz = 0;
-  // if (axisZ.x >= 0) {
-  //   tx = std::max(0.0f, (maxXYZ.x - lookat.x) / axisZ.x);
-  // } else {
-  //   tx = std::max(0.0f, (minXYZ.x - lookat.x) / axisZ.x);
-  // }
-  // if (axisZ.y >= 0) {
-  //   ty = std::max(0.0f, (maxXYZ.y - lookat.y) / axisZ.y);
-  // } else {
-  //   ty = std::max(0.0f, (minXYZ.y - lookat.y) / axisZ.y);
-  // }
-  // if (axisZ.z >= 0) {
-  //   tz = std::max(0.0f, (maxXYZ.z - lookat.z) / axisZ.z);
-  // } else {
-  //   tz = std::max(0.0f, (minXYZ.z - lookat.z) / axisZ.z);
-  // }
-  // lookat += axisZ * std::max(tx, std::max(ty, tz));
-  // camera.setLookAt(lookat.x, lookat.y, lookat.z);
   printStatus();
 }
 
@@ -480,14 +488,9 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
-  Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
-  auto diffuse = res.material.getDiffusion(texCoord);
-  if (diffuse.x !=0 && diffuse.y != 0 && diffuse.z != 0) {
-    std::cout << "hit success, id = " << res.id << '\n';
-  }
-  return Vec3<float>(1, 1, 1) * res.material.getDiffusion(texCoord);
-
-  float cosine = fabs(Vec3<float>::dot(-ray.getDirection(), res.normal));
+  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion(Vec2<float>(0, 0));
+  float cosine =
+      std::max(0.0f, Vec3<float>::dot(-ray.getDirection(), res.normal));
   float dis =
       depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint, ray.getOrigin());
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
@@ -496,10 +499,11 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     // 直接光照 ——发光物
     directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
-    // 直接光照 ——节省路径（自己打过去）
     assert(res.id >= 0 && res.id < objects.size());
     Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
     // std::cout << texCoord.u << ' ' << texCoord.v << '\n';
+
+    // 直接光照 ——节省路径（自己打过去）
     size_t id = -1;
     float area = 0;
     Vec3<float> lightPoint;
@@ -513,7 +517,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
     HitResult tmpRes;
     scenes->hit(tmpRay, tmpRes);
-    if (tmpRes.isHit && tmpRes.id == id) {
+    if (tmpRes.isHit && fabs(dis - tmpRes.distance) < 0.0001f) {
       directLight += radiance * res.material.getDiffusion(texCoord) * cosine /
                      (dis * dis * pdfLight);
     }
@@ -542,12 +546,12 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
 
     if (res.material.isTransmissive()) {
       // 折射
-      Ray refractRay =
-          Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
-                                  res.material.getRefraction());
+      Ray refractRay = Ray::standardRefractRay(res.hitPoint - res.normal * 0.1f,
+                                               ray.getDirection(), res.normal,
+                                               res.material.getRefraction());
       Vec3<float> refractLight = trace(refractRay, depth + 1);
-      indirectLight += refractLight * res.material.getTransmittance(texCoord) *
-                       cosine / (dis * dis);
+      indirectLight +=
+          refractLight * res.material.getTransmittance() * cosine / (dis * dis);
     }
 
     indirectLight /= pdf;
@@ -567,6 +571,7 @@ void Tracer::printStatus() {
             << "triange number: "
             << (scenes == nullptr ? 0 : scenes->getNodeNum()) << '\n';
   // scenes
+  // scenes->getAABB().printStatus();
   // scenes->printStatus();
 }
 }  // namespace sre
