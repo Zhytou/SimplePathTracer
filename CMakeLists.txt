@@ -12,10 +12,13 @@ add_library(sre  STATIC ./src/AABB.cpp ./src/BVH.cpp ./src/Camera.cpp ./src/Ligh
 
 add_executable(main ./src/main.cpp)
 
-add_executable(xmltest ./test/xmlTest.cpp ./third-parties/tinyxml2/tinyxml2.cpp ./third-parties/pugixml/src/pugixml.cpp)
 add_executable(hittest ./test/hitTest.cpp)
 add_executable(reflecttest ./test/reflectTest.cpp)
+add_executable(refracttest ./test/refractTest.cpp)
 add_executable(materialtest ./test/materialTest.cpp)
 
 target_link_libraries(main sre /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)
+target_link_libraries(hittest sre /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)
+target_link_libraries(reflecttest sre /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)
+target_link_libraries(refracttest sre /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)
 target_link_libraries(materialtest sre /usr/local/lib/libopencv_core.so /usr/local/lib/libopencv_imgcodecs.so /usr/local/lib/libopencv_highgui.so)

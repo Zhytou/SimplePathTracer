@@ -1,8 +1,8 @@
 #include <iostream>
 #include <vector>
 
-#include "../src/Camera.hpp"
-#include "../src/Triangle.hpp"
+#include "../include/Camera.hpp"
+#include "../include/Triangle.hpp"
 
 int main() {
   /*
@@ -32,11 +32,11 @@ int main() {
      }
    }
  */
-  Vec3<float> point(0, 0, 0);
-  Vec3<float> normal(0, 0, 1);
-  Vec3<float> idirection(0, 0.5, 0.5)
+  sre::Vec3<float> point(0, 0, 0);
+  sre::Vec3<float> normal(0, 0, 1);
+  sre::Vec3<float> idirection(0, 0.5, 0.5);
 
-      Ray ray = randomReflectRay(point, idirection, normal);
+  sre::Ray ray = sre::Ray::randomReflectRay(point, idirection, normal);
   auto origin = ray.getOrigin();
   auto direction = ray.getDirection();
 
