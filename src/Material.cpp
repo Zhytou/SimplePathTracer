@@ -44,7 +44,7 @@ bool Material::isDiffusive() const {
 bool Material::isSpecular() const {
   return specularity.x != 0 || specularity.y != 0 || specularity.z != 0;
 }
-bool Material::isTransmissive() const { return refraction > 1; }
+bool Material::isTransmissive() const { return refraction > 1.0f; }
 
 void Material::setName(const std::string& n) { name = n; }
 void Material::setEmissive(bool e) { emisssive = e; }
