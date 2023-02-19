@@ -18,3 +18,9 @@ Tr 1 1 1
 Ns 1
 Ni 1
 map_Kd textures/Wallpaper.jpg
+newmtl Glass
+Kd 0 0 0
+Ks 0 0 0
+Tr 0.8 1 0.95
+Ns 1
+Ni 1.5
