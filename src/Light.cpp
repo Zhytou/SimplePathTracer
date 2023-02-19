@@ -6,7 +6,7 @@
 namespace sre {
 void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
                            float& area) const {
-  assert(lightAreas.size() == lightTriangles.size());
+  assert(lightAreas.size() != 0 && lightAreas.size() == lightTriangles.size());
   int idx = randInt(lightAreas.size());
   int triangleIdx = randInt(lightTriangles[idx].size());
 
