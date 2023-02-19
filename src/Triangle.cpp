@@ -109,8 +109,9 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> normal = this->normal;
 
   if (Vec3<float>::dot(normal, direction) > 0) {
-    // 入射光线与法线必须呈钝角，但后续判断交点是否在三角形内部，需要使用原生法向量
-    normal = -normal;
+    res.isHit = false;
+    res.id = this->getId();
+    return;
   }
 
   if (Vec3<float>::dot(normal, direction) == 0) {
