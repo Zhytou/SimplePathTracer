@@ -33,9 +33,7 @@ Vec3<float> Material::getSpecularity(const Vec2<float>& texCoord) const {
     return specularTexture->getColorAt(texCoord) * specularity;
   }
 }
-Vec3<float> Material::getTransmittance(const Vec2<float>& texCoord) const {
-  return transmittance;
-}
+Vec3<float> Material::getTransmittance() const { return transmittance; }
 float Material::getShiness() const { return shiness; }
 float Material::getRefraction() const { return refraction; }
 

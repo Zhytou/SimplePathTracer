@@ -35,7 +35,7 @@ class Material {
   Vec3<float> getAmbience(const Vec2<float>& texCoord) const;
   Vec3<float> getDiffusion(const Vec2<float>& texCoord) const;
   Vec3<float> getSpecularity(const Vec2<float>& texCoord) const;
-  Vec3<float> getTransmittance(const Vec2<float>& texCoord) const;
+  Vec3<float> getTransmittance() const;
   float getShiness() const;
   float getRefraction() const;
   bool isEmissive() const;
