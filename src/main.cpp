@@ -12,9 +12,9 @@ int main() {
   Tracer t(3, 5);
   // t.loadExampleScene();
   // t.load("../example/box/", "box.obj", "box.xml");
-  // t.load("../example/veach-mis/", "veach-mis.obj", "veach-mis.xml");
+  t.load("../example/veach-mis/", "veach-mis.obj", "veach-mis.xml");
   // t.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
-  t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
+  // t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
   auto img = t.render();
   imshow(windName, img);
 

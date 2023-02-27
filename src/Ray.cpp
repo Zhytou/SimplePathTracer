@@ -1,5 +1,7 @@
 #include "../include/Ray.hpp"
 
+#include <iostream>
+
 namespace sre {
 Ray::Ray(const Vec3<float> &org, const Vec3<float> &dir)
     : origin(org), direction(Vec3<float>::normalize(dir)) {}
@@ -19,12 +21,29 @@ Ray Ray::standardRefractRay(const Vec3<float> &point,
   float sineIncidence = sqrt(1 - cosineIncidence * cosineIncidence);
   float sineRefraction = sineIncidence / refraction;
   float cosineRefraction = sqrt(1 - sineRefraction * sineRefraction);
+
+  // std::cout << cosineIncidence << '\t' << sineIncidence << '\t'
+  //           << sineRefraction << '\t' << cosineRefraction << '\n';
+
   Vec3<float> directionParallelN = normal * Vec3<float>::dot(normal, direction);
   Vec3<float> directionVerticalN = direction - directionParallelN;
-  Vec3<float> ndirectionParallelN =
-      directionParallelN / cosineIncidence * cosineRefraction;
-  Vec3<float> ndirectionVerticalN =
-      directionVerticalN / sineIncidence * sineRefraction;
+
+  // std::cout << "Paralle d:" << directionParallelN.x << '\t'
+  //           << directionParallelN.y << '\t' << directionParallelN.z << '\n';
+  // std::cout << "Vertical d:" << directionVerticalN.x << '\t'
+  //           << directionVerticalN.y << '\t' << directionVerticalN.z << '\n';
+
+  Vec3<float> ndirectionParallelN(0, 0, 0);
+  if (cosineIncidence != 0) {
+    ndirectionParallelN =
+        directionParallelN / cosineIncidence * cosineRefraction;
+  }
+
+  Vec3<float> ndirectionVerticalN(0, 0, 0);
+  if (sineIncidence != 0) {
+    ndirectionVerticalN = directionVerticalN / sineIncidence * sineRefraction;
+  }
+
   return Ray(point, ndirectionParallelN + ndirectionVerticalN);
 }
 

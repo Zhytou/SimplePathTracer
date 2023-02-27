@@ -152,8 +152,8 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(0.8, 1, 0.95);
   m.setShiness(1);
   m.setRefraction(1.5);
-  triangles.emplace_back(14, Vec3<float>(-1.2, 1, 0.2),
-                         Vec3<float>(1.2, 1, 0.2), Vec3<float>(0, -1.5, 0.2),
+  triangles.emplace_back(14, Vec3<float>(-0.6, 0.6, 0.2),
+                         Vec3<float>(0.6, 0.6, 0.2), Vec3<float>(0, -0.6, 0.2),
                          m);
 
   for (const auto &triangle : triangles) {
@@ -161,8 +161,9 @@ void Tracer::loadExampleScene() {
     objects.push_back(obj);
   }
 
-  std::sort(objects.begin(), objects.end(), BVH::zCmp);
-  scenes = new BVH(objects, 0, objects.size());
+  std::vector<Hittable *> objectsCopy(objects);
+  std::sort(objectsCopy.begin(), objectsCopy.end(), BVHNode::zCmp);
+  scenes = new BVH(objectsCopy, 0, objects.size());
 
   printStatus();
 }
@@ -422,9 +423,9 @@ bool Tracer::loadModel(
   }
 
   // ? 为什么不排序得到的渲染结果和排序一样
-  // std::vector<Hittable *> objectsCopy(objects);
-  // std::sort(objectsCopy.begin(), objectsCopy.end(), BVHNode::zCmp);
-  scenes = new BVH(objects, 0, objects.size());
+  std::vector<Hittable *> objectsCopy(objects);
+  std::sort(objectsCopy.begin(), objectsCopy.end(), BVHNode::zCmp);
+  scenes = new BVH(objectsCopy, 0, objects.size());
   return true;
 }
 
@@ -491,8 +492,10 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   // return Vec3<float>(1, 1, 1) * res.material.getDiffusion(Vec2<float>(0, 0));
   float cosine =
       std::max(0.0f, Vec3<float>::dot(-ray.getDirection(), res.normal));
-  float dis =
-      depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint, ray.getOrigin());
+  float dis = Vec3<float>::distance(res.hitPoint, ray.getOrigin());
+  Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
+  // std::cout << texCoord.u << ' ' << texCoord.v << '\n';
+
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
   if (res.material.isEmissive()) {
@@ -500,9 +503,6 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     directLight = res.material.getEmission() * cosine / (dis * dis);
   } else {
     assert(res.id >= 0 && res.id < objects.size());
-    Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
-    // std::cout << texCoord.u << ' ' << texCoord.v << '\n';
-
     // 直接光照 ——节省路径（自己打过去）
     size_t id = -1;
     float area = 0;
@@ -521,43 +521,39 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
       directLight += radiance * res.material.getDiffusion(texCoord) * cosine /
                      (dis * dis * pdfLight);
     }
-
-    float pdf = 1 / (2 * PI);
-    dis = depth == 0 ? 1 : Vec3<float>::distance(res.hitPoint, ray.getOrigin());
-
-    // 间接光照
-    if (res.material.isDiffusive()) {
-      // 漫反射
-      Ray reflectRay =
-          Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight += reflectLight * res.material.getDiffusion(texCoord) *
-                       cosine / (dis * dis);
-    }
-
-    if (res.material.isSpecular()) {
-      // 镜面反射
-      Ray reflectRay =
-          Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight += reflectLight * res.material.getSpecularity(texCoord) *
-                       pow(cosine, res.material.getShiness()) / (dis * dis);
-    }
-
-    if (res.material.isTransmissive()) {
-      // 折射
-      Ray refractRay = Ray::standardRefractRay(res.hitPoint - res.normal * 0.1f,
-                                               ray.getDirection(), res.normal,
-                                               res.material.getRefraction());
-      Vec3<float> refractLight = trace(refractRay, depth + 1);
-      indirectLight +=
-          refractLight * res.material.getTransmittance() * cosine / (dis * dis);
-    }
-
-    indirectLight /= pdf;
   }
 
-  return (directLight + indirectLight) / thresholdP;
+  float pdf = 1 / (2 * PI);
+  dis = Vec3<float>::distance(res.hitPoint, ray.getOrigin());
+
+  // 间接光照
+  if (res.material.isDiffusive()) {
+    // 漫反射
+    Ray reflectRay =
+        Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+    indirectLight += reflectLight * res.material.getDiffusion(texCoord) *
+                     cosine / (dis * dis * pdf);
+  }
+  if (res.material.isSpecular()) {
+    // 镜面反射
+    Ray reflectRay =
+        Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Vec3<float> reflectLight = trace(reflectRay, depth + 1);
+    indirectLight += reflectLight * res.material.getSpecularity(texCoord) *
+                     pow(cosine, res.material.getShiness()) / (dis * dis);
+  }
+  if (res.material.isTransmissive()) {
+    // 折射
+    Ray refractRay = Ray::standardRefractRay(res.hitPoint - res.normal * 1,
+                                             ray.getDirection(), res.normal,
+                                             res.material.getRefraction());
+    Vec3<float> refractLight = trace(refractRay, depth + 1);
+    indirectLight +=
+        refractLight * res.material.getTransmittance() * cosine / (dis * dis);
+  }
+
+  return (directLight * 0.3 + indirectLight * 0.7) / thresholdP;
 }
 
 void Tracer::printStatus() {
