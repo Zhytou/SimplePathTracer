@@ -243,19 +243,7 @@ bool Tracer::loadConfiguration(
     }
   }
 
-  // TODO: 修改loadConfig逻辑，保证staircase也能被正常解读
-  // 读取一个以‘/>’结尾的xml tag
-  // auto getAnXMLTag = [&ifs](std::string &buf) {
-  //   buf.clear();
-  //   char ch;
-  //   ifs >> ch;
-  //   while (ch != '\/') {
-  //     buf.push_back(ch);
-  //   }
-  //   ifs >> ch;
-  //   return !ifs.eof();
-  // };
-  // light radiance
+  // TODO: 修改loadConfig逻辑，保证staircase.xml也能被正常解读
   while (getline(ifs, buf)) {
     std::string mtlname;
     Vec3<float> radiance;
@@ -478,57 +466,57 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     return Vec3<float>(0, 0, 0);
   }
 
-  float possibility = randFloat(1);
-  if (possibility > thresholdP) {
-    return Vec3<float>(0, 0, 0);
-  }
-
   HitResult res;
   scenes->hit(ray, res);
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
+  assert(res.id >= 0 && res.id < objects.size());
 
-  // return Vec3<float>(1, 1, 1) * res.material.getDiffusion(Vec2<float>(0, 0));
   float cosine =
       std::max(0.0f, Vec3<float>::dot(-ray.getDirection(), res.normal));
   float dis = Vec3<float>::distance(res.hitPoint, ray.getOrigin());
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
-  // std::cout << texCoord.u << ' ' << texCoord.v << '\n';
 
   Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
 
   if (res.material.isEmissive()) {
     // 直接光照 ——发光物
     directLight = res.material.getEmission() * cosine / (dis * dis);
-  } else {
-    assert(res.id >= 0 && res.id < objects.size());
-    // 直接光照 ——节省路径（自己打过去）
-    size_t id = -1;
-    float area = 0;
-    Vec3<float> lightPoint;
-    Vec3<float> radiance;
-    light.getRandomPoint(id, lightPoint, radiance, area);
-
-    static float pdfLight = 1 / area;
-    dis = Vec3<float>::distance(res.hitPoint, lightPoint);
-
-    // 检查是否有障碍
-    Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
-    HitResult tmpRes;
-    scenes->hit(tmpRay, tmpRes);
-    if (tmpRes.isHit && fabs(dis - tmpRes.distance) < 0.0001f) {
-      directLight += radiance * res.material.getDiffusion(texCoord) * cosine /
-                     (dis * dis * pdfLight);
-    }
+    return directLight;
   }
 
-  float pdf = 1 / (2 * PI);
+  // 俄罗斯轮盘
+  float possibility = randFloat(1);
+  if (possibility > thresholdP) {
+    return Vec3<float>(0, 0, 0);
+  }
+
+  // 直接光照 ——节省路径（自己打过去）
+  size_t id = -1;
+  float area = 0;
+  Vec3<float> lightPoint;
+  Vec3<float> radiance;
+  light.getRandomPoint(id, lightPoint, radiance, area);
+
+  static float pdfLight = 1 / area;
+  dis = Vec3<float>::distance(res.hitPoint, lightPoint);
+
+  // 检查是否有障碍
+  Ray tmpRay(res.hitPoint, lightPoint - res.hitPoint);
+  HitResult tmpRes;
+  scenes->hit(tmpRay, tmpRes);
+  if (tmpRes.isHit && fabs(dis - tmpRes.distance) < 0.0001f) {
+    directLight += radiance * res.material.getDiffusion(texCoord) * cosine /
+                   (dis * dis * pdfLight);
+  }
+
   dis = Vec3<float>::distance(res.hitPoint, ray.getOrigin());
 
   // 间接光照
   if (res.material.isDiffusive()) {
     // 漫反射
+    static float pdf = 1 / (2 * PI);
     Ray reflectRay =
         Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
     Vec3<float> reflectLight = trace(reflectRay, depth + 1);
@@ -545,15 +533,15 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
   }
   if (res.material.isTransmissive()) {
     // 折射
-    Ray refractRay = Ray::standardRefractRay(res.hitPoint - res.normal * 1,
-                                             ray.getDirection(), res.normal,
-                                             res.material.getRefraction());
+    Ray refractRay =
+        Ray::standardRefractRay(res.hitPoint, ray.getDirection(), res.normal,
+                                res.material.getRefraction());
     Vec3<float> refractLight = trace(refractRay, depth + 1);
     indirectLight +=
         refractLight * res.material.getTransmittance() * cosine / (dis * dis);
   }
 
-  return (directLight * 0.3 + indirectLight * 0.7) / thresholdP;
+  return (directLight + indirectLight) / thresholdP;
 }
 
 void Tracer::printStatus() {
