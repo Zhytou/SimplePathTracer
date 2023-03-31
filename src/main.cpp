@@ -13,13 +13,15 @@ int main() {
   // t.loadExampleScene();
   // t.load("../example/box/", "box.obj", "box.xml");
   // t.load("../example/veach-mis/", "veach-mis.obj", "veach-mis.xml");
-  t.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
-  // t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
+  // t.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
+  t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
   auto img = t.render();
   imshow(windName, img);
 
   if (waitKey(0) == static_cast<int>('s')) {
-    imwrite("cornell-box.bmp", img);
+    cv::Mat img0;
+    img.convertTo(img0, CV_8UC3, 255.0);
+    imwrite("staircase-new.png", img0);
   }
   destroyWindow(windName);
   return 0;
