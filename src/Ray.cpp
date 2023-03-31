@@ -13,51 +13,47 @@ Vec3<float> Ray::getPointAt(const float &t) const {
   return origin + direction * t;
 }
 
-// 折射光线
-Ray Ray::standardRefractRay(const Vec3<float> &point,
-                            const Vec3<float> &direction,
-                            const Vec3<float> &normal, float refraction) {
-  float cosineIncidence = fabs(Vec3<float>::dot(direction, normal));
-  float sineIncidence = sqrt(1 - cosineIncidence * cosineIncidence);
-  float sineRefraction = sineIncidence / refraction;
-  float cosineRefraction = sqrt(1 - sineRefraction * sineRefraction);
-
-  Vec3<float> directionParallelN = normal * Vec3<float>::dot(normal, direction);
-  Vec3<float> directionVerticalN = direction - directionParallelN;
-
-  Vec3<float> ndirectionParallelN(0, 0, 0);
-  if (cosineIncidence != 0) {
-    ndirectionParallelN =
-        directionParallelN / cosineIncidence * cosineRefraction;
-  }
-
-  Vec3<float> ndirectionVerticalN(0, 0, 0);
-  if (sineIncidence != 0) {
-    ndirectionVerticalN = directionVerticalN / sineIncidence * sineRefraction;
-  }
-
-  return Ray(point, ndirectionParallelN + ndirectionVerticalN);
+// 漫反射光线
+Ray Ray::randomReflectRay(const Ray &ray, const Vec3<float> &normal) {
+  Vec3<float> direction(0, 0, 0);
+  do {
+    direction = Vec3<float>::normalize(normal) +
+                Vec3<float>::normalize(Vec3<float>(
+                    randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
+    direction.normalize();
+  } while (Vec3<float>::dot(ray.direction, direction) == -1);
+  return Ray(ray.origin, direction);
 }
 
 // 镜面反射光线
-Ray Ray::standardReflectRay(const Vec3<float> &point,
-                            const Vec3<float> &direction,
-                            const Vec3<float> &normal) {
-  float cosine = Vec3<float>::dot(normal, direction);
-  return Ray(point, direction - normal * 2 * cosine);
+Ray Ray::standardReflectRay(const Ray &ray, const Vec3<float> &normal) {
+  float cosine = Vec3<float>::dot(normal, ray.direction);
+  return Ray(ray.origin, ray.direction - normal * 2 * cosine);
 }
 
-// 漫反射光线
-Ray Ray::randomReflectRay(const Vec3<float> &point,
-                          const Vec3<float> &direction,
-                          const Vec3<float> &normal) {
-  Vec3<float> ndirection(0, 0, 0);
-  do {
-    ndirection = Vec3<float>::normalize(normal) +
-                 Vec3<float>::normalize(Vec3<float>(
-                     randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
-    ndirection.normalize();
-  } while (Vec3<float>::dot(direction, ndirection) == -1);
-  return Ray(point, ndirection);
+// 折射光线
+Ray Ray::standardRefractRay(const Ray &ray, const Vec3<float> &normal,
+                            float ior) {
+  float cosine = Vec3<float>::dot(ray.direction, normal);
+  double etai = 1, etat = ior;
+  Vec3<float> n = normal;
+
+  if (cosine < 0) {
+    cosine = -cosine;
+  } else {
+    std::swap(etai, etat);
+    n = -n;
+  }
+
+  double eta = etai / etat;
+  double k = 1 - eta * eta * (1 - cosine * cosine);
+
+  if (k < 0) {
+    return ray;
+  } else {
+    Vec3<float> direction = ray.direction * eta + n * (eta * cosine - sqrt(k));
+    Vec3<float> origin = ray.origin + direction * 0.5;
+    return Ray(origin, direction);
+  }
 }
 }  // namespace sre
