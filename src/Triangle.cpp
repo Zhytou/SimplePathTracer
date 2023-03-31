@@ -106,7 +106,6 @@ float Triangle::getSize() const {
 void Triangle::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> origin = ray.getOrigin();
   Vec3<float> direction = ray.getDirection();
-  Vec3<float> normal = this->normal;
 
   if (Vec3<float>::dot(normal, direction) > 0) {
     res.isHit = false;
@@ -123,7 +122,7 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
 
   float t = (Vec3<float>::dot(normal, v1) - Vec3<float>::dot(normal, origin)) /
             Vec3<float>::dot(normal, direction);
-  if (t < 0.001) {
+  if (t < 0.1) {
     res.isHit = false;
     res.id = this->getId();
     res.normal = normal;
@@ -132,17 +131,26 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   }
 
   Vec3<float> p = ray.getPointAt(t);
-  Vec3<float> c1 = Vec3<float>::cross(v2 - v1, p - v1);
-  Vec3<float> c2 = Vec3<float>::cross(v3 - v2, p - v2);
-  Vec3<float> c3 = Vec3<float>::cross(v1 - v3, p - v3);
-  if (Vec3<float>::dot(c1, this->normal) < 0 ||
-      Vec3<float>::dot(c2, this->normal) < 0 ||
-      Vec3<float>::dot(c3, this->normal) < 0) {
+  // 重心判断点是否在三角形内部
+  Vec3<float> pe = p - v1;
+  Vec3<float> e1 = v2 - v1;
+  Vec3<float> e2 = v3 - v1;
+
+  float c1 = Vec3<float>::dot(pe, e1);
+  float c2 = Vec3<float>::dot(pe, e2);
+  float c3 = Vec3<float>::dot(e1, e1);
+  float c4 = Vec3<float>::dot(e2, e2);
+  float c5 = Vec3<float>::dot(e1, e2);
+  // c1 = x * c3 + y * c5
+  // c2 = x * c5 + y * c4
+  float x = (c1 * c4 - c2 * c5) / (c3 * c4 - c5 * c5);
+  float y = (c1 * c5 - c2 * c3) / (c5 * c5 - c3 * c4);
+
+  if (x < 0 || y < 0 || x + y > 1) {
     res.isHit = false;
     res.id = this->getId();
-    res.normal = normal;
-    res.distance = t;
     res.hitPoint = p;
+    res.distance = t;
     return;
   }
 
