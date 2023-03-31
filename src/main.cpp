@@ -5,7 +5,7 @@
 using namespace cv;
 using namespace sre;
 
-int main() {
+int main(int argc, char *argv[]) {
   char windName[] = "simple render engine";
   namedWindow(windName, 0);
 
@@ -14,7 +14,9 @@ int main() {
   // t.load("../example/box/", "box.obj", "box.xml");
   // t.load("../example/veach-mis/", "veach-mis.obj", "veach-mis.xml");
   // t.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
-  t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
+  // t.load("../example/staircase/", "stairscase.obj", "staircase.xml");
+  assert(argc == 4);
+  t.load(argv[1], argv[2], argv[3]);
   auto img = t.render();
   imshow(windName, img);
 

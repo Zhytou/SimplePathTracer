@@ -9,10 +9,11 @@ mkdir ./build
 echo "compiling"
 cd ./build
 cmake ../
-make sre
+make main
 
 # 进行测试
 echo "testing"
-./sre ../example/cornell-box/ cornell-box
-./sre ../example/veach-mis/ veach-mis
-./sre ../example/staircase/ staircase
+./main ../example/box/ box.obj box.xml
+./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
+./main ../example/veach-mis/ veach-mis.obj veach-mis.xml
+./main ../example/staircase/ staircase.obj staircase.xml
