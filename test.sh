@@ -16,4 +16,4 @@ echo "testing"
 ./main ../example/wood-block/ wood-block.obj wood-block.xml
 ./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
 ./main ../example/veach-mis/ veach-mis.obj veach-mis.xml
-./main ../example/staircase/ staircase.obj staircase.xml
+./main ../example/staircase/ stairscase.obj staircase.xml
