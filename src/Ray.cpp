@@ -13,8 +13,8 @@ Vec3<float> Ray::getPointAt(const float &t) const {
   return origin + direction * t;
 }
 
-// 漫反射光线
-Ray Ray::randomReflectRay(const Ray &ray, const Vec3<float> &normal) {
+// 漫反射光线方向
+Vec3<float> Ray::randomReflect(const Ray &ray, const Vec3<float> &normal) {
   Vec3<float> direction(0, 0, 0);
   do {
     direction = Vec3<float>::normalize(normal) +
@@ -22,38 +22,38 @@ Ray Ray::randomReflectRay(const Ray &ray, const Vec3<float> &normal) {
                     randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
     direction.normalize();
   } while (Vec3<float>::dot(ray.direction, direction) == -1);
-  return Ray(ray.origin, direction);
+  return direction;
 }
 
-// 镜面反射光线
-Ray Ray::standardReflectRay(const Ray &ray, const Vec3<float> &normal) {
-  float cosine = Vec3<float>::dot(normal, ray.direction);
-  return Ray(ray.origin, ray.direction - normal * 2 * cosine);
+// 镜面反射光线方向
+Vec3<float> Ray::standardReflect(const Ray &ray, const Vec3<float> &normal) {
+  float cosi = Vec3<float>::dot(normal, ray.direction);
+  return ray.direction - normal * 2 * cosi;
 }
 
-// 折射光线
-Ray Ray::standardRefractRay(const Ray &ray, const Vec3<float> &normal,
-                            float ior) {
-  float cosine = Vec3<float>::dot(ray.direction, normal);
+// 折射光线方向
+Vec3<float> Ray::standardRefract(const Ray &ray, const Vec3<float> &normal,
+                                 float ior) {
+  float cosi = Vec3<float>::dot(ray.direction, normal);
   double etai = 1, etat = ior;
   Vec3<float> n = normal;
 
-  if (cosine < 0) {
-    cosine = -cosine;
+  if (cosi < 0) {
+    cosi = -cosi;
   } else {
     std::swap(etai, etat);
     n = -n;
   }
 
-  double eta = etai / etat;
-  double k = 1 - eta * eta * (1 - cosine * cosine);
+  float eta = etai / etat;
+  float cos2t = 1 - eta * eta * (1 - cosi * cosi);
 
-  if (k < 0) {
-    return ray;
+  if (cos2t < 0) {
+    return ray.direction;
   } else {
-    Vec3<float> direction = ray.direction * eta + n * (eta * cosine - sqrt(k));
-    Vec3<float> origin = ray.origin + direction * 0.5;
-    return Ray(origin, direction);
+    Vec3<float> direction =
+        ray.direction * eta + n * (eta * cosi - sqrtf(cos2t));
+    return direction;
   }
 }
 }  // namespace sre

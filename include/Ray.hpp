@@ -20,13 +20,13 @@ class Ray {
   Vec3<float> getDirection() const;
   Vec3<float> getPointAt(const float &t) const;
 
-  // 漫反射光线
-  static Ray randomReflectRay(const Ray &ray, const Vec3<float> &normal);
-  // 镜面反射光线
-  static Ray standardReflectRay(const Ray &ray, const Vec3<float> &normal);
-  // 折射光线
-  static Ray standardRefractRay(const Ray &ray, const Vec3<float> &normal,
-                                float ior);
+  // 漫反射光线方向
+  static Vec3<float> randomReflect(const Ray &ray, const Vec3<float> &normal);
+  // 镜面反射光线方向
+  static Vec3<float> standardReflect(const Ray &ray, const Vec3<float> &normal);
+  // 折射光线方向
+  static Vec3<float> standardRefract(const Ray &ray, const Vec3<float> &normal,
+                                     float ior);
 };
 
 }  // namespace sre
