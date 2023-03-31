@@ -152,10 +152,9 @@ void Tracer::loadExampleScene() {
   m.setTransmittance(0.8, 1, 0.95);
   m.setShiness(1);
   m.setRefraction(1.5);
-  triangles.emplace_back(14, Vec3<float>(-0.6, 0.6, 0.2),
-                         Vec3<float>(0.6, 0.6, 0.2), Vec3<float>(0, -0.6, 0.2),
-                         m);
-
+  triangles.emplace_back(14, Vec3<float>(-0.4, 0.4, 0.2),
+                         Vec3<float>(0.4, 0.4, 0.2), Vec3<float>(0, -0.4, 0.2),
+                         Vec3<float>(0, 0, -1), m);
   for (const auto &triangle : triangles) {
     Hittable *obj = new Triangle(triangle);
     objects.push_back(obj);
@@ -476,7 +475,7 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
 
   float cosine =
       std::max(0.0f, Vec3<float>::dot(-ray.getDirection(), res.normal));
-  float dis = 1.0f;  // res.distance;
+  float dis = res.distance;
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
 
   // 俄罗斯轮盘
@@ -508,50 +507,45 @@ Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
     HitResult tmpRes;
     scenes->hit(tmpRay, tmpRes);
     if (tmpRes.isHit && tmpRes.id == id) {
-      directLight = radiance * diffusion * cosine / pdfLight;
+      dis = tmpRes.distance;
+      directLight = radiance * diffusion * cosine / (dis * dis * pdfLight);
     }
   }
 
+  dis = res.distance;
   // 间接光照
   if (res.material.isDiffusive()) {
     // 漫反射
     static float pdf = 1 / (2 * PI);
-    Ray reflectRay =
-        Ray::randomReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Ray reflectRay(res.hitPoint, Ray::randomReflect(ray, res.normal));
     Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-    indirectLight = reflectLight * diffusion * cosine / pdf;
-  } else if (res.material.isSpecular()) {
+    indirectLight += reflectLight * diffusion * cosine / (dis * dis * pdf);
+  }
+  if (res.material.isSpecular()) {
     // 镜面反射
-    Ray reflectRay =
-        Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
+    Ray reflectRay(res.hitPoint, Ray::standardReflect(ray, res.normal));
+    float shiness = pow(
+        std::max(Vec3<float>::dot(reflectRay.getDirection(), res.normal), 0.0f),
+        res.material.getShiness());
     Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-    indirectLight = reflectLight * specularity;
-  } else {
-    float sine = Vec3<float>::dot(ray.getDirection(), res.normal);
-    float refraction = res.material.getRefraction();
-    if (sine < 0) {
-      refraction = 1 / res.material.getRefraction();
-    }
-
-    if (refraction > 1 && sine < 0 && fabs(sine) > 1 / refraction) {
-      // 全反射
-      Ray reflectRay =
-          Ray::standardReflectRay(res.hitPoint, ray.getDirection(), res.normal);
-      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      indirectLight = reflectLight * specularity;
-    } else {
-      // 部分反射 + 部分折射
-      Ray refractRay = Ray::standardRefractRay(res.hitPoint, ray.getDirection(),
-                                               res.normal, refraction);
+    indirectLight += reflectLight * specularity * shiness / (dis * dis);
+  }
+  if (res.material.isTransmissive()) {
+    // 折射
+    float ior = res.material.getRefraction();
+    Ray refractRay(res.hitPoint, Ray::standardRefract(ray, res.normal, ior));
+    static int flag = 0;
+    if (refractRay.getDirection() != ray.getDirection()) {
       Vec3<float> refractLight = trace(refractRay, depth + 1);
-
-      float r0 = pow(refraction - 1, 2) / pow(refraction + 1, 2);
-      float re = r0 + (1 - r0) * pow(1 - cosine, 5);
-      indirectLight = refractLight * transmittance;
+      if (flag == 0) {
+        flag = 1;
+        std::cout << "refract success!" << std::endl;
+      }
+      indirectLight += refractLight * transmittance / (dis * dis);
     }
   }
 
-  return (directLight + indirectLight) / thresholdP;
+  return (directLight * 0.5 + indirectLight) / thresholdP;
 }
 
 void Tracer::printStatus() {
