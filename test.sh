@@ -13,7 +13,7 @@ make main
 
 # 进行测试
 echo "testing"
-./main ../example/box/ box.obj box.xml
+./main ../example/wood-block/ wood-block.obj wood-block.xml
 ./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
 ./main ../example/veach-mis/ veach-mis.obj veach-mis.xml
 ./main ../example/staircase/ staircase.obj staircase.xml
