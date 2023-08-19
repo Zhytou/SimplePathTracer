@@ -1,4 +1,3 @@
-
 #include "../include/Trace.hpp"
 
 #include <omp.h>

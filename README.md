@@ -18,9 +18,11 @@
 
 ## 简介
 
-开发环境：WSL + VSCode + CMake + VcXSrv + OpenCV + OpenMP
+**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + VcXSrv + OpenCV + OpenMP
 
-项目结构
+> 下载OpenCV可以参考其[官网手册](https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html)
+
+**项目结构**：
 
 ```bash
 .
@@ -63,11 +65,12 @@
 └── third-parties // 三方库（tinyobjloader）
 ```
 
-编译&运行
+**编译&运行**：
 
 ```bash
 # 运行测试脚本
 bash test.sh
+
 # 使用CMake编译
 mkdir build
 cd build
@@ -84,11 +87,11 @@ make main
 路径追踪的基本原理是由相机从场景中发送光线而模拟光线在三维场景中的传播和交互过程，计算出每个像素点上的颜色和亮度值。
 一般来说，一个基础的路径追踪流程如下：
 
--   相机向屏幕中每一个像素点投射光线；
--   光线进入场景，若命中光源，则直接返回光源颜色；若命中场景中物品，则光线会根据物品材料特性发生漫反射、镜面反射或折射，并进入下一轮路径追踪，直到命中光源或超过递归深度。
-    -   其中，针对漫反射情况，我们采用了蒙特卡洛积分的思想，取一球面随机向量作为递归的光线，只需在该路径追踪返回值除以 pdf（1/2\*pi）即可。（详细理论可参考此[博客](https://blog.csdn.net/weixin_44176696/article/details/113418991)）
-    -   此外，光线还会随着传播距离发生衰减，应该除以其传播距离的平方。
--   最后，为了提高图像画质，我们可以向屏幕中每一个像素点投射多条光线。这个值也被称为 Sample Pre Pixel，简称 SSP。
+- 相机向屏幕中每一个像素点投射光线；
+- 光线进入场景，若命中光源，则直接返回光源颜色；若命中场景中物品，则光线会根据物品材料特性发生漫反射、镜面反射或折射，并进入下一轮路径追踪，直到命中光源或超过递归深度。
+  - 其中，针对漫反射情况，我们采用了蒙特卡洛积分的思想，取一球面随机向量作为递归的光线，只需在该路径追踪返回值除以 pdf（1/2\*pi）即可。（详细理论可参考此[博客](https://blog.csdn.net/weixin_44176696/article/details/113418991)）
+  - 此外，光线还会随着传播距离发生衰减，应该除以其传播距离的平方。
+- 最后，为了提高图像画质，我们可以向屏幕中每一个像素点投射多条光线。这个值也被称为 Sample Pre Pixel，简称 SSP。
 
 ### 光照模型
 
@@ -130,6 +133,6 @@ BVH 盒全称是 Bounding Volume Hierarchies，即层次包围盒。这里我们
 -   [ ] Benchmark
 -   [ ] More acceleration(e.g. CUDA)
 
-## References
+## 参考
 
--   [光照模型](https://learnopengl-cn.readthedocs.io/zh/latest/02%20Lighting/02%20Basic%20Lighting/)
+- [光照模型](https://learnopengl-cn.readthedocs.io/zh/latest/02%20Lighting/02%20Basic%20Lighting/)
