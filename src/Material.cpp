@@ -11,7 +11,12 @@ Material::Material()
 Material::~Material() {}
 
 std::string Material::getName() const { return name; }
-Vec3<float> Material::getEmission() const { return emission; }
+Vec3<float> Material::getEmission() const { 
+  if (emisssive) {
+    return emission;
+  }
+  return Vec3<float>(0, 0, 0);
+}
 Vec3<float> Material::getAmbience(const Vec2<float>& texCoord) const {
   if (ambientTexture == nullptr) {
     return ambience;

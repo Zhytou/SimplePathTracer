@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <iostream>
-#define PI 3.1415926
+#define PI M_PI
 
 #include "Ray.hpp"
 #include "Vec.hpp"

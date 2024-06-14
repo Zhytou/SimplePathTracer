@@ -15,14 +15,18 @@ Vec3<float> Ray::getPointAt(const float &t) const {
 
 // 漫反射光线方向
 Vec3<float> Ray::randomReflect(const Ray &ray, const Vec3<float> &normal) {
-  Vec3<float> direction(0, 0, 0);
-  do {
-    direction = Vec3<float>::normalize(normal) +
-                Vec3<float>::normalize(Vec3<float>(
-                    randFloat(1, -1), randFloat(1, -1), randFloat(1, -0.95)));
-    direction.normalize();
-  } while (Vec3<float>::dot(ray.direction, direction) == -1);
-  return direction;
+  // 求出垂直于法向量的任意一对正交基
+  Vec3<float> v1, v2;
+  if (normal.x != 0 || normal.y != 0) {
+    v1 = Vec3<float>::normalize(Vec3<float>(normal.y, -normal.x, 0));
+  } else {
+    v1 = Vec3<float>(1, 0, 0);
+  }
+  v2 = Vec3<float>::normalize(Vec3<float>::cross(normal, v1));
+  // 球面坐标极角phi，方位角theta
+  float phi = randFloat(M_PI / 2);
+  float theta = randFloat(M_PI * 2);
+  return normal * sin(phi) +  v1 * cos(phi) * cos(theta) + v2 * cos(phi) * sin(theta);
 }
 
 // 镜面反射光线方向
