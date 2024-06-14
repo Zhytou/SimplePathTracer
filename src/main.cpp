@@ -9,32 +9,38 @@ using namespace sre;
 
 int main(int argc, char *argv[]) {
   char windName[] = "simple render engine";
-  namedWindow(windName, 0);
-
-  Tracer tracer(3, 20, -0.8);
-  // tracer.loadExampleScene();
-  tracer.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
-  // assert(argc == 4);
-  // t.load(argv[1], argv[2], argv[3]);
+  int depth = 3;
+  int spp = 5;
+  float threshold = 0.8;
+  Tracer tracer(depth, spp, threshold);
   
+  // input
+  // if (argc != 4) {
+  //   std::cout << "Usage: " << argv[0] << " <path> <model> <config>" << std::endl;
+  //   return 1;
+  // }
+  // tracer.load(argv[1], argv[2], argv[3]);
+  // tracer.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
+  tracer.loadExampleScene();
+
+  // render
   time_t start = time(0);
   auto img = tracer.render();
   time_t end = time(0);
   std::cout << "Rendering time: " << difftime(end, start) << "s" << std::endl;
-  imshow(windName, img);
 
+  // show result
+  namedWindow(windName, 0);
+  imshow(windName, img);
   while (1) {
     int key = waitKey(0);
     if (key == 'b') {
       break;
     } else if (key == 's') {
-      cv::Mat img0;
-      img.convertTo(img0, CV_8UC3, 255.0);
-      imwrite("out.png", img0);
+      imwrite("out.png", img);
       break;
     }
   }
-
   destroyWindow(windName);
   return 0;
 }

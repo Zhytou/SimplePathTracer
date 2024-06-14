@@ -422,12 +422,11 @@ void Tracer::load(const std::string &pathName, const std::string &modelName,
 
 cv::Mat Tracer::render() {
   int height = camera.getHeight(), width = camera.getWidth();
-  // 注意：CV_32F白色为（1，1，1）对应CV_8U的白色（255，255，255）
-  cv::Mat img(cv::Size(width, height), CV_32FC3, cv::Scalar(0, 0, 0));
+  cv::Mat img(height, width, CV_8UC3);
 
-#pragma omp parallel for num_threads(1000)
+#pragma omp parallel for num_threads(20)
   for (int row = 0; row < height; row++) {
-#pragma omp parallel for num_threads(1000)
+#pragma omp parallel for num_threads(20)
     for (int col = 0; col < width; col++) {
       Vec3<float> color(0, 0, 0);
 #pragma omp parallel for num_threads(10)
@@ -436,11 +435,13 @@ cv::Mat Tracer::render() {
         color += trace(ray, 0);
       }
       color /= samples;
-      img.at<cv::Vec3f>(row, col)[2] = color.x;
-      img.at<cv::Vec3f>(row, col)[1] = color.y;
-      img.at<cv::Vec3f>(row, col)[0] = color.z;
+      // gama correction
+      img.at<cv::Vec3b>(row, col)[0] = std::min(255., 255 * pow(color.z, 0.6));
+      img.at<cv::Vec3b>(row, col)[1] = std::min(255., 255 * pow(color.y, 0.6));
+      img.at<cv::Vec3b>(row, col)[2] = std::min(255., 255 * pow(color.x, 0.6));
     }
   }
+
   return img;
 }
 

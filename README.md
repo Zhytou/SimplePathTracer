@@ -16,7 +16,7 @@
 
 ## 简介
 
-**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + VcXSrv + OpenCV + OpenMP
+**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + OpenCV + OpenMP
 
 > 下载OpenCV可以参考其[官网手册](https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html)
 
