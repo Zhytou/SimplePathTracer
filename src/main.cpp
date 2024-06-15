@@ -10,15 +10,15 @@ using namespace sre;
 int main() {
   char windName[] = "simple render engine";
   int depth = 3;
-  int spp = 5;
+  int spp = 128;
   float threshold = 0.8;
   Tracer tracer(depth, spp, threshold);
 
   // tracer.load("../example/cornell-box/", {"cornell-box.obj"}, "cornell-box.xml");
-  // tracer.load("../example/simple cornell-box/", 
-  //             {"floor.obj", "light.obj", "left.obj",
-  //             "right.obj", "shortbox.obj", "tallbox.obj"},
-  //             "cornell-box.xml");
+  tracer.load("../example/simple cornell-box/", 
+              {"floor.obj", "light.obj", "left.obj",
+              "right.obj", "shortbox.obj", "tallbox.obj"},
+              "cornell-box.xml");
 
   // render
   time_t start = time(0);
