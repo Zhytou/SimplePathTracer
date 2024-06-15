@@ -26,6 +26,8 @@ class Light {
 
   // setter
   void setLight(const Triangle& triangle);
+
+  void printStatus() const;
 };
 }  // namespace sre
 

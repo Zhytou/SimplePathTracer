@@ -31,4 +31,15 @@ void Light::setLight(const Triangle& triangle) {
   lightTriangles[id].emplace_back(triangle);
   lightAreas[id] += triangle.getSize();
 }
+
+void Light::printStatus() const {
+  std::cout << "light" << '\n';
+  std::cout << "number of light sources: " << lightIds.size() << '\n';
+  for (auto [r, i] : lightIds) {
+    std::cout << "id: " << i << ' ' 
+              << "radiance: " << r.x << ' ' << r.y << ' ' << r.z << ' '
+              << "area: " << lightAreas[i] << '\n';
+  }
+  std::cout << std::endl;
+}
 }  // namespace sre
