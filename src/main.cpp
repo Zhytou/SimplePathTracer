@@ -7,21 +7,18 @@
 using namespace cv;
 using namespace sre;
 
-int main(int argc, char *argv[]) {
+int main() {
   char windName[] = "simple render engine";
   int depth = 3;
   int spp = 5;
   float threshold = 0.8;
   Tracer tracer(depth, spp, threshold);
-  
-  // input
-  // if (argc != 4) {
-  //   std::cout << "Usage: " << argv[0] << " <path> <model> <config>" << std::endl;
-  //   return 1;
-  // }
-  // tracer.load(argv[1], argv[2], argv[3]);
-  // tracer.load("../example/cornell-box/", "cornell-box.obj", "cornell-box.xml");
-  tracer.loadExampleScene();
+
+  // tracer.load("../example/cornell-box/", {"cornell-box.obj"}, "cornell-box.xml");
+  // tracer.load("../example/simple cornell-box/", 
+  //             {"floor.obj", "light.obj", "left.obj",
+  //             "right.obj", "shortbox.obj", "tallbox.obj"},
+  //             "cornell-box.xml");
 
   // render
   time_t start = time(0);

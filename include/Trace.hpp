@@ -38,8 +38,7 @@ class Tracer {
   Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5);
   ~Tracer();
 
-  void loadExampleScene();
-  void load(const std::string &pathName, const std::string &modelName,
+  void load(const std::string &pathName, const std::vector<std::string> &modelNames,
             const std::string &configName);
   cv::Mat render();
 };
