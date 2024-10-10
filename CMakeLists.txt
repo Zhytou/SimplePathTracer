@@ -8,6 +8,8 @@ include_directories(/usr/local/include/opencv4)
 
 add_library(sre  STATIC ./src/AABB.cpp ./src/BVH.cpp ./src/Camera.cpp ./src/Light.cpp ./src/Material.cpp ./src/Random.cpp ./src/Ray.cpp ./src/Texture.cpp ./src/Trace.cpp ./src/Triangle.cpp)
 
+target_include_directories(sre PUBLIC ./include)
+
 add_executable(main ./src/main.cpp)
 
 add_executable(hittest ./test/hitTest.cpp)

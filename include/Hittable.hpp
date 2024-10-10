@@ -10,7 +10,7 @@ namespace sre {
 struct HitResult {
   bool isHit;
   int id;
-  double distance;
+  float distance;
   Vec3<float> hitPoint;
   Vec3<float> normal;
   Material material;

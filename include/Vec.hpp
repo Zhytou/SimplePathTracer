@@ -4,6 +4,8 @@
 #include <cmath>
 #include <functional>
 
+#define PI M_PI
+
 namespace sre {
 
 template <typename T>

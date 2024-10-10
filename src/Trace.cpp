@@ -11,6 +11,8 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../third-parties/tinyobjloader/tiny_obj_loader.h"
 
+#define EPSILON 1e-6f
+
 namespace sre {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
     : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
@@ -221,7 +223,7 @@ bool Tracer::loadModel(
         point_textures[point_i].u = attrib.texcoords[texcoord_index * 2 + 0];
         point_textures[point_i].v = attrib.texcoords[texcoord_index * 2 + 1];
       }
-      std::cout << "texture load success!\n";
+      // std::cout << "texture load success!\n";
 
       bool normalValid = true;
       Vec3<float> point_normals[3];
@@ -322,88 +324,77 @@ cv::Mat Tracer::render() {
   return img;
 }
 
-Vec3<float> Tracer::trace(const Ray &ray, size_t depth) {
+Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
   assert(scenes != nullptr);
   if (depth >= maxDepth) {
     return Vec3<float>(0, 0, 0);
   }
 
   HitResult res;
-  scenes->hit(ray, res);
+  scenes->hit(wi, res);
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
   assert(res.id >= 0 && res.id < objects.size());
 
-  Vec3<float> directLight(0, 0, 0), indirectLight(0, 0, 0);
+  // 直接光照 & 间接光照
+  Vec3<float> L_d(0, 0, 0), L_ind(0, 0, 0);
+
+  // 击中点位置信息
+  Vec3<float> p = res.hitPoint; // 击中点
+  Vec3<float> N = res.normal;   // 击中点法向量
+
+  // 击中点材料信息
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
   Vec3<float> diffusion = res.material.getDiffusion(texCoord);
   Vec3<float> specularity = res.material.getSpecularity(texCoord);
   Vec3<float> transmittance = res.material.getTransmittance();
-  
+
   if (!res.material.isEmissive()) {
-    // 直接光照 ——节省路径（自己打过去）
+    // 直接光照 —— 节省路径（自己打过去）
     size_t id = -1;
-    float area = 0;
-    Vec3<float> lightPoint;
-    Vec3<float> radiance;
-    light.getRandomPoint(id, lightPoint, radiance, area);
-    float pdfLight = 1 / area;
+    float area = 0; // 光源面积
+    Vec3<float> x;  // 光源采样点
+    Vec3<float> radiance; // 光源辐射
+    light.getRandomPoint(id, x, radiance, area);
+    float pdf_l = 1 / area;
 
     // 检查是否有障碍
-    // 增加res.normal*0.1是为了避免射线检测碰撞点时发生错误，总是认为自己挡住了自己
-    Ray tmpRay(res.hitPoint+res.normal*0.1, lightPoint - res.hitPoint);
-    HitResult tmpRes;
-    scenes->hit(tmpRay, tmpRes);
-    if (tmpRes.isHit && tmpRes.id == id) {
-      float cosine1 = std::max(Vec3<float>::dot(res.normal, tmpRay.getDirection()), 0.0f);
-      float cosine2 = std::max(Vec3<float>::dot(tmpRes.normal, -tmpRay.getDirection()), 0.0f);
-      float dis = tmpRes.distance;
-      directLight = radiance * diffusion / PI * cosine1 * cosine2 / (dis * dis * pdfLight);
+    Ray ws(p + N * EPSILON, x - p);             // 击中点到光源采样点的光线
+    HitResult nres;
+    scenes->hit(ws, nres);
+    if (nres.isHit && nres.id == id) {
+      Vec3<float> NN = nres.normal; // 光源法向量
+      Vec3<float> ws_dir = ws.getDirection();   // 击中点到光源的方向
+
+      float cosine1 = std::max(Vec3<float>::dot(N, ws_dir), 0.0f);
+      float cosine2 = std::max(Vec3<float>::dot(NN, -ws_dir), 0.0f);
+      float dis = std::max(nres.distance, EPSILON);
+      // albedo = diffuse/pi
+      L_d = radiance * (diffusion / PI) * cosine1 * cosine2 / (dis * dis * pdf_l);
     }
   }
-
-  // 俄罗斯轮盘
+  
+  // 间接光照（只考虑漫反射）
   float possibility = randFloat(1);
+  static float pdf = 1 / (2 * PI);
+  // 俄罗斯轮盘
   if (possibility < thresholdP) {
-    // 间接光照
-    if (res.material.isDiffusive()) {
-      // 漫反射
-      static float pdf = 1 / (2 * PI);
-      Ray reflectRay(res.hitPoint, Ray::randomReflect(ray, res.normal));
-      Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-      float cosine = std::max(Vec3<float>::dot(res.normal, reflectRay.getDirection()), 0.0f);
-      indirectLight += reflectLight * diffusion / PI * cosine / pdf;
+    Vec3<float> ws_dir = diffuseDir(wi.getDirection(), N);
+    Ray ws(p, ws_dir);
+    HitResult nres;
+    scenes->hit(ws, nres);
+    
+    if (nres.isHit && !nres.material.isEmissive()) {
+      Vec3<float> radiance = trace(ws, depth + 1);
+      float cosine = std::max(Vec3<float>::dot(N, ws_dir), 0.0f);
+      L_ind = radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
     }
-    // if (res.material.isSpecular()) {
-    //   // 镜面反射
-    //   Ray reflectRay(res.hitPoint, Ray::standardReflect(ray, res.normal));
-    //   float shiness = pow(
-    //       std::max(Vec3<float>::dot(reflectRay.getDirection(), res.normal), 0.0f),
-    //       res.material.getShiness());
-    //   Vec3<float> reflectLight = trace(reflectRay, depth + 1);
-    //   indirectLight += reflectLight * specularity * shiness;
-    // }
-    // if (res.material.isTransmissive()) {
-    //   // 折射
-    //   float ior = res.material.getRefraction();
-    //   Ray refractRay(res.hitPoint, Ray::standardRefract(ray, res.normal, ior));
-    //   static int flag = 0;
-    //   if (refractRay.getDirection() != ray.getDirection()) {
-    //     Vec3<float> refractLight = trace(refractRay, depth + 1);
-    //     if (flag == 0) {
-    //       flag = 1;
-    //       std::cout << "refract success!" << std::endl;
-    //     }
-    //     indirectLight += refractLight * transmittance / (dis * dis);
-    //   }
-    // }
-    indirectLight /= thresholdP;
   }
 
-  // 返回结果为：自发光+直接光+间接光
+  // 返回结果为：直接光+间接光
   // 需要避免直接检测是不是光源，然后直接返回光源的辐射，这样会导致光源融入天花板
-  return res.material.getEmission() + directLight + indirectLight;
+  return res.material.getEmission() + L_d + L_ind;
 }
 
 void Tracer::printStatus() {
