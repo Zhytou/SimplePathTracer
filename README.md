@@ -16,68 +16,6 @@
 
 ## 简介
 
-**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + OpenCV + OpenMP
-
-> 下载OpenCV可以参考其[官网手册](https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html)
-
-**项目结构**：
-
-```bash
-.
-├── CMakeLists.txt
-├── README.md
-├── build // 编译文件夹
-├── example // 测试模型及说明文件夹
-├── include // 头文件
-│   ├── AABB.hpp
-│   ├── BVH.hpp
-│   ├── Camera.hpp
-│   ├── Hittable.hpp
-│   ├── Light.hpp
-│   ├── Material.hpp
-│   ├── Random.hpp
-│   ├── Ray.hpp
-│   ├── Texture.hpp
-│   ├── Trace.hpp
-│   ├── Triangle.hpp
-│   └── Vec.hpp
-├── res // 结果及报告文件夹
-├── src // 源码
-│   ├── AABB.cpp
-│   ├── BVH.cpp
-│   ├── Camera.cpp
-│   ├── Light.cpp
-│   ├── Material.cpp
-│   ├── Random.cpp
-│   ├── Ray.cpp
-│   ├── Texture.cpp
-│   ├── Trace.cpp
-│   ├── Triangle.cpp
-│   └── main.cpp
-├── test // 测试
-│   ├── hitTest.cpp
-│   ├── materialTest.cpp
-│   ├── reflectTest.cpp
-│   └── refractTest.cpp
-├── test.sh // 测试脚本
-└── third-parties // 三方库（tinyobjloader）
-```
-
-**编译&运行**：
-
-```bash
-# 运行测试脚本
-bash test.sh
-
-# 使用CMake编译
-mkdir build
-cd build
-cmake ../
-# 渲染康奈尔盒模型
-make main
-./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
-```
-
 **渲染效果**：
 
 - 片元数量32
@@ -93,6 +31,25 @@ make main
 - 渲染时间：5324s
 
 ![res](res/dragon-512*512-spp128.png)
+
+**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + OpenCV + OpenMP
+
+> 下载OpenCV可以参考其[官网手册](https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html)
+
+**编译&运行**：
+
+```bash
+# 运行测试脚本
+bash test.sh
+
+# 使用CMake编译
+mkdir build
+cd build
+cmake ../
+# 渲染康奈尔盒模型
+make main
+./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
+```
 
 ## 原理
 
