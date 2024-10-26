@@ -3,7 +3,7 @@
 #include <cassert>
 #include <iostream>
 
-namespace sre {
+namespace spt {
 std::unordered_map<std::string, Texture*> Texture::textures;
 
 Texture* Texture::getInstance(const std::string& texName) {
@@ -40,4 +40,4 @@ Vec3<float> Texture::getColorAt(const Vec2<float>& pos) {
   return color;
 }
 
-}  // namespace sre
+}  // namespace spt

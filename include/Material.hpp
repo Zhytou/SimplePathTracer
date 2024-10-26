@@ -8,7 +8,7 @@
 #include "Texture.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 
 class Material {
  private:
@@ -60,6 +60,6 @@ class Material {
   // print.
   void printStatus() const;
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif

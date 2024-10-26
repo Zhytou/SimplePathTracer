@@ -4,7 +4,7 @@
 #include "Random.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 class Ray {
  private:
   Vec3<float> origin;
@@ -29,6 +29,6 @@ Vec3<float> mirrorDir(const Vec3<float> &wi, const Vec3<float> &n);
 Vec3<float> refractDIr(const Vec3<float> &wi, const Vec3<float> &n,
                                     float ior);
 
-}  // namespace sre
+}  // namespace spt
 
 #endif

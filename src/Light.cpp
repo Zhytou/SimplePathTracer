@@ -3,7 +3,7 @@
 #include "../include/Material.hpp"
 #include "../include/Random.hpp"
 
-namespace sre {
+namespace spt {
 void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
                            float& area) const {
   assert(lightAreas.size() != 0 && lightAreas.size() == lightTriangles.size());
@@ -42,4 +42,4 @@ void Light::printStatus() const {
   }
   std::cout << std::endl;
 }
-}  // namespace sre
+}  // namespace spt

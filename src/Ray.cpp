@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace sre {
+namespace spt {
 Ray::Ray(const Vec3<float> &org, const Vec3<float> &dir)
     : origin(org), direction(Vec3<float>::normalize(dir)) {}
 
@@ -58,4 +58,4 @@ Vec3<float> refractDIr(const Vec3<float> &wi, const Vec3<float> &n, float ior) {
   //   return direction;
   // }
 }
-}  // namespace sre
+}  // namespace spt

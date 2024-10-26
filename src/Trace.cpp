@@ -13,7 +13,7 @@
 
 #define EPSILON 1e-6f
 
-namespace sre {
+namespace spt {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
     : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
 
@@ -413,4 +413,4 @@ void Tracer::printStatus() {
   // scenes->getAABB().printStatus();
   // scenes->printStatus();
 }
-}  // namespace sre
+}  // namespace spt

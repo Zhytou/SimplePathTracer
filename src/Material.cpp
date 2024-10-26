@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace sre {
+namespace spt {
 
 Material::Material()
     : ambientTexture(nullptr),
@@ -99,4 +99,4 @@ void Material::printStatus() const {
             << specularity.z << '\n';
 }
 
-}  // namespace sre
+}  // namespace spt

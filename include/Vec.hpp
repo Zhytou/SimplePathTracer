@@ -6,7 +6,7 @@
 
 #define PI M_PI
 
-namespace sre {
+namespace spt {
 
 template <typename T>
 struct Vec2 {
@@ -128,11 +128,11 @@ struct Vec3 {
                 (v1.z - v2.z) * (v1.z - v2.z));
   }
 };
-}  // namespace sre
+}  // namespace spt
 
 template <typename T>
-struct std::hash<sre::Vec3<T>> {
-  std::size_t operator()(sre::Vec3<T> const& v) const noexcept {
+struct std::hash<spt::Vec3<T>> {
+  std::size_t operator()(spt::Vec3<T> const& v) const noexcept {
     std::hash<T> hasher;
     std::size_t h1 = hasher(v.x);
     std::size_t h2 = hasher(v.y);

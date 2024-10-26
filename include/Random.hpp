@@ -3,12 +3,12 @@
 
 #include <cstdlib>
 
-namespace sre {
+namespace spt {
 
 int randInt(int max, int min = 0);
 
 float randFloat(float max, float min = 0);
 
-}  // namespace sre
+}  // namespace spt
 
 #endif

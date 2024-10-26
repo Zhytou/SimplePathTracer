@@ -10,7 +10,7 @@
 #include "Hittable.hpp"
 #include "Triangle.hpp"
 
-namespace sre {
+namespace spt {
 class BVHNode;
 
 typedef BVHNode BVH;
@@ -45,6 +45,6 @@ class BVHNode : public Hittable {
   virtual void hit(const Ray &ray, HitResult &res) const override;
 };
 
-}  // namespace sre
+}  // namespace spt
 
 #endif

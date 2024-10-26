@@ -1,8 +1,8 @@
-# Simple Render Engine
+# Simple Path Tracer
 
 [![wakatime](https://wakatime.com/badge/github/Zhytou/SimpleRenderEngine.svg)](https://wakatime.com/badge/github/Zhytou/SimpleRenderEngine)
 
-- [Simple Render Engine](#simple-render-engine)
+- [Simple Path Tracer](#simple-path-tracer)
   - [简介](#简介)
   - [原理](#原理)
     - [路径追踪](#路径追踪)
@@ -11,10 +11,33 @@
     - [OpenMP 并行加速](#openmp-并行加速)
     - [直接光照](#直接光照)
     - [BVH 加速](#bvh-加速)
-  - [TODO List](#todo-list)
   - [参考](#参考)
 
 ## 简介
+
+**编译运行**：
+
+```bash
+# 下载OpenCV，具体可以参考其官网手册https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html
+sudo apt update && sudo apt install -y cmake g++ wget unzip
+wget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip
+unzip opencv.zip 
+mkdir -p build && cd build
+cmake  ../opencv-4.x
+cmake --build .
+
+# 运行测试脚本
+bash test.sh
+
+# 使用CMake编译
+mkdir build
+cd build
+cmake ../
+
+# 渲染康奈尔盒模型
+make main
+./main
+```
 
 **渲染效果**：
 
@@ -31,25 +54,6 @@
 - 渲染时间：5324s
 
 ![res](res/dragon-512*512-spp128.png)
-
-**开发环境**：WSL Ubuntu22.04.2 + VSCode + CMake + OpenCV + OpenMP
-
-> 下载OpenCV可以参考其[官网手册](https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html)
-
-**编译&运行**：
-
-```bash
-# 运行测试脚本
-bash test.sh
-
-# 使用CMake编译
-mkdir build
-cd build
-cmake ../
-# 渲染康奈尔盒模型
-make main
-./main ../example/cornell-box/ cornell-box.obj cornell-box.xml
-```
 
 ## 原理
 
@@ -91,21 +95,6 @@ make main
 BVH的基本原理是将场景中的物体包围在一系列的包围盒（如轴对齐包围盒AABB）内，并构建一个层次的树状结构。在树的每个内部节点，都包含其子节点所代表的物体集合的包围盒。通过这个层次结构，我们可以快速地剔除大量不可能相交的光线和物体，从而减少需要进行精确交点测试的次数。在查询时，我们从根节点开始，通过比较光线与包围盒的交点来决定是进入左子树还是右子树，以此类推，直到找到一个可能的交点或者遍历完整棵树。
 
 通过使用BVH，我们可以显著减少光线追踪的计算量，提高渲染速度，同时保持高质量的图像输出。这对于实时渲染和大规模场景的处理至关重要，使得后续的开发者能够更高效地理解和优化代码。
-
-## TODO List
-
-- [x] Baisc path tracing
-  - [x] Phong lighting
-  - [x] Camera(perspective and orthographic)
-  - [x] OBJ load/Triangle mesh/Material
-- [x] Optimization
-  - [x] OpenMP acceleration
-  - [x] Direct lighting
-  - [ ] Importance sampling(using cosine)
-  - [x] BVH acceleration
-- [x] Texture support
-- [ ] Benchmark
-- [ ] More acceleration(e.g. CUDA)
 
 ## 参考
 

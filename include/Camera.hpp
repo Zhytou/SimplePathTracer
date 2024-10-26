@@ -7,7 +7,7 @@
 #include "Ray.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 
 class Camera {
  private:
@@ -48,6 +48,6 @@ class Camera {
   void update();
 };
 
-}  // namespace sre
+}  // namespace spt
 
 #endif

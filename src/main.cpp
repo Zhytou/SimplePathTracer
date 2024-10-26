@@ -5,7 +5,7 @@
 #include "../include/Trace.hpp"
 
 using namespace cv;
-using namespace sre;
+using namespace spt;
 
 int main() {
   srand(time(nullptr));

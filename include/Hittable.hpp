@@ -5,7 +5,7 @@
 #include "Ray.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 
 struct HitResult {
   bool isHit;
@@ -42,6 +42,6 @@ class Hittable {
   virtual void hit(const Ray& ray, HitResult& res) const = 0;
 };
 
-}  // namespace sre
+}  // namespace spt
 
 #endif

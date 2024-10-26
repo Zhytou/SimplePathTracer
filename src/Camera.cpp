@@ -1,6 +1,6 @@
 #include "../include/Camera.hpp"
 
-namespace sre {
+namespace spt {
 
 Ray Camera::getRay(const int& row, const int& col) const {
   // 注意：像素（0，0）位置是左上角
@@ -84,4 +84,4 @@ void Camera::printStatus() const {
             << lowerLeftCorner.y << '\t' << lowerLeftCorner.z << '\n';
   std::cout << std::endl;
 }
-}  // namespace sre
+}  // namespace spt

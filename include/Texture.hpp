@@ -7,7 +7,7 @@
 
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 class Texture {
  private:
   cv::Mat img;
@@ -24,6 +24,6 @@ class Texture {
   // getter.
   Vec3<float> getColorAt(const Vec2<float>& pos);
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif

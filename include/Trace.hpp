@@ -13,7 +13,7 @@
 #include "Ray.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 class Tracer {
  private:
   BVH *scenes;
@@ -42,6 +42,6 @@ class Tracer {
             const std::string &configName);
   cv::Mat render();
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif

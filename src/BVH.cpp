@@ -1,6 +1,6 @@
 #include "../include/BVH.hpp"
 
-namespace sre {
+namespace spt {
 BVHNode::BVHNode(Hittable *object) {
   assert(object != nullptr);
 
@@ -109,4 +109,4 @@ void BVHNode::hit(const Ray &ray, HitResult &res) const {
     res.isHit = false;
   }
 }
-}  // namespace sre
+}  // namespace spt

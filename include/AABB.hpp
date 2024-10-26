@@ -6,7 +6,7 @@
 #include "Hittable.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 
 class AABB : public Hittable {
  private:
@@ -29,6 +29,6 @@ class AABB : public Hittable {
  public:
   virtual void hit(const Ray& ray, HitResult& res) const override;
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif

@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace sre {
+namespace spt {
 AABB::AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
 AABB::AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}
 AABB::AABB(const Hittable* object) {
@@ -98,4 +98,4 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   res.isHit = t0 <= t1;
   return;
 }
-}  // namespace sre
+}  // namespace spt

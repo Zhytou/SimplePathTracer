@@ -6,7 +6,7 @@
 #include "Hittable.hpp"
 #include "Material.hpp"
 
-namespace sre {
+namespace spt {
 
 class Triangle : public Hittable {
  private:
@@ -41,6 +41,6 @@ class Triangle : public Hittable {
  public:
   virtual void hit(const Ray& ray, HitResult& res) const override;
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif

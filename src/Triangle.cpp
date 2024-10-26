@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace sre {
+namespace spt {
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
                    const Vec3<float>& _v3, const Material& _m)
@@ -177,4 +177,4 @@ void Triangle::printStatus() const {
             << '\n';
   std::cout << std::endl;
 }
-}  // namespace sre
+}  // namespace spt

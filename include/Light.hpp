@@ -8,7 +8,7 @@
 #include "Triangle.hpp"
 #include "Vec.hpp"
 
-namespace sre {
+namespace spt {
 
 class Light {
  private:
@@ -29,6 +29,6 @@ class Light {
 
   void printStatus() const;
 };
-}  // namespace sre
+}  // namespace spt
 
 #endif
