@@ -11,14 +11,6 @@ Texture* Texture::getInstance(const std::string& texName) {
     Texture* ntex = new Texture();
     ntex->img = cv::imread(texName, cv::IMREAD_COLOR);
     textures[texName] = ntex;
-    // std::cout << "texture image: " << ntex->img.cols << '\t' <<
-    // ntex->img.rows
-    //           << '\t' << ntex->img.channels() << '\t' << ntex->img.depth()
-    //           << std::endl;
-    cv::namedWindow(texName.c_str(), 0);
-    cv::imshow(texName.c_str(), ntex->img);
-    cv::waitKey(0);
-    cv::destroyWindow(texName.c_str());
   }
   return textures[texName];
 }
