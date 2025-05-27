@@ -38,7 +38,10 @@ class Triangle : public Hittable {
   // print
   virtual void printStatus() const override;
 
- public:
+  // contain
+  bool contain(const Vec3<float>& p) const;
+
+  // hit
   virtual void hit(const Ray& ray, HitResult& res) const override;
 };
 }  // namespace spt

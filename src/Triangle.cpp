@@ -1,4 +1,4 @@
-#include "../include/Triangle.hpp"
+#include "Triangle.hpp"
 
 #include <cassert>
 
@@ -103,59 +103,48 @@ float Triangle::getSize() const {
   return Vec3<float>::cross(v2 - v1, v3 - v1).length() / 2;
 }
 
+bool Triangle::contain(const Vec3<float>& p) const {
+  // edge
+  Vec3<float> e1 = v2 - v1;
+  Vec3<float> e2 = v3 - v1;
+
+  // vector
+  Vec3<float> pv = p - v1;
+  
+  // pv = u*e1 + v*e2
+  float c1 = Vec3<float>::dot(pv, e1);
+  float c2 = Vec3<float>::dot(pv, e2);
+  float c3 = Vec3<float>::dot(e1, e1);
+  float c4 = Vec3<float>::dot(e2, e2);
+  float c5 = Vec3<float>::dot(e1, e2);
+
+  float denom = c3*c4-c5*c5;
+  float u = (c1*c4-c2*c5)/denom;
+  float v = (c2*c3-c1*c5)/denom;
+
+  return u >= 0 && v >= 0 && u+v <= 1;
+}
+
 void Triangle::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> origin = ray.getOrigin();
   Vec3<float> direction = ray.getDirection();
 
-  if (Vec3<float>::dot(normal, direction) > 0) {
-    res.isHit = false;
-    res.id = this->getId();
+  // initialize hit result
+  res.isHit = false;
+  res.id = this->getId();
+
+  float denom = Vec3<float>::dot(normal, direction);
+  if (fabs(denom) <= 1e-6) {
     return;
   }
 
-  if (Vec3<float>::dot(normal, direction) == 0) {
-    res.isHit = false;
-    res.id = this->getId();
-    res.normal = normal;
-    return;
-  }
-
-  float t = (Vec3<float>::dot(normal, v1) - Vec3<float>::dot(normal, origin)) /
-            Vec3<float>::dot(normal, direction);
-  if (t < 0.1) {
-    res.isHit = false;
-    res.id = this->getId();
-    res.normal = normal;
-    res.distance = t;
-    return;
-  }
-
+  float t = (Vec3<float>::dot(normal, v1)-Vec3<float>::dot(normal, origin))/denom;
   Vec3<float> p = ray.getPointAt(t);
-  // 重心判断点是否在三角形内部
-  Vec3<float> pe = p - v1;
-  Vec3<float> e1 = v2 - v1;
-  Vec3<float> e2 = v3 - v1;
-
-  float c1 = Vec3<float>::dot(pe, e1);
-  float c2 = Vec3<float>::dot(pe, e2);
-  float c3 = Vec3<float>::dot(e1, e1);
-  float c4 = Vec3<float>::dot(e2, e2);
-  float c5 = Vec3<float>::dot(e1, e2);
-  // c1 = x * c3 + y * c5
-  // c2 = x * c5 + y * c4
-  float x = (c1 * c4 - c2 * c5) / (c3 * c4 - c5 * c5);
-  float y = (c1 * c5 - c2 * c3) / (c5 * c5 - c3 * c4);
-
-  if (x < 0 || y < 0 || x + y > 1) {
-    res.isHit = false;
-    res.id = this->getId();
-    res.hitPoint = p;
-    res.distance = t;
+  if (t < 0.05 || !contain(p)) {
     return;
   }
 
   res.isHit = true;
-  res.id = this->getId();
   res.hitPoint = p;
   res.distance = t;
   res.normal = normal;
