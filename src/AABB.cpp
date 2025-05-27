@@ -1,30 +1,60 @@
-#include "../include/AABB.hpp"
+#include "AABB.hpp"
 
 #include <iostream>
 
 namespace spt {
 AABB::AABB() : minXYZ(0, 0, 0), maxXYZ(0, 0, 0) {}
+
 AABB::AABB(const Vec3<float>& a, const Vec3<float>& b) : minXYZ(a), maxXYZ(b) {}
-AABB::AABB(const Hittable* object) {
+
+AABB::AABB(const std::shared_ptr<Hittable>& object) {
   assert(object != nullptr);
   minXYZ = object->getMinXYZ();
   maxXYZ = object->getMaxXYZ();
 }
 
+AABB::AABB(const std::vector<std::shared_ptr<Hittable>>& objects) {
+  for(int i = 0; i < objects.size(); i++) {
+    if (i == 0) {
+      minXYZ = objects[i]->getMinXYZ();
+      maxXYZ = objects[i]->getMaxXYZ();
+    } else {
+      minXYZ.x = std::min(minXYZ.x, objects[i]->getMinXYZ().x);
+      minXYZ.y = std::min(minXYZ.y, objects[i]->getMinXYZ().y);
+      minXYZ.z = std::min(minXYZ.z, objects[i]->getMinXYZ().z);
+    
+      maxXYZ.x = std::max(maxXYZ.x, objects[i]->getMaxXYZ().x);
+      maxXYZ.y = std::max(maxXYZ.y, objects[i]->getMaxXYZ().y);
+      maxXYZ.z = std::max(maxXYZ.z, objects[i]->getMaxXYZ().z); 
+    }
+  }
+}
+
+AABB::AABB(const std::vector<std::shared_ptr<Hittable>>::const_iterator& beg, const std::vector<std::shared_ptr<Hittable>>::const_iterator& end) {
+  for(auto itr = beg; itr != end; itr++) {
+    if (itr == beg) {
+      minXYZ = (*itr)->getMinXYZ();
+      maxXYZ = (*itr)->getMaxXYZ();
+    } else {
+      minXYZ.x = std::min(minXYZ.x, (*itr)->getMinXYZ().x);
+      minXYZ.y = std::min(minXYZ.y, (*itr)->getMinXYZ().y);
+      minXYZ.z = std::min(minXYZ.z, (*itr)->getMinXYZ().z);
+    
+      maxXYZ.x = std::max(maxXYZ.x, (*itr)->getMaxXYZ().x);
+      maxXYZ.y = std::max(maxXYZ.y, (*itr)->getMaxXYZ().y);
+      maxXYZ.z = std::max(maxXYZ.z, (*itr)->getMaxXYZ().z); 
+    }
+  }
+}
+
 Vec3<float> AABB::getMinXYZ() const { return minXYZ; }
+
 Vec3<float> AABB::getMaxXYZ() const { return maxXYZ; }
-AABB AABB::getSurroundingAABB(const AABB& child1, const AABB& child2) {
-  Vec3<float> minXYZ, maxXYZ;
 
-  minXYZ.x = std::min(child1.getMinXYZ().x, child2.getMinXYZ().x);
-  minXYZ.y = std::min(child1.getMinXYZ().y, child2.getMinXYZ().y);
-  minXYZ.z = std::min(child1.getMinXYZ().z, child2.getMinXYZ().z);
+float AABB::getArea() const {
+  Vec3<float> deltaXYZ = maxXYZ - minXYZ;
 
-  maxXYZ.x = std::max(child1.getMaxXYZ().x, child2.getMaxXYZ().x);
-  maxXYZ.y = std::max(child1.getMaxXYZ().y, child2.getMaxXYZ().y);
-  maxXYZ.z = std::max(child1.getMaxXYZ().z, child2.getMaxXYZ().z);
-
-  return AABB(minXYZ, maxXYZ);
+  return deltaXYZ.x * deltaXYZ.y + deltaXYZ.x * deltaXYZ.z + deltaXYZ.y * deltaXYZ.z;
 }
 
 void AABB::printStatus() const {
@@ -34,6 +64,51 @@ void AABB::printStatus() const {
             << "maxXYZ: " << maxXYZ.x << '\t' << maxXYZ.y << '\t' << maxXYZ.z
             << '\n';
   std::cout << std::endl;
+}
+
+AABB AABB::merge(const AABB& aabb1, const AABB& aabb2) {
+  Vec3<float> minXYZ, maxXYZ;
+
+  minXYZ.x = std::min(aabb1.getMinXYZ().x, aabb2.getMinXYZ().x);
+  minXYZ.y = std::min(aabb1.getMinXYZ().y, aabb2.getMinXYZ().y);
+  minXYZ.z = std::min(aabb1.getMinXYZ().z, aabb2.getMinXYZ().z);
+
+  maxXYZ.x = std::max(aabb1.getMaxXYZ().x, aabb2.getMaxXYZ().x);
+  maxXYZ.y = std::max(aabb1.getMaxXYZ().y, aabb2.getMaxXYZ().y);
+  maxXYZ.z = std::max(aabb1.getMaxXYZ().z, aabb2.getMaxXYZ().z);
+
+  return AABB(minXYZ, maxXYZ);
+}
+
+AABB AABB::merge(const std::vector<AABB>& aabbs) {
+  Vec3<float> minXYZ, maxXYZ;
+
+  for(int i = 0; i < aabbs.size(); i++) {
+    if (i == 0) {
+      minXYZ = aabbs[i].getMinXYZ();
+      maxXYZ = aabbs[i].getMaxXYZ();
+    } else {
+      minXYZ.x = std::min(minXYZ.x, aabbs[i].getMinXYZ().x);
+      minXYZ.y = std::min(minXYZ.y, aabbs[i].getMinXYZ().y);
+      minXYZ.z = std::min(minXYZ.z, aabbs[i].getMinXYZ().z);
+    
+      maxXYZ.x = std::max(maxXYZ.x, aabbs[i].getMaxXYZ().x);
+      maxXYZ.y = std::max(maxXYZ.y, aabbs[i].getMaxXYZ().y);
+      maxXYZ.z = std::max(maxXYZ.z, aabbs[i].getMaxXYZ().z); 
+    }
+  }
+
+  return AABB(minXYZ, maxXYZ);
+}
+
+void AABB::expand(const AABB& aabb) {
+  minXYZ.x = std::min(minXYZ.x, aabb.getMinXYZ().x);
+  minXYZ.y = std::min(minXYZ.y, aabb.getMinXYZ().y);
+  minXYZ.z = std::min(minXYZ.z, aabb.getMinXYZ().z);
+
+  maxXYZ.x = std::max(maxXYZ.x, aabb.getMaxXYZ().x);
+  maxXYZ.y = std::max(maxXYZ.y, aabb.getMaxXYZ().y);
+  maxXYZ.z = std::max(maxXYZ.z, aabb.getMaxXYZ().z);
 }
 
 void AABB::hit(const Ray& ray, HitResult& res) const {
@@ -94,7 +169,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
   // 光线离开平面处（最远离的平面）的最小t值
   t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
-  // 当光线 aabb特别薄时，等号也需要成立
+  // 当aabb特别薄时，等号也需要成立
   res.isHit = t0 <= t1;
   return;
 }

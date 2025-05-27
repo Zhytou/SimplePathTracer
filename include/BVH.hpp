@@ -5,43 +5,41 @@
 #include <cassert>
 #include <iostream>
 #include <vector>
+#include <memory>
 
 #include "AABB.hpp"
 #include "Hittable.hpp"
 #include "Triangle.hpp"
 
 namespace spt {
-class BVHNode;
-
-typedef BVHNode BVH;
-
-class BVHNode : public Hittable {
+class BVH : public Hittable {
  private:
-  Hittable *left, *right;
+  std::vector<std::shared_ptr<Hittable>> objects;
   AABB aabb;
-  int nodeNum;
+  bool isLeaf;
 
  public:
-  BVHNode(Hittable *object);
-  BVHNode(std::vector<Hittable *> &objects, int low, int high);
-  ~BVHNode();
+  BVH();
+  ~BVH() = default;
 
  public:
-  static bool xCmp(Hittable *left, Hittable *right);
-  static bool yCmp(Hittable *left, Hittable *right);
-  static bool zCmp(Hittable *left, Hittable *right);
+  // construct
+  static std::shared_ptr<BVH> constructBVH( std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int minCount=30);
+  
+  // sort
+  static void sortObjects(std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int axis) ;
 
- public:
-  // getter.
+  // compute
+  static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int leftCount, int rightCount);
+
+  // getter
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
-  AABB getAABB() const;
-  int getNodeNum() const;
 
-  // print.
+  // print
   virtual void printStatus() const override;
 
- public:
+  // hit
   virtual void hit(const Ray &ray, HitResult &res) const override;
 };
 
