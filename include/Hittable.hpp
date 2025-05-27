@@ -28,7 +28,7 @@ class Hittable {
   virtual ~Hittable() {}
 
  public:
-  // getter.
+  // getter
   size_t getId() const { return id; }
   virtual Vec3<float> getMinXYZ() const = 0;
   virtual Vec3<float> getMaxXYZ() const = 0;
@@ -36,9 +36,10 @@ class Hittable {
     return Vec2<float>(0, 0);
   }
 
-  // print.
+  // print
   virtual void printStatus() const {}
 
+  // hit
   virtual void hit(const Ray& ray, HitResult& res) const = 0;
 };
 

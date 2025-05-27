@@ -21,13 +21,13 @@ class Material {
   float shiness;              // Ns 反光强度
   float refraction;           // Ni 折射率
   bool emisssive;             // 是否发光
-  Texture* ambientTexture;    // map_Ka 纹理
-  Texture* diffuseTexture;    // map_Kd 纹理
-  Texture* specularTexture;   // map_Ks 纹理
+  Texture* aTex;              // map_Ka 纹理
+  Texture* dTex;              // map_Kd 纹理
+  Texture* sTex;              // map_Ks 纹理
 
  public:
-  Material();
-  ~Material();
+  Material() : aTex(nullptr), dTex(nullptr), sTex(nullptr) {};
+  ~Material() = default;
 
   // getter.
   std::string getName() const;

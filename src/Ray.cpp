@@ -1,4 +1,4 @@
-#include "../include/Ray.hpp"
+#include "Ray.hpp"
 
 #include <iostream>
 
@@ -6,12 +6,9 @@ namespace spt {
 Ray::Ray(const Vec3<float> &org, const Vec3<float> &dir)
     : origin(org), direction(Vec3<float>::normalize(dir)) {}
 
-// getter.
 Vec3<float> Ray::getOrigin() const { return origin; }
 Vec3<float> Ray::getDirection() const { return direction; }
-Vec3<float> Ray::getPointAt(const float &t) const {
-  return origin + direction * t;
-}
+Vec3<float> Ray::getPointAt(const float &t) const { return origin + direction * t; }
 
 // 漫反射光线方向
 Vec3<float> diffuseDir(const Vec3<float> &wi, const Vec3<float> &n) {

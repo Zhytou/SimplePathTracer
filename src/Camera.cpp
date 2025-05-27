@@ -1,4 +1,4 @@
-#include "../include/Camera.hpp"
+#include "Camera.hpp"
 
 namespace spt {
 
