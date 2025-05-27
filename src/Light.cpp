@@ -1,45 +1,24 @@
-#include "../include/Light.hpp"
-
-#include "../include/Material.hpp"
-#include "../include/Random.hpp"
+#include "Light.hpp"
+#include "Material.hpp"
+#include "Random.hpp"
 
 namespace spt {
-void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance,
-                           float& area) const {
-  assert(lightAreas.size() != 0 && lightAreas.size() == lightTriangles.size());
-  int idx = randInt(lightAreas.size());
-  int triangleIdx = randInt(lightTriangles[idx].size());
+void Light::getRandomPoint(size_t& id, Vec3<float>& pos, Vec3<float>& radiance, float& area) const {
+  int idx = randInt(triangles.size());
 
-  id = lightTriangles[idx][triangleIdx].getId();
-  pos = lightTriangles[idx][triangleIdx].getRandomPoint();
-  radiance = lightTriangles[idx][triangleIdx].getMaterial().getEmission();
-  area = lightAreas[idx];
+  id = triangles[idx]->getId();
+  pos = triangles[idx]->getRandomPoint();
+  radiance = triangles[idx]->getMaterial().getEmission();
+  area = triangles[idx]->getSize();
 }
 
-void Light::setLight(const Triangle& triangle) {
-  Vec3<float> radiance = triangle.getMaterial().getEmission();
-  assert(radiance.x != 0 && radiance.y != 0 && radiance.z != 0);
-  assert(lightAreas.size() == lightTriangles.size());
-  int id = lightTriangles.size();
-  if (lightIds.find(radiance) == lightIds.end()) {
-    lightIds[radiance] = id;
-    lightTriangles.push_back({});
-    lightAreas.push_back(0);
-  } else {
-    id = lightIds[radiance];
-  }
-  lightTriangles[id].emplace_back(triangle);
-  lightAreas[id] += triangle.getSize();
+void Light::setLight(const std::shared_ptr<Triangle>& triangle) {
+  triangles.push_back(triangle);
 }
 
 void Light::printStatus() const {
   std::cout << "light" << '\n';
-  std::cout << "number of light sources: " << lightIds.size() << '\n';
-  for (auto [r, i] : lightIds) {
-    std::cout << "id: " << i << ' ' 
-              << "radiance: " << r.x << ' ' << r.y << ' ' << r.z << ' '
-              << "area: " << lightAreas[i] << '\n';
-  }
+  std::cout << "number of light sources: " << triangles.size() << '\n';
   std::cout << std::endl;
 }
 }  // namespace spt
