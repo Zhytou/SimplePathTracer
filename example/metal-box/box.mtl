@@ -1,0 +1,34 @@
+newmtl Light
+Kd 0 0 0
+Ks 0 0 0
+Tr 1 1 1
+Ns 1
+Ni 1
+
+newmtl Green
+Kd 0.14 0.45 0.091
+Ks 0 0 0
+Tr 1 1 1
+Ns 1
+Ni 1
+
+newmtl Red
+Kd 0.63 0.065 0.05
+Ks 0 0 0
+Tr 1 1 1
+Ns 1
+Ni 1
+
+newmtl Gray
+Kd 0.725 0.71 0.68
+Ks 0 0 0
+Tr 1 1 1
+Ns 1
+Ni 1
+
+newmtl Metal
+Kd 0.2 0.2 0.2
+Ks 0 0.8 0.8
+Tr 1 1 1
+Ns 1000
+Ni 1
