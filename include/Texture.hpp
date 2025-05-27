@@ -1,7 +1,6 @@
 #ifndef SRE_TEXTURE_HPP
 #define SRE_TEXTURE_HPP
 
-#include <opencv2/opencv.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -10,16 +9,16 @@
 namespace spt {
 class Texture {
  private:
-  cv::Mat img;
+  int height, width, channels;
+  uint8_t* img;
   static std::unordered_map<std::string, Texture*> textures;
 
- private:
-  Texture() = default;
-  ~Texture() = default;
+  Texture() : img(nullptr) {}
+  Texture(const std::string& imgName);
+  ~Texture();
 
  public:
   static Texture* getInstance(const std::string& texName);
-  static void realeaseAllInstances();
 
   // getter.
   Vec3<float> getColorAt(const Vec2<float>& pos);

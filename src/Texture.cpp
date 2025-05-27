@@ -1,41 +1,40 @@
-#include "../include/Texture.hpp"
+#include "Texture.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION 
+#include <stb_image.h>
 #include <cassert>
 #include <iostream>
 
 namespace spt {
 std::unordered_map<std::string, Texture*> Texture::textures;
 
+Texture::~Texture() {
+  if (img) {
+    stbi_image_free(img);
+  }
+  img = nullptr;
+}
+
+Texture::Texture(const std::string& texName) {
+  img = stbi_load(texName.c_str(), &width, &height, &channels, 0);
+}
+
 Texture* Texture::getInstance(const std::string& texName) {
   if (textures.find(texName) == textures.end()) {
-    Texture* ntex = new Texture();
-    ntex->img = cv::imread(texName, cv::IMREAD_COLOR);
-    textures[texName] = ntex;
+    textures[texName] = new Texture(texName);
   }
   return textures[texName];
 }
-void Texture::realeaseAllInstances() {
-  for (auto itr = textures.begin(); itr != textures.end(); itr++) {
-    delete itr->second;
-    itr->second = nullptr;
-  }
-}
+
 Vec3<float> Texture::getColorAt(const Vec2<float>& pos) {
   assert(pos.u >= 0 && pos.u <= 1 && pos.v >= 0 && pos.v <= 1);
+
   Vec3<float> color(0, 0, 0);
-  int rows = img.rows - 1, cols = img.cols - 1;
-  switch (img.depth()) {
-    case CV_8U:
-      color.x = img.at<cv::Vec3b>(pos.u * rows, pos.v * cols)[2] / 255.0f;
-      color.y = img.at<cv::Vec3b>(pos.u * rows, pos.v * cols)[1] / 255.0f;
-      color.z = img.at<cv::Vec3b>(pos.u * rows, pos.v * cols)[0] / 255.0f;
-      break;
-    default:
-      color.x = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[2];
-      color.y = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[1];
-      color.z = img.at<cv::Vec3f>(pos.u * rows, pos.v * cols)[0];
-      break;
-  }
+  int row = pos.u*height, col = pos.v*width;
+  int idx = (row*width+col)*3;
+  color.x = img[idx+0]/255.0f;
+  color.y = img[idx+1]/255.0f;
+  color.z = img[idx+2]/255.0f;
 
   return color;
 }

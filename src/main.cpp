@@ -1,10 +1,8 @@
-#include <opencv2/opencv.hpp>
 #include <ctime>
 #include <iostream>
 
-#include "../include/Trace.hpp"
+#include "Trace.hpp"
 
-using namespace cv;
 using namespace spt;
 
 int main() {
@@ -18,26 +16,14 @@ int main() {
   // tracer.load("../example/veach-mis/", {"veach-mis.obj"}, "veach-mis.xml");
   // tracer.load("../example/staircase/", {"stairscase.obj"}, "staircase.xml");
   // tracer.load("../example/cornell-box/", {"cornell-box.obj"}, "cornell-box.xml");
-  tracer.load("../example/simple cornell-box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml");
+  // tracer.load("../example/box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml");
+  tracer.load("../example/metal-box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml");
 
   // render
   time_t start = time(0);
-  auto img = tracer.render();
+  tracer.render();
   time_t end = time(0);
   std::cout << "Rendering time: " << difftime(end, start) << "s" << std::endl;
 
-  // show result
-  namedWindow(windName, 0);
-  imshow(windName, img);
-  while (1) {
-    int key = waitKey(0);
-    if (key == 'b') {
-      break;
-    } else if (key == 's') {
-      imwrite("out.png", img);
-      break;
-    }
-  }
-  destroyWindow(windName);
   return 0;
 }

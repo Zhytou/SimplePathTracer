@@ -2,10 +2,10 @@
 #define SRE_TRACE_HPP
 
 #include <iostream>
-#include <opencv2/opencv.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 #include "BVH.hpp"
 #include "Camera.hpp"
@@ -16,8 +16,8 @@
 namespace spt {
 class Tracer {
  private:
-  BVH *scenes;
-  std::vector<Hittable *> objects;
+  std::shared_ptr<BVH> scenes;
+  std::vector<std::shared_ptr<Hittable>> objects;
   Camera camera;
   Light light;
   size_t maxDepth;
@@ -36,11 +36,11 @@ class Tracer {
 
  public:
   Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5);
-  ~Tracer();
+  ~Tracer() = default;
 
   void load(const std::string &pathName, const std::vector<std::string> &modelNames,
             const std::string &configName);
-  cv::Mat render();
+  void render(const std::string& imgName = "result.png");
 };
 }  // namespace spt
 

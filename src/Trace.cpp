@@ -1,28 +1,22 @@
-#include "../include/Trace.hpp"
-
 #include <omp.h>
-
 #include <algorithm>
 #include <fstream>
 
-#include "../include/Material.hpp"
-#include "../include/Triangle.hpp"
+#include "Trace.hpp"
+#include "Material.hpp"
+#include "Triangle.hpp"
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "../third-parties/tinyobjloader/tiny_obj_loader.h"
+#include <tiny_obj_loader.h>
 
-#define EPSILON 1e-6f
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
+#define EPSILON 1e-5f
 
 namespace spt {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
     : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
-
-Tracer::~Tracer() {
-  if (scenes != nullptr) {
-    delete scenes;
-  }
-  scenes = nullptr;
-}
 
 bool Tracer::loadConfiguration(
     const std::string &configName,
@@ -192,7 +186,6 @@ bool Tracer::loadModel(
     actualMaterials.emplace_back(actualMaterial);
   }
 
-  size_t id = 0;
   for (const auto &shape : shapes) {
     assert(shape.mesh.material_ids.size() ==
            shape.mesh.num_face_vertices.size());
@@ -260,15 +253,11 @@ bool Tracer::loadModel(
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
-      Triangle triangle(id, points[0], points[1], points[2], normal, material);
+      auto obj = std::make_shared<Triangle>(objects.size(), points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
       if (material.isEmissive()) {
-        light.setLight(triangle);
+        light.setLight(obj);
       }
-      Hittable *obj =
-          new Triangle(id, points[0], points[1], points[2], point_textures[0],
-                       point_textures[1], point_textures[2], normal, material);
       objects.push_back(obj);
-      id += 1;
     }
   }
 
@@ -277,7 +266,7 @@ bool Tracer::loadModel(
 
 void Tracer::load(const std::string &pathName, const std::vector<std::string> &modelNames,
                   const std::string &configName) {
-  // Configuration -Camera
+  // Camera
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
   std::string config = pathName + configName;
   if (!loadConfiguration(config, lightRadiances)) {
@@ -285,6 +274,7 @@ void Tracer::load(const std::string &pathName, const std::vector<std::string> &m
     return;
   }
   std::cout << "Camera config loading success!" << std::endl;
+  
   // Scene
   for (auto modelName : modelNames) {
     std::string model = pathName + modelName;
@@ -294,34 +284,42 @@ void Tracer::load(const std::string &pathName, const std::vector<std::string> &m
     }
   }
   std::cout << "Model loading success!" << std::endl;
-  scenes = new BVH(objects, 0, objects.size());
+  scenes = BVH::constructBVH(objects, 0, objects.size());
 
   printStatus();
 }
 
-cv::Mat Tracer::render() {
-  int height = camera.getHeight(), width = camera.getWidth();
-  cv::Mat img(height, width, CV_8UC3);
+void Tracer::render(const std::string& imgName) {
+  int h = camera.getHeight(), w = camera.getWidth();
+  std::vector<uint8_t> img(h * w * 3);
 
 #pragma omp parallel for num_threads(20)
-  for (int row = 0; row < height; row++) {
-#pragma omp parallel for num_threads(20)
-    for (int col = 0; col < width; col++) {
+  for (int row = 0; row < h; row++) {
+    for (int col = 0; col < w; col++) {
       Vec3<float> color(0, 0, 0);
-#pragma omp parallel for num_threads(10)
       for (int k = 0; k < samples; k++) {
         Ray ray = camera.getRay(row, col);
         color += trace(ray, 0);
       }
       color /= samples;
-      // gama correction
-      img.at<cv::Vec3b>(row, col)[0] = std::min(255., 255 * pow(color.z, 0.6));
-      img.at<cv::Vec3b>(row, col)[1] = std::min(255., 255 * pow(color.y, 0.6));
-      img.at<cv::Vec3b>(row, col)[2] = std::min(255., 255 * pow(color.x, 0.6));
+      
+      // idx
+      int idx = (row*w+col)*3;
+
+      // gamma correction
+      float gamma = 1.0f/2.2f;
+      img[idx+0] = std::min(255.f, 255*pow(color.x, gamma));
+      img[idx+1] = std::min(255.f, 255*pow(color.y, gamma));
+      img[idx+2] = std::min(255.f, 255*pow(color.z, gamma));
     }
   }
 
-  return img;
+  int result = stbi_write_png(imgName.c_str(), w, h, 3, img.data(), w*3);
+  if (result) {
+    std::cout << "Render success!" << std::endl;
+  } 
+
+  return ;
 }
 
 Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
@@ -332,6 +330,7 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
 
   HitResult res;
   scenes->hit(wi, res);
+
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
@@ -344,10 +343,14 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
   Vec3<float> p = res.hitPoint; // 击中点
   Vec3<float> N = res.normal;   // 击中点法向量
 
+  // 移动击中点
+  p += N*EPSILON;
+
   // 击中点材料信息
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
   Vec3<float> diffusion = res.material.getDiffusion(texCoord);
   Vec3<float> specularity = res.material.getSpecularity(texCoord);
+  int shiness = res.material.getShiness() ;
   Vec3<float> transmittance = res.material.getTransmittance();
 
   if (!res.material.isEmissive()) {
@@ -360,36 +363,56 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
     float pdf_l = 1 / area;
 
     // 检查是否有障碍
-    Ray ws(p + N * EPSILON, x - p);             // 击中点到光源采样点的光线
+    Ray ws(p, x - p);             // 击中点到光源采样点的光线
     HitResult nres;
     scenes->hit(ws, nres);
+
     if (nres.isHit && nres.id == id) {
       Vec3<float> NN = nres.normal; // 光源法向量
       Vec3<float> ws_dir = ws.getDirection();   // 击中点到光源的方向
 
-      float cosine1 = std::max(Vec3<float>::dot(N, ws_dir), 0.0f);
-      float cosine2 = std::max(Vec3<float>::dot(NN, -ws_dir), 0.0f);
+      float cosine1 = fabs(Vec3<float>::dot(N, ws_dir));
+      float cosine2 = fabs(Vec3<float>::dot(NN, -ws_dir));
       float dis = std::max(nres.distance, EPSILON);
-      // albedo = diffuse/pi
       L_d = radiance * (diffusion / PI) * cosine1 * cosine2 / (dis * dis * pdf_l);
     }
   }
   
-  // 间接光照（只考虑漫反射）
-  float possibility = randFloat(1);
+  // 间接光照
+  float prob = randFloat(1);
   static float pdf = 1 / (2 * PI);
   // 俄罗斯轮盘
-  if (possibility < thresholdP) {
-    Vec3<float> ws_dir = diffuseDir(wi.getDirection(), N);
-    Ray ws(p, ws_dir);
+  if (prob < thresholdP) {
+    Vec3<float> wi_dir = wi.getDirection(), ws_dir;
     HitResult nres;
-    scenes->hit(ws, nres);
     
-    if (nres.isHit && !nres.material.isEmissive()) {
-      Vec3<float> radiance = trace(ws, depth + 1);
-      float cosine = std::max(Vec3<float>::dot(N, ws_dir), 0.0f);
-      L_ind = radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
+    // 漫反射
+    {
+      ws_dir = diffuseDir(wi_dir, N);
+      Ray ws(p, ws_dir);
+      scenes->hit(ws, nres);
+
+      if (nres.isHit && !nres.material.isEmissive()) {
+        Vec3<float> radiance = trace(ws, depth + 1);
+        float cosine = fabs(Vec3<float>::dot(N, ws_dir));
+        L_ind += radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
+      }
     }
+
+    // 镜面反射
+    {
+      ws_dir = mirrorDir(wi_dir, N);
+      Ray ws(p, ws_dir);
+      scenes->hit(ws, nres);
+
+      if (nres.isHit && !nres.material.isEmissive()) {
+        Vec3<float> radiance = trace(ws, depth + 1);
+        Vec3<float> H = Vec3<float>::normalize((wi_dir+ws_dir)/2);
+        float cosine = fabs(Vec3<float>::dot(N, H));
+        L_ind += radiance * specularity * pow(cosine, shiness)/ thresholdP;
+      }
+    }
+    
   }
 
   // 返回结果为：直接光+间接光
@@ -403,14 +426,16 @@ void Tracer::printStatus() {
             << "tracing depth: " << maxDepth << '\n'
             << "threshod probability: " << thresholdP << '\n';
   camera.printStatus();
+  
   // light
   light.printStatus();
+  
   // shapes
   std::cout << "shapes" << '\n'
-            << "triange number: "
-            << (scenes == nullptr ? 0 : scenes->getNodeNum()) << '\n';
+            << "triange number: " << objects.size() << '\n';
+
   // scenes
-  // scenes->getAABB().printStatus();
+  // std::cout << "scenes" << '\n';
   // scenes->printStatus();
 }
 }  // namespace spt
