@@ -9,7 +9,6 @@
 
 #include "BVH.hpp"
 #include "Camera.hpp"
-#include "Light.hpp"
 #include "Ray.hpp"
 #include "Vec.hpp"
 
@@ -18,8 +17,8 @@ class Tracer {
  private:
   std::shared_ptr<BVH> scenes;
   std::vector<std::shared_ptr<Hittable>> objects;
+  std::vector<std::shared_ptr<Triangle>> lights;
   Camera camera;
-  Light light;
   size_t maxDepth;
   size_t samples;
   float thresholdP;
@@ -39,7 +38,7 @@ class Tracer {
   ~Tracer() = default;
 
   void load(const std::string &pathName, const std::vector<std::string> &modelNames,
-            const std::string &configName);
+            const std::string &configName, int bvhMinCount);
   void render(const std::string& imgName = "result.png");
 };
 }  // namespace spt
