@@ -3,7 +3,6 @@
 namespace spt {
 
 Ray Camera::getRay(const int& row, const int& col) const {
-  // 注意：像素（0，0）位置是左上角
   float x = (static_cast<float>(col) + randFloat(1)) /
             static_cast<float>(width) * actualWidth;
   float y = (static_cast<float>(height - row) + randFloat(1)) /

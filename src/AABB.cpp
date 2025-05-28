@@ -117,7 +117,6 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> tMin, tMax;
 
   if (fabs(direction.x) < 0.000001f) {
-    // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.x <= origin.x && origin.x <= maxXYZ.x)) {
       res.isHit = false;
       return;
@@ -133,7 +132,6 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   }
 
   if (fabs(direction.y) < 0.000001f) {
-    // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.y <= origin.y && origin.y <= maxXYZ.y)) {
       res.isHit = false;
       return;
@@ -149,7 +147,6 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   }
 
   if (fabs(direction.z) < 0.000001f) {
-    // 若射线方向矢量的x轴分量为0且原点不在盒体内
     if (!(minXYZ.z <= origin.z && origin.z <= maxXYZ.z)) {
       res.isHit = false;
       return;
@@ -165,11 +162,8 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   }
 
   float t0, t1;
-  // 光线进入平面处（最靠近的平面）的最大t值
   t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
-  // 光线离开平面处（最远离的平面）的最小t值
   t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
-  // 当aabb特别薄时，等号也需要成立
   res.isHit = t0 <= t1;
   return;
 }
