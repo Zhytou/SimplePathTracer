@@ -18,16 +18,11 @@
 **编译运行**：
 
 ```bash
-# 下载OpenCV，具体可以参考其官网手册https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html
-sudo apt update && sudo apt install -y cmake g++ wget unzip
-wget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip
-unzip opencv.zip 
-mkdir -p build && cd build
-cmake  ../opencv-4.x
-cmake --build .
+# 克隆项目
+git clone git@github.com:Zhytou/SimplePathTracer.git
 
-# 运行测试脚本
-bash test.sh
+# 下载第三方库
+git submodule update --init
 
 # 使用CMake编译
 mkdir build
