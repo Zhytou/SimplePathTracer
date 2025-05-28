@@ -9,7 +9,6 @@ add_library(
     src/AABB.cpp
     src/BVH.cpp
     src/Camera.cpp
-    src/Light.cpp
     src/Material.cpp
     src/Random.cpp
     src/Ray.cpp

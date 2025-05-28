@@ -163,13 +163,21 @@ bool Tracer::loadModel(
       actualMaterial.setEmissive(false);
     }
 
-    actualMaterial.setDiffusion(material.diffuse[0], material.diffuse[1],
-                                material.diffuse[2]);
-    actualMaterial.setSpecularity(material.specular[0], material.specular[1],
-                                  material.specular[2]);
-    actualMaterial.setTransmittance(material.transmittance[0],
-                                    material.transmittance[1],
-                                    material.transmittance[2]);
+    actualMaterial.setDiffusion(
+      material.diffuse[0], 
+      material.diffuse[1],
+      material.diffuse[2]
+    );
+    actualMaterial.setSpecularity(
+      material.specular[0],
+      material.specular[1],
+      material.specular[2]
+    );
+    actualMaterial.setTransmittance(
+      material.transmittance[0],
+      material.transmittance[1],
+      material.transmittance[2]
+    );
     actualMaterial.setShiness(material.shininess);
     actualMaterial.setRefraction(material.ior);
 
@@ -187,8 +195,7 @@ bool Tracer::loadModel(
   }
 
   for (const auto &shape : shapes) {
-    assert(shape.mesh.material_ids.size() ==
-           shape.mesh.num_face_vertices.size());
+    assert(shape.mesh.material_ids.size() == shape.mesh.num_face_vertices.size());
 
     size_t triagnleNum = shape.mesh.material_ids.size();
     for (size_t face_i = 0; face_i < triagnleNum; face_i++) {
@@ -253,11 +260,11 @@ bool Tracer::loadModel(
       }
 
       Material material = actualMaterials[shape.mesh.material_ids[face_i]];
-      auto obj = std::make_shared<Triangle>(objects.size(), points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
+      auto object = std::make_shared<Triangle>(objects.size(), points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
       if (material.isEmissive()) {
-        light.setLight(obj);
+        lights.push_back(object);
       }
-      objects.push_back(obj);
+      objects.push_back(object);
     }
   }
 
@@ -265,7 +272,7 @@ bool Tracer::loadModel(
 }
 
 void Tracer::load(const std::string &pathName, const std::vector<std::string> &modelNames,
-                  const std::string &configName) {
+                  const std::string &configName, int bvhMinCount) {
   // Camera
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
   std::string config = pathName + configName;
@@ -284,7 +291,7 @@ void Tracer::load(const std::string &pathName, const std::vector<std::string> &m
     }
   }
   std::cout << "Model loading success!" << std::endl;
-  scenes = BVH::constructBVH(objects, 0, objects.size());
+  scenes = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
 
   printStatus();
 }
@@ -344,7 +351,8 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
   Vec3<float> N = res.normal;   // 击中点法向量
 
   // 移动击中点
-  p += N*EPSILON;
+  Vec3<float> wi_dir = wi.getDirection();
+  p = (Vec3<float>::dot(wi_dir, N) < 0) ? p+N*EPSILON : p-N*EPSILON;
 
   // 击中点材料信息
   Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
@@ -354,39 +362,48 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
   Vec3<float> transmittance = res.material.getTransmittance();
 
   if (!res.material.isEmissive()) {
-    // 直接光照 —— 节省路径（自己打过去）
-    size_t id = -1;
-    float area = 0; // 光源面积
-    Vec3<float> x;  // 光源采样点
-    Vec3<float> radiance; // 光源辐射
-    light.getRandomPoint(id, x, radiance, area);
-    float pdf_l = 1 / area;
+    // 直接光照——节省路径（自己打过去）
+    // 采样光源
+    size_t idx = randInt(lights.size());
+    Vec3<float> x = lights[idx]->getRandomPoint();
 
     // 检查是否有障碍
-    Ray ws(p, x - p);             // 击中点到光源采样点的光线
+    Ray ws(p, x - p);
     HitResult nres;
     scenes->hit(ws, nres);
 
-    if (nres.isHit && nres.id == id) {
-      Vec3<float> NN = nres.normal; // 光源法向量
-      Vec3<float> ws_dir = ws.getDirection();   // 击中点到光源的方向
+    if (true) {
+      int id = nres.id;
+      // 可能被其他光源遮挡
+      // for (idx = 0; idx < lights.size(); idx++) {
+      //   if (lights[idx]->getId() == id) {
+      //     break;
+      //   }
+      // }
+      Vec3<float> radiance = nres.material.getEmission();
+      Vec3<float> NN = nres.normal;
+      Vec3<float> ws_dir = ws.getDirection();
+      float dis = nres.distance;
+      float pdf_l = 1 / lights[idx]->getSize();
 
       float cosine1 = fabs(Vec3<float>::dot(N, ws_dir));
       float cosine2 = fabs(Vec3<float>::dot(NN, -ws_dir));
-      float dis = std::max(nres.distance, EPSILON);
-      L_d = radiance * (diffusion / PI) * cosine1 * cosine2 / (dis * dis * pdf_l);
+
+      if (dis * dis * pdf_l > EPSILON) {
+        L_d = radiance * (diffusion / PI) * cosine1 * cosine2 / (dis * dis * pdf_l);
+      }
     }
   }
-  
+
   // 间接光照
   float prob = randFloat(1);
   static float pdf = 1 / (2 * PI);
   // 俄罗斯轮盘
   if (prob < thresholdP) {
-    Vec3<float> wi_dir = wi.getDirection(), ws_dir;
+    Vec3<float> ws_dir;
     HitResult nres;
     
-    // 漫反射
+    // Diffuse
     {
       ws_dir = diffuseDir(wi_dir, N);
       Ray ws(p, ws_dir);
@@ -395,24 +412,23 @@ Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
       if (nres.isHit && !nres.material.isEmissive()) {
         Vec3<float> radiance = trace(ws, depth + 1);
         float cosine = fabs(Vec3<float>::dot(N, ws_dir));
-        L_ind += radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
+        L_ind = radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
       }
-    }
+    }    
 
-    // 镜面反射
-    {
+    // Specular
+    if (false) {
       ws_dir = mirrorDir(wi_dir, N);
       Ray ws(p, ws_dir);
       scenes->hit(ws, nres);
 
-      if (nres.isHit && !nres.material.isEmissive()) {
+      if (nres.isHit) {
         Vec3<float> radiance = trace(ws, depth + 1);
-        Vec3<float> H = Vec3<float>::normalize((wi_dir+ws_dir)/2);
+        Vec3<float> H = Vec3<float>::normalize((-wi_dir+ws_dir)/2);
         float cosine = fabs(Vec3<float>::dot(N, H));
-        L_ind += radiance * specularity * pow(cosine, shiness)/ thresholdP;
+        L_ind += radiance * specularity * pow(cosine, shiness) / thresholdP;
       }
-    }
-    
+    } 
   }
 
   // 返回结果为：直接光+间接光
@@ -426,9 +442,6 @@ void Tracer::printStatus() {
             << "tracing depth: " << maxDepth << '\n'
             << "threshod probability: " << thresholdP << '\n';
   camera.printStatus();
-  
-  // light
-  light.printStatus();
   
   // shapes
   std::cout << "shapes" << '\n'
