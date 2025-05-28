@@ -60,10 +60,8 @@ void Camera::update() {
 
   // view port
   actualDepth = Vec3<float>::distance(eye, lookat);
-  actualWidth =
-      fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * actualDepth) * 2;
-  actualHeight =
-      static_cast<float>(height) / static_cast<float>(width) * actualWidth;
+  actualHeight = fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * actualDepth) * 2;
+  actualWidth = static_cast<float>(width) / static_cast<float>(height) * actualHeight;
   lowerLeftCorner = lookat - axisX * actualWidth / 2 - axisY * actualHeight / 2;
 }
 
