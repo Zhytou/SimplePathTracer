@@ -12,34 +12,39 @@ template <typename T>
 struct Vec2 {
   T u, v;
 
-  // 构造与析构
   Vec2() = default;
+
   ~Vec2() = default;
+
   Vec2(const T& a, const T& b) : u(a), v(b) {}
 
-  // 运算符
   Vec2<T> operator-(const Vec2<T>& other) const {
     return Vec2<T>(u - other.u, v - other.v);
   }
+
   Vec2<T> operator+(const Vec2<T>& other) const {
     return Vec2<T>(u + other.u, v + other.v);
   }
+
   template <typename K>
   Vec2<T> operator*(const K& k) const {
     return Vec2<T>(u * k, v * k);
   }
+
 };
 
 template <typename T>
 struct Vec3 {
   T x, y, z;
 
-  // 构造与析构
   Vec3() = default;
+
   ~Vec3() = default;
+  
   Vec3(const T& a, const T& b, const T& c) : x(a), y(b), z(c) {}
 
-  // 赋值
+  Vec3(const T arr[3]) : x(arr[0]), y(arr[1]), z(arr[2]) {}
+
   Vec3& operator=(const Vec3<T>& other) {
     x = other.x;
     y = other.y;
@@ -47,43 +52,52 @@ struct Vec3 {
     return *this;
   }
 
-  // 运算符
   bool operator==(const Vec3<T>& other) const {
     return x == other.x && y == other.y && z == other.z;
   }
+  
   bool operator!=(const Vec3<T>& other) const {
     return x != other.x || y != other.y || z != other.z;
   }
+  
   Vec3<T> operator-() const { return Vec3<T>(-x, -y, -z); }
+  
   Vec3<T> operator-(const Vec3<T>& other) const {
     return Vec3<T>(x - other.x, y - other.y, z - other.z);
   }
+  
   Vec3<T> operator+(const Vec3<T>& other) const {
     return Vec3<T>(x + other.x, y + other.y, z + other.z);
   }
+  
   template <typename K>
   Vec3<T> operator*(const K& k) const {
     return Vec3<T>(x * k, y * k, z * k);
   }
+  
   Vec3<T> operator*(const Vec3<T>& other) const {
     return Vec3<T>(x * other.x, y * other.y, z * other.z);
   }
+  
   template <typename K>
   Vec3<T> operator/(const K& k) const {
     return Vec3<T>(x / k, y / k, z / k);
   }
+  
   Vec3<T>& operator-=(const Vec3<T>& other) {
     x -= other.x;
     y -= other.y;
     z -= other.z;
     return *this;
   }
+  
   Vec3<T>& operator+=(const Vec3<T>& other) {
     x += other.x;
     y += other.y;
     z += other.z;
     return *this;
   }
+  
   template <typename K>
   Vec3<T>& operator*=(const K& k) {
     x *= k;
@@ -91,6 +105,7 @@ struct Vec3 {
     z *= k;
     return *this;
   }
+  
   template <typename K>
   Vec3<T>& operator/=(const K& k) {
     x /= k;
