@@ -2,63 +2,61 @@
 #define SRE_MATERIAL_HPP
 
 #include <string>
-#include <unordered_map>
 
-#include "Ray.hpp"
 #include "Texture.hpp"
 #include "Vec.hpp"
 
+#define EPSILON 1e-6f
+
+namespace tinyobj {
+  struct material_t;
+}
+
 namespace spt {
 
+enum BxDFType {
+  BSDF_DIFFUSE_R = 1 << 1,
+  BSDF_GLOSSY_R = 1 << 2,
+  BSDF_SPECULAR_R = 1 << 3,
+  // BSDF_DIFFUSE_T = 1 << 4,
+  BSDF_GLOSSY_T = 1 << 5,
+  BSDF_SPECULAR_T = 1 << 6,
+};
+
 class Material {
- private:
-  std::string name;           // name 材料名称
-  Vec3<float> emission;       // Ke 自射光 对应xml文件中radiance
-  Vec3<float> ambience;       // Ka 环境光
-  Vec3<float> diffusion;      // Kd 漫射光
-  Vec3<float> specularity;    // Ks 镜面光
-  Vec3<float> transmittance;  // Tr 透射光
-  float shiness;              // Ns 反光强度
-  float refraction;           // Ni 折射率
-  bool emisssive;             // 是否发光
-  Texture* aTex;              // map_Ka 纹理
-  Texture* dTex;              // map_Kd 纹理
-  Texture* sTex;              // map_Ks 纹理
+  std::string name;
+  bool emissive;
+  Vec3<float> emission;
+  Vec3<float> albedo;
+  float metallic;
+  float roughness;
+  float ior;
+  Texture* tex;
 
- public:
-  Material() : aTex(nullptr), dTex(nullptr), sTex(nullptr) {};
+  static float GGX_D(const Vec3<float>& wh, const Vec3<float>& n, float roughness);
+  static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
+  static float GeometrySchlickGGX(float NdotV, float roughness);
+  static float Smith_G(const Vec3<float>& wi, const Vec3<float>& wo, const Vec3<float>& n, float roughness);
+public:
+  Material() = default;
+
   ~Material() = default;
+  
+  Material(const tinyobj::material_t& mtl, const std::string& dir);
 
-  // getter.
+  bool isEmissive() const;
+  
+  void setEmission(Vec3<float> e);
+
   std::string getName() const;
   Vec3<float> getEmission() const;
-  Vec3<float> getAmbience(const Vec2<float>& texCoord) const;
-  Vec3<float> getDiffusion(const Vec2<float>& texCoord) const;
-  Vec3<float> getSpecularity(const Vec2<float>& texCoord) const;
-  Vec3<float> getTransmittance() const;
-  float getShiness() const;
-  float getRefraction() const;
-  bool isEmissive() const;
-  bool isDiffusive() const;
-  bool isSpecular() const;
-  bool isTransmissive() const;
+  Vec3<float> getAlbedo(Vec2<float> uv) const;
 
-  // setter.
-  void setName(const std::string& n);
-  void setEmissive(bool e);
-  void setEmission(float x, float y, float z);
-  void setAmbience(float x, float y, float z);
-  void setDiffusion(float x, float y, float z);
-  void setSpecularity(float x, float y, float z);
-  void setTransmittance(float x, float y, float z);
-  void setShiness(float s);
-  void setRefraction(float r);
-  void setAmbientTexture(const std::string& at);
-  void setDiffuseTexture(const std::string& dt);
-  void setSpecularTexture(const std::string& st);
+  // evaluate BxDF
+  Vec3<float> eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv, BxDFType type) const;
 
-  // print.
-  void printStatus() const;
+  // sample direction and corresponding pdf
+  std::pair<Vec3<float>, float> sample(const Vec3<float> &wi, const Vec3<float> &n, BxDFType type) const;
 };
 }  // namespace spt
 
