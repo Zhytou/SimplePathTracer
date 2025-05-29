@@ -13,17 +13,13 @@ class Ray {
  public:
   Ray() = default;
   ~Ray() = default;
-  Ray(const Vec3<float> &org, const Vec3<float> &dir);
+  Ray(const Vec3<float> &org, const Vec3<float> &dir) : origin(org), direction(Vec3<float>::normalize(dir)) {}
 
   // getter
-  Vec3<float> getOrigin() const;
-  Vec3<float> getDirection() const;
-  Vec3<float> getPointAt(const float &t) const;
+  Vec3<float> getOrigin() const { return origin; }
+  Vec3<float> getDirection() const { return direction; }
+  Vec3<float> getPointAt(const float &t) const { return origin + direction * t; }
 };
-
-Vec3<float> diffuseDir(const Vec3<float> &wi, const Vec3<float> &n);
-Vec3<float> mirrorDir(const Vec3<float> &wi, const Vec3<float> &n, float roughness=0.1);
-Vec3<float> refractDIr(const Vec3<float> &wi, const Vec3<float> &n, float ior);
 
 }  // namespace spt
 
