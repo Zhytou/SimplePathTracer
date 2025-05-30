@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "BVH.hpp"
+#include "Light.hpp"
 #include "Camera.hpp"
 #include "Ray.hpp"
 #include "Vec.hpp"
@@ -15,13 +16,13 @@
 namespace spt {
 class Tracer {
  private:
-  std::shared_ptr<BVH> scenes;
+  std::shared_ptr<BVH> scene;
   std::vector<std::shared_ptr<Hittable>> objects;
-  std::vector<std::shared_ptr<Triangle>> lights;
+  Light light;
   Camera camera;
   size_t maxDepth;
   size_t samples;
-  float thresholdP;
+  float maxProb;
 
  private:
   bool loadConfiguration(
