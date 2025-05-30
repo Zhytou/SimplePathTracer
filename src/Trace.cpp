@@ -274,14 +274,14 @@ void Tracer::render(const std::string& imgName) {
       }
       color /= samples;
       
-      // idx
-      int idx = (row*w+col)*3;
-
       // gamma correction
       float gamma = 1.0f/2.2f;
-      img[idx+0] = std::min(255.f, 255*pow(color.x, gamma));
-      img[idx+1] = std::min(255.f, 255*pow(color.y, gamma));
-      img[idx+2] = std::min(255.f, 255*pow(color.z, gamma));
+      color = Vec3<float>::pow(color, gamma) * 255.f;
+
+      int idx = (row*w+col)*3;      
+      img[idx+0] = std::min(255.f, color.x);
+      img[idx+1] = std::min(255.f, color.y);
+      img[idx+2] = std::min(255.f, color.z);
     }
   }
 
@@ -293,67 +293,72 @@ void Tracer::render(const std::string& imgName) {
   return ;
 }
 
-Vec3<float> Tracer::trace(const Ray &rayi, size_t depth) {
+Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   assert(scene != nullptr);
   if (depth >= maxDepth) {
     return Vec3<float>(0, 0, 0);
   }
 
   HitResult res;
-  scene->hit(rayi, res);
+  scene->hit(rayv, res);
 
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
   assert(res.id >= 0 && res.id < objects.size());
 
-  // input direction
-  Vec3<float> wi = rayi.getDirection();
+  // view direction
+  Vec3<float> V = -rayv.getDirection(); // P -> Eye
 
   // hit info
-  Vec3<float>& n = res.normal;
-  Vec3<float>& p = res.hitPoint;
+  Vec3<float>& N = res.normal;
+  Vec3<float>& P = res.hitPoint;
   Material& mtl = res.material;
   float dis = res.distance;
 
   // tex coord
-  Vec2<float> uv = objects[res.id]->getTexCoord(p);
-  // hit point
-  p = (Vec3<float>::dot(wi, n) < 0) ? p+n*EPSILON : p-n*EPSILON; // move, because of percision
+  Vec2<float> UV = objects[res.id]->getTexCoord(P);
+  // update hit point
+  P = P + N * EPSILON; // move, because of percision
   // origin point
-  Vec3<float> o = rayi.getOrigin();
+  Vec3<float> PP = rayv.getOrigin();
 
   if (mtl.isEmissive()) {
     // ?
-    if (o == camera.getEye()) {
+    if (PP == camera.getEye()) {
       dis = 1.f;
     }
     return mtl.getEmission() / (dis * dis);
   }
 
-  // output direction
-  Vec3<float> wo(0.f, 0.f, 0.f);
-  // importance sampling
-  float pdf = 0.f;
+  // importance sampling result
+  Vec3<float> L(0.f, 0.f, 0.f); // light direction
+  float PDF = 0.f; // Probability density function
 
   if (randFloat(1) < 0.5) {
     // sample light
-    std::tie(wo, pdf) = light.sampleLight(scene, p);
+    std::tie(L, PDF) = light.sampleLight(scene, P);
   } else {
     // sample brdf
-    std::tie(wo, pdf) = mtl.sample(wi, n);
+    std::tie(L, PDF) = mtl.sample(V, N);
   }
 
-  if (pdf < EPSILON || wo == Vec3<float>(0.f, 0.f, 0.f)) {
+  float NdotL = std::max(Vec3<float>::dot(N, L), 0.f);
+  if (PDF < EPSILON || NdotL < EPSILON) {
     return Vec3<float>(0.f, 0.f, 0.f);
   }
 
-  Ray rayo(p, wo);
-  Vec3<float> radiance = trace(rayo, depth+1);
-  Vec3<float> f = mtl.eval(wi, n, wo, uv);
-  Vec3<float> L = radiance * f / pdf;
+  Ray rayl(P, L);
+  // input light
+  Vec3<float> L_i = trace(rayl, depth+1);
+  
+  // evaluate BxDF
+  Vec3<float> BxDF = mtl.eval(V, N, L, UV);
 
-  return L;
+  // output light
+  Vec3<float> L_o = L_i * BxDF * NdotL / PDF;
+
+  return L_o;
 }
 
 void Tracer::printStatus() {
