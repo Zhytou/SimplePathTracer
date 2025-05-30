@@ -16,13 +16,13 @@ namespace spt {
 
 enum BxDFType {
   // type of scatter
-  BSDF_REFLECTION = 1 << 1,
-  BSDF_TRANSIMISSION = 1 << 2,
+  BSDF_REFLECTION = 1,
+  BSDF_TRANSIMISSION = 1 << 1,
 
   // type of surface
-  BSDF_DIFFUSE = 1 << 3,
-  BSDF_GLOSSY = 1 << 4,
-  BSDF_SPECULAR = 1 << 5,
+  BSDF_DIFFUSE = 1 << 2,
+  BSDF_GLOSSY = 1 << 3,
+  BSDF_SPECULAR = 1 << 4,
 };
 
 class Material {
@@ -36,11 +36,15 @@ class Material {
   float ior;
   uint type;
   Texture* tex;
+  static uint mask; // bxdf scatter type mask
 
   static float GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness);
   static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
   static float GeometrySchlickGGX(float cosTheta, float roughness);
   static float Smith_G(float NdotV, float NdotL, float roughness);
+
+  Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
+  Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
 public:
   Material() = default;
 
