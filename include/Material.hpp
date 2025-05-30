@@ -31,6 +31,7 @@ class Material {
   float metallic;
   float roughness;
   float ior;
+  BxDFType type;
   Texture* tex;
 
   static float GGX_D(const Vec3<float>& wh, const Vec3<float>& n, float roughness);
@@ -49,14 +50,15 @@ public:
   void setEmission(Vec3<float> e);
 
   std::string getName() const;
+  BxDFType getType() const;
   Vec3<float> getEmission() const;
   Vec3<float> getAlbedo(Vec2<float> uv) const;
 
   // evaluate BxDF
-  Vec3<float> eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv, BxDFType type) const;
+  Vec3<float> eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
 
   // sample direction and corresponding pdf
-  std::pair<Vec3<float>, float> sample(const Vec3<float> &wi, const Vec3<float> &n, BxDFType type) const;
+  std::pair<Vec3<float>, float> sample(const Vec3<float> &wi, const Vec3<float> &n) const;
 };
 }  // namespace spt
 

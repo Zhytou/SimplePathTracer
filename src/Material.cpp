@@ -12,6 +12,17 @@ namespace spt
         // name
         name = mtl.name;
 
+        // type
+        if ((mtl.diffuse[0] == 0 && mtl.diffuse[1] == 0 && mtl.diffuse[2] == 0) && 
+            (mtl.specular[0] != 0 || mtl.specular[1] != 0 || mtl.specular[2] != 0)) {
+            type = BSDF_SPECULAR_R;
+        } else if ((mtl.diffuse[0] != 0 || mtl.diffuse[1] != 0 || mtl.diffuse[2] != 0) && 
+           (mtl.specular[0] == 0 && mtl.specular[1] == 0 && mtl.specular[2] == 0)) {
+            type = BSDF_DIFFUSE_R;
+        } else {
+            type = BSDF_GLOSSY_R;
+        }
+
         // emissive
         emissive = false;
         
@@ -22,7 +33,8 @@ namespace spt
         metallic = 0.5;
         
         // Ns -> roughness
-        roughness = mtl.roughness;
+        roughness = sqrtf(2 / (2 + mtl.shininess));
+        // roughness = mtl.roughness;
 
         // ior
         ior = mtl.ior;
@@ -45,6 +57,10 @@ namespace spt
         emission = e;
     }
 
+    BxDFType Material::getType() const {
+        return type;
+    }
+
     std::string Material::getName() const {
         return name;
     }
@@ -65,19 +81,19 @@ namespace spt
         }
     }
 
-    std::pair<Vec3<float>, float> Material::sample(const Vec3<float> &wi, const Vec3<float> &n, BxDFType type) const {
+    std::pair<Vec3<float>, float> Material::sample(const Vec3<float> &wi, const Vec3<float> &n) const {
         Vec3<float> wo(0.f, 0.f, 0.f);
         float pdf = 0.f;
 
-        float cosi = Vec3<float>::dot(wi, n);
-        if (cosi > 0) {
+        float NdotI = Vec3<float>::dot(n, wi);
+        if (NdotI > 0) {
             return {wo, pdf};
         }
 
         switch (type) {
             // perfect specular reflection
             case BSDF_SPECULAR_R: {
-                wo = wi - n * 2 * cosi;
+                wo = wi - n * 2 * NdotI;
                 pdf = 1;
             }
                 break;
@@ -86,8 +102,8 @@ namespace spt
                 double etai = 1, etat = ior;
                 Vec3<float> nn;
 
-                if (cosi < 0) {
-                    cosi = -cosi;
+                if (NdotI < 0) {
+                    NdotI = -NdotI;
                     nn = n;
                 } else {
                     std::swap(etai, etat);
@@ -95,21 +111,51 @@ namespace spt
                 }
 
                 float eta = etai / etat;
-                float cos2t = 1 - eta * eta * (1 - cosi * cosi);
+                float cos2t = 1 - eta * eta * (1 - NdotI * NdotI);
 
                 if (cos2t < 0) {
                     wo = Vec3<float>(0, 0, 0);
                     pdf = 0.f;
                 } else {
                     float cost = sqrtf(cos2t);
-                    wo = wi * eta + nn * (eta * cosi - cost);
+                    wo = wi * eta + nn * (eta * NdotI - cost);
                     pdf = 1.f;
                 }
             }
                 break;
             // glossy reflection
             case BSDF_GLOSSY_R: {
+                Vec3<float> v1 = Vec3<float>::cross(wi, n).normalize();
+                Vec3<float> v2 = Vec3<float>::cross(v1, n).normalize();
 
+                float a = randFloat(1), b = randFloat(1);
+
+                // CGX importance sampling
+                float alpha = roughness * roughness;
+                float alpha2 = alpha * alpha;
+                float z = sqrtf((1 - a) / (1 + (alpha2- 1) * a));
+                
+                float theta = 2 * PI * b;
+                float xy = sqrtf(1 - z * z);
+                float x = cos(theta) * xy;
+                float y = sin(theta) * xy;
+
+                Vec3<float> wh = v1 * x + v2 * y + n * z;
+
+                float HdotI = Vec3<float>::dot(wh, wi);
+                float HdotN = Vec3<float>::dot(wh, n);
+
+                if (HdotI > 0.f || HdotN < 0.f) {
+                    break;
+                }
+
+                Vec3<float> wo = wh * 2 * HdotI + wi;
+                float HdotO = Vec3<float>::dot(wh, wo);
+
+                float D = GGX_D(wh, n, roughness) * HdotN;
+                float denom = std::max(4 * HdotO * HdotO, EPSILON);
+                
+                pdf = D * HdotN / denom; 
             }
                 break;
             // diffuse reflection
@@ -122,16 +168,16 @@ namespace spt
 
                 float x = cos(theta) * sqrtf(b);
                 float y = sin(theta) * sqrtf(b);
-                float z = sqrt(1-b);
+                float z = sqrtf(1-b);
 
                 wo = v1 * x + v2 * y + n * z;
-                float coso = Vec3<float>::dot(n, wo);
+                float NdotO = Vec3<float>::dot(n, wo);
 
-                if (coso < EPSILON) {
+                if (NdotO < EPSILON) {
                     wo = Vec3<float>(0.f, 0.f, 0.f);
                     pdf = 0.f;
                 } else {
-                    pdf = coso / PI;
+                    pdf = NdotO / PI;
                 }
             }
                 break;
@@ -140,7 +186,7 @@ namespace spt
         return {wo, pdf};
     }
 
-    Vec3<float> Material::eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv,BxDFType type) const {
+    Vec3<float> Material::eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const {
         Vec3<float> bxdf(0, 0, 0);
 
         // reflection mask
@@ -176,7 +222,7 @@ namespace spt
 
         switch (type) {
             case BSDF_DIFFUSE_R: {
-                bxdf = albedo / PI * NdotL;
+                bxdf = albedo / PI;
             }
             break;
             case BSDF_GLOSSY_R: {
@@ -185,7 +231,7 @@ namespace spt
             }
             break;
             case BSDF_SPECULAR_R: {
-
+                bxdf = F * (albedo / PI) / NdotL;
             }
             break;
             case (BSDF_GLOSSY_T | BSDF_SPECULAR_T): {
