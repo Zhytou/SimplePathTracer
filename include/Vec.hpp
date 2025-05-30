@@ -2,6 +2,7 @@
 #define SRE_VEC_HPP
 
 #include <cmath>
+#include <ostream>
 #include <functional>
 
 #define PI M_PI
@@ -83,6 +84,10 @@ struct Vec3 {
   Vec3<T> operator/(const K& k) const {
     return Vec3<T>(x / k, y / k, z / k);
   }
+
+  Vec3<T> operator/(const Vec3<T>& other) const {
+    return Vec3<T>(x / other.x, y / other.y, z / other.z);
+  }
   
   Vec3<T>& operator-=(const Vec3<T>& other) {
     x -= other.x;
@@ -142,18 +147,19 @@ struct Vec3 {
     return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
                 (v1.z - v2.z) * (v1.z - v2.z));
   }
+
+  template<typename K>
+  static Vec3<T> pow(const Vec3<T>& v, const K& k) {
+    return Vec3<T>(std::pow(v.x, k), std::pow(v.y, k), std::pow(v.z, k));
+  }
+
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const Vec3<T>& v) {
+  os << "Vec3(" << v.x << ", " << v.y << ", " << v.z << ")";
+  return os;
+}
 }  // namespace spt
 
-template <typename T>
-struct std::hash<spt::Vec3<T>> {
-  std::size_t operator()(spt::Vec3<T> const& v) const noexcept {
-    std::hash<T> hasher;
-    std::size_t h1 = hasher(v.x);
-    std::size_t h2 = hasher(v.y);
-    std::size_t h3 = hasher(v.z);
-
-    return h1 ^ (h2 << 1) ^ (h3 << 2);  // or use boost::hash_combine
-  }
-};
 #endif
