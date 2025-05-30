@@ -12,11 +12,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#define EPSILON 1e-5f
-
 namespace spt {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
-    : scenes(nullptr), maxDepth(_depth), samples(_samples), thresholdP(_p) {}
+    : scene(nullptr), maxDepth(_depth), samples(_samples), maxProb(_p) {}
 
 bool Tracer::loadConfiguration(
     const std::string &configName,
@@ -150,48 +148,14 @@ bool Tracer::loadModel(
     return false;
   }
 
-  std::vector<Material> actualMaterials;
+  std::vector<Material> nmaterials;
   for (const auto &material : materials) {
-    Material actualMaterial;
-    actualMaterial.setName(material.name);
-
+    Material nmaterial(material, pathName);
     auto itr = lightRadiances.find(material.name);
     if (itr != lightRadiances.end()) {
-      actualMaterial.setEmissive(true);
-      actualMaterial.setEmission(itr->second.x, itr->second.y, itr->second.z);
-    } else {
-      actualMaterial.setEmissive(false);
+      nmaterial.setEmission(itr->second);
     }
-
-    actualMaterial.setDiffusion(
-      material.diffuse[0], 
-      material.diffuse[1],
-      material.diffuse[2]
-    );
-    actualMaterial.setSpecularity(
-      material.specular[0],
-      material.specular[1],
-      material.specular[2]
-    );
-    actualMaterial.setTransmittance(
-      material.transmittance[0],
-      material.transmittance[1],
-      material.transmittance[2]
-    );
-    actualMaterial.setShiness(material.shininess);
-    actualMaterial.setRefraction(material.ior);
-
-    if (!material.ambient_texname.empty()) {
-      actualMaterial.setAmbientTexture(pathName + material.ambient_texname);
-    }
-    if (!material.diffuse_texname.empty()) {
-      actualMaterial.setDiffuseTexture(pathName + material.diffuse_texname);
-    }
-    if (!material.specular_texname.empty()) {
-      actualMaterial.setSpecularTexture(pathName + material.specular_texname);
-    }
-
-    actualMaterials.emplace_back(actualMaterial);
+    nmaterials.emplace_back(nmaterial);
   }
 
   for (const auto &shape : shapes) {
@@ -259,10 +223,10 @@ bool Tracer::loadModel(
         }
       }
 
-      Material material = actualMaterials[shape.mesh.material_ids[face_i]];
+      Material material = nmaterials[shape.mesh.material_ids[face_i]];
       auto object = std::make_shared<Triangle>(objects.size(), points[0], points[1], points[2], point_textures[0], point_textures[1], point_textures[2], normal, material);
       if (material.isEmissive()) {
-        lights.push_back(object);
+        light.setLight(object);
       }
       objects.push_back(object);
     }
@@ -291,7 +255,7 @@ void Tracer::load(const std::string &pathName, const std::vector<std::string> &m
     }
   }
   std::cout << "Model loading success!" << std::endl;
-  scenes = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
+  scene = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
 
   printStatus();
 }
@@ -329,118 +293,74 @@ void Tracer::render(const std::string& imgName) {
   return ;
 }
 
-Vec3<float> Tracer::trace(const Ray &wi, size_t depth) {
-  assert(scenes != nullptr);
+Vec3<float> Tracer::trace(const Ray &rayi, size_t depth) {
+  assert(scene != nullptr);
   if (depth >= maxDepth) {
     return Vec3<float>(0, 0, 0);
   }
 
   HitResult res;
-  scenes->hit(wi, res);
+  scene->hit(rayi, res);
 
   if (!res.isHit) {
     return Vec3<float>(0, 0, 0);
   }
   assert(res.id >= 0 && res.id < objects.size());
 
-  // 直接光照 & 间接光照
-  Vec3<float> L_d(0, 0, 0), L_ind(0, 0, 0);
+  // input direction
+  Vec3<float> wi = rayi.getDirection();
 
-  // 击中点位置信息
-  Vec3<float> p = res.hitPoint; // 击中点
-  Vec3<float> N = res.normal;   // 击中点法向量
+  // hit info
+  Vec3<float>& n = res.normal;
+  Vec3<float>& p = res.hitPoint;
+  Material& mtl = res.material;
+  float dis = res.distance;
 
-  // 移动击中点
-  Vec3<float> wi_dir = wi.getDirection();
-  p = (Vec3<float>::dot(wi_dir, N) < 0) ? p+N*EPSILON : p-N*EPSILON;
+  // tex coord
+  Vec2<float> uv = objects[res.id]->getTexCoord(p);
+  // hit point
+  p = (Vec3<float>::dot(wi, n) < 0) ? p+n*EPSILON : p-n*EPSILON; // move, because of percision
+  // origin point
+  Vec3<float> o = rayi.getOrigin();
 
-  // 击中点材料信息
-  Vec2<float> texCoord = objects[res.id]->getTexCoord(res.hitPoint);
-  Vec3<float> diffusion = res.material.getDiffusion(texCoord);
-  Vec3<float> specularity = res.material.getSpecularity(texCoord);
-  int shiness = res.material.getShiness() ;
-  Vec3<float> transmittance = res.material.getTransmittance();
-
-  if (!res.material.isEmissive()) {
-    // 直接光照——节省路径（自己打过去）
-    // 采样光源
-    size_t idx = randInt(lights.size());
-    Vec3<float> x = lights[idx]->getRandomPoint();
-
-    // 检查是否有障碍
-    Ray ws(p, x - p);
-    HitResult nres;
-    scenes->hit(ws, nres);
-
-    if (true) {
-      int id = nres.id;
-      // 可能被其他光源遮挡
-      // for (idx = 0; idx < lights.size(); idx++) {
-      //   if (lights[idx]->getId() == id) {
-      //     break;
-      //   }
-      // }
-      Vec3<float> radiance = nres.material.getEmission();
-      Vec3<float> NN = nres.normal;
-      Vec3<float> ws_dir = ws.getDirection();
-      float dis = nres.distance;
-      float pdf_l = 1 / lights[idx]->getSize();
-
-      float cosine1 = fabs(Vec3<float>::dot(N, ws_dir));
-      float cosine2 = fabs(Vec3<float>::dot(NN, -ws_dir));
-
-      if (dis * dis * pdf_l > EPSILON) {
-        L_d = radiance * (diffusion / PI) * cosine1 * cosine2 / (dis * dis * pdf_l);
-      }
+  if (mtl.isEmissive()) {
+    // ?
+    if (o == camera.getEye()) {
+      dis = 1.f;
     }
+    return mtl.getEmission() / (dis * dis);
   }
 
-  // 间接光照
-  float prob = randFloat(1);
-  static float pdf = 1 / (2 * PI);
-  // 俄罗斯轮盘
-  if (prob < thresholdP) {
-    Vec3<float> ws_dir;
-    HitResult nres;
-    
-    // Diffuse
-    {
-      ws_dir = diffuseDir(wi_dir, N);
-      Ray ws(p, ws_dir);
-      scenes->hit(ws, nres);
+  // output direction
+  Vec3<float> wo(0.f, 0.f, 0.f);
+  // importance sampling
+  float pdf = 0.f;
 
-      if (nres.isHit && !nres.material.isEmissive()) {
-        Vec3<float> radiance = trace(ws, depth + 1);
-        float cosine = fabs(Vec3<float>::dot(N, ws_dir));
-        L_ind = radiance * (diffusion / PI) * cosine / (pdf * thresholdP);
-      }
-    }    
-
-    // Specular
-    if (false) {
-      ws_dir = mirrorDir(wi_dir, N);
-      Ray ws(p, ws_dir);
-      scenes->hit(ws, nres);
-
-      if (nres.isHit) {
-        Vec3<float> radiance = trace(ws, depth + 1);
-        Vec3<float> H = Vec3<float>::normalize((-wi_dir+ws_dir)/2);
-        float cosine = fabs(Vec3<float>::dot(N, H));
-        L_ind += radiance * specularity * pow(cosine, shiness) / thresholdP;
-      }
-    } 
+  if (randFloat(1) < 0.5) {
+    // sample light
+    std::tie(wo, pdf) = light.sampleLight(scene, p);
+  } else {
+    // sample brdf
+    std::tie(wo, pdf) = mtl.sample(wi, n);
   }
 
-  // 返回结果为：直接光+间接光
-  // 需要避免直接检测是不是光源，然后直接返回光源的辐射，这样会导致光源融入天花板
-  return res.material.getEmission() + L_d + L_ind;
+  if (pdf < EPSILON || wo == Vec3<float>(0.f, 0.f, 0.f)) {
+    return Vec3<float>(0.f, 0.f, 0.f);
+  }
+
+  Ray rayo(p, wo);
+  Vec3<float> radiance = trace(rayo, depth+1);
+  Vec3<float> f = mtl.eval(wi, n, wo, uv);
+  Vec3<float> L = radiance * f / pdf;
+
+  return L;
 }
 
 void Tracer::printStatus() {
   // configuration
   std::cout << "sample number: " << samples << '\n'
             << "tracing depth: " << maxDepth << '\n'
-            << "threshod probability: " << thresholdP << '\n';
+            << "threshod probability: " << maxProb << '\n';
   camera.printStatus();
   
   // shapes
