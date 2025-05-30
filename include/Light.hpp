@@ -25,21 +25,22 @@ namespace spt
             size_t idx = randInt(lights.size());
             Vec3<float> pp = lights[idx]->getRandomPoint();
             
-            Vec3<float> wo = pp - p;
+            Vec3<float> dir = Vec3<float>::normalize(pp - p);
             float pdf = 0.f;
 
-            Ray ray(p, wo);
+            Ray ray(p, dir);
             HitResult res;
             scene->hit(ray, res);
             
             if (!res.isHit || res.id != lights[idx]->getId()) {
-                wo = Vec3<float>(0, 0, 0);
+                dir = Vec3<float>(0, 0, 0);
             } else {
-                float area = lights[idx]->getSize();
+                std::string name = lights[idx]->getMaterial().getName();
+                float area = areas[name];
                 pdf = 1 / area;
             }
 
-            return {wo, pdf};
+            return {dir, pdf};
         }
     };
 } // namespace spt
