@@ -36,7 +36,8 @@ class Material {
   float ior;
   uint type;
   Texture* tex;
-  static uint mask; // bxdf scatter type mask
+  static uint scatMask; // bxdf scatter type mask
+  static uint surfMask; // bxdf surface type mask
 
   static float GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness);
   static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
@@ -45,6 +46,9 @@ class Material {
 
   Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
   Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
+
+  std::pair<Vec3<float>, float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
+  std::pair<Vec3<float>, float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
 public:
   Material() = default;
 
