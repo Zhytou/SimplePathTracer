@@ -97,10 +97,10 @@ namespace spt
     }
 
     /**
-     * @brief Samples a direction and its PDF for Monte Carlo integration of the material's BSDF.
+     * @brief Samples a direction and its PDF for Monte Carlo integration of the material's BxDF.
      *
-     * This function performs importance sampling based on the material's BRDF/BTDF properties.
-     * For PBR materials, it typically uses GGX distribution for glossy/specular lobes.
+     * This function performs importance sampling based on the material's surface.
+     * For example, it uses cosine-weighted hemisphere sampling for diffuse lobes.
      *
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
@@ -133,6 +133,16 @@ namespace spt
         }
     }
 
+    /**
+     * @brief Get the direction of reflected light.
+     *
+     * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
+     * @param N     [in] Surface normal. Must be normalized.
+     * 
+     * @return std::pair<Vec3<float>, float> 
+     *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
+     *         - Second: Probability density (PDF) of the sampled direction.
+     */
     std::pair<Vec3<float>, float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N) const {
         Vec3<float> L(0.f, 0.f, 0.f);
         float PDF = 0.f;
@@ -173,8 +183,6 @@ namespace spt
 
                 // construct L
                 L = Vec3<float>::normalize(H * 2 * HdotV - V);
-                // validate
-                // assert(Vec3<float>::distance(Vec3<float>::normalize(V + L),  H) < EPSILON);
 
                 // calculate L's pdf with the Jacobian of the reflection mapping
                 float D = GGX_D(H, N, roughness);
@@ -208,6 +216,18 @@ namespace spt
         return {L, PDF};
     }
 
+    /**
+     * @brief Get the direction of transimitted light.
+     *
+     * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
+     * @param N     [in] Surface normal. Must be normalized.
+     * 
+     * @return std::pair<Vec3<float>, float> 
+     *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
+     *         - Second: Probability density (PDF) of the sampled direction.
+     * 
+     * @note Snell's law is sinThetaI / sinThetaT = iorT / iorI
+     */
     std::pair<Vec3<float>, float> Material::transmit(const Vec3<float> &V, const Vec3<float> &N) const {
         Vec3<float> L(0.f, 0.f, 0.f);
         float PDF = 0.f;
@@ -218,22 +238,27 @@ namespace spt
         switch (surfType) {
             // perfect specular trasimission
             case BSDF_SPECULAR: {
-                // update normal
-                float cosThetaI = Vec3<float>::dot(N, V); // cosine incident theta
+                // cosine incident theta
+                float cosThetaI = Vec3<float>::dot(N, V); 
+
+                // create a 'temporary' normal, same hemishpere with V
                 Vec3<float> NN = (cosThetaI > 0) ? N : -N;
     
-                // ratio of ior
+                // ratio of incident ior to transmitted ior
+                // cosThetaI > 0: oustide -> material
+                // otherwise: material -> outside
                 float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
     
+                // square of sine transmitted theta
+                float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
                 // total internal reflection
-                float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI); // sine 2 transmitted theta
                 if (sin2ThetaT > 1) {
                     break;
                 }
 
                 // construct L
                 float cosThetaT = sqrtf(1 - sin2ThetaT);
-                L = V * eta - NN * (eta * cosThetaI + cosThetaT);
+                L = - V * eta + NN * (eta * cosThetaI - cosThetaT);
                 // only one possible direction
                 PDF = 1;
             }
@@ -245,12 +270,12 @@ namespace spt
     }
 
     /**
-     * @brief Evaluates the BRDF/BTDF value for given light and view directions.
+     * @brief Evaluates the BxDF value for given direction and point.
      * 
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
      * @param L     [in] Incident light direction (pointing AWAY from the surface). Must be normalized.
-     * @param UV    [in] Texture coordinates (optional). Default = (0,0) if unused.
+     * @param UV    [in] Texture coordinates.
      * 
      * @return Vec3<float> The computed BxDF value.
      */
@@ -258,27 +283,54 @@ namespace spt
         Vec3<float> bxdf(0, 0, 0);
 
         // reflection
-        if (type & BSDF_REFLECTION) {
+        if ((type & BSDF_REFLECTION)) {
             // half vector
             Vec3<float> H = Vec3<float>::normalize(V + L);
 
-            // brdf
-            bxdf += brdf(V, N, L, H, UV);
+            // make sure V, L, N, H in the same hemisphere
+            if ((Vec3<float>::dot(V, N) > 0) && (Vec3<float>::dot(L, N) > 0)) {
+                // brdf
+                bxdf += brdf(V, N, L, H, UV);
+            }
         } 
 
         // transimission
-        if (type & BSDF_TRANSIMISSION) {
-            // half vector
+        if ((type & BSDF_TRANSIMISSION)) {
+            // create a 'temporary' normal, same hemishpere with V
+            Vec3<float> NN = (Vec3<float>::dot(N, V) > 0) ? N : -N;
+
+            // ratio of ior
             float eta = (Vec3<float>::dot(N, V) > 0) ? 1.0f / ior : ior;
-            Vec3<float> H = Vec3<float>::normalize(V + L * eta);
-        
-            // btdf
-            bxdf += btdf(V, N, L, H, UV);
+
+            // half vector
+            Vec3<float> H = Vec3<float>::normalize(V * eta + L);
+
+            // make sure H is in same hemisphere with NN
+            H = (Vec3<float>::dot(NN, H) > 0) ? H : -H;
+
+            // make sure V and N in the same hemisphere, while L in the opposite one
+            if ((Vec3<float>::dot(V, NN) > 0) && (Vec3<float>::dot(L, NN) < 0)) {
+                // btdf
+                bxdf += btdf(V, NN, L, H, UV, eta);
+            }
         }
 
         return bxdf;
     }
 
+    /**
+     * @brief Evaluates the BRDF (Bidirectional Reflectance Distribution Function) for a given material.
+     *
+     * @param V   [in] View direction (pointing AWAY from the surface). Must be normalized.
+     * @param N   [in] Surface normal (pointing AWAY from the surface). Must be normalized.
+     * @param L   [in] Light direction (pointing AWAY from the surface). Must be normalized.
+     * @param H   [in] Half-vector (normalized midpoint between V and L). Must be normalized.
+     * @param UV  [in] Texture coordinates.
+     *
+     * @return Vec3<float> The BRDF value (RGB color) for the given input directions.
+     * 
+     * @note All direction vectors (V, N, L, H) in the SAME hemisphere.
+     */
     Vec3<float> Material::brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const {
         // bxdf surface type
         uint surfType = type & surfMask;
@@ -287,12 +339,15 @@ namespace spt
         Vec3<float> baseColor = getAlbedo(UV);
     
         // cosine constants
-        float NdotL = std::max(Vec3<float>::dot(N, L), 0.0f);
-        float NdotV = std::max(Vec3<float>::dot(N, V), 0.0f);
-        float NdotH = std::max(Vec3<float>::dot(N, H), 0.0f);
-        float LdotH = std::max(Vec3<float>::dot(L, H), 0.0f);
-        float VdotH = std::max(Vec3<float>::dot(V, H), 0.0f);
-
+        float NdotL = Vec3<float>::dot(N, L);
+        float NdotV = Vec3<float>::dot(N, V);
+        float NdotH = Vec3<float>::dot(N, H);
+        float LdotH = Vec3<float>::dot(L, H);
+        float VdotH = Vec3<float>::dot(V, H);
+        
+        // all the directions must be in same hemisphere
+        assert(NdotL >= 0 && NdotV >= 0 && NdotH >= 0);
+        
         Vec3<float> F0 = Vec3<float>(0.04, 0.04, 0.04);
         F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
     
@@ -310,6 +365,9 @@ namespace spt
                 return NF * (1 - metallic) * baseColor / PI + F * D * G / denom;
             }
             case BSDF_SPECULAR: {
+                // H should be same as N for perfect reflection
+                // assert(Vec3<float>::distance(N, H) < EPSILON);
+
                 return F * (baseColor / PI) / NdotV;
             }
             default: {
@@ -318,7 +376,20 @@ namespace spt
         }
     }
 
-    Vec3<float> Material::btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const {
+    /**
+     * @brief Evaluates the BTDF (Bidirectional transmittance distribution function) for a given material.
+     * 
+     * @param V   [in] View direction (pointing AWAY from surface). Must be normalized.
+     * @param N   [in] Geometric normal (pointing AWAY from surface). Must be normalized.
+     * @param L   [in] Light direction (pointing AWAY from surface). Must be normalized.
+     * @param H   [in] Half-vector (normalized midpoint: normalize(V + L)). Must be normalized.
+     * @param UV  [in] Texture coordinates.
+     * 
+     * @return Vec3<float> BTDF value (RGB color).
+     * 
+     * @note V and N are in the SAME hemisphere (V·N ≥ 0), while L is in the OPPOSITE hemisphere (L·N ≤ 0).
+     */
+    Vec3<float> Material::btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const {
         // bxdf surface type
         uint surfType = type & surfMask;
 
@@ -326,11 +397,14 @@ namespace spt
         Vec3<float> baseColor = getAlbedo(UV);
     
         // cosine constants
-        float NdotL = std::max(Vec3<float>::dot(N, L), 0.0f);
-        float NdotV = std::max(Vec3<float>::dot(N, V), 0.0f);
-        float NdotH = std::max(Vec3<float>::dot(N, H), 0.0f);
-        float LdotH = std::max(Vec3<float>::dot(L, H), 0.0f);
-        float VdotH = std::max(Vec3<float>::dot(V, H), 0.0f);
+        float NdotL = Vec3<float>::dot(N, L);
+        float NdotV = Vec3<float>::dot(N, V);
+        float NdotH = Vec3<float>::dot(N, H);
+        float LdotH = Vec3<float>::dot(L, H);
+        float VdotH = Vec3<float>::dot(V, H);
+
+        // make sure V, H, N are in the same hemisphere, while L in the opposite one
+        assert(NdotL <= 0 && NdotV >= 0 && NdotH >= 0);
 
         Vec3<float> F0 = Vec3<float>(0.04, 0.04, 0.04);
         F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
@@ -341,11 +415,14 @@ namespace spt
         Vec3<float> NF = (Vec3<float>(1, 1, 1) - F);
 
         switch (surfType) {
+            case BSDF_SPECULAR: {
+                // H should be same as N for perfect transmission
+                // assert(Vec3<float>::distance(N, H) < EPSILON);
+
+                return NF * transparency / ((eta * eta) * VdotH);
+            }
             case BSDF_GLOSSY: {
                 return Vec3<float>(0.f, 0.f, 0.f);
-            }
-            case BSDF_SPECULAR: {
-                return NF * transparency;
             }
             default: {
                 return Vec3<float>(0.f, 0.f, 0.f);

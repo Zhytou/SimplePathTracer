@@ -45,7 +45,7 @@ class Material {
   static float Smith_G(float NdotV, float NdotL, float roughness);
 
   Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
-  Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
+  Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const;
 
   std::pair<Vec3<float>, float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
   std::pair<Vec3<float>, float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
