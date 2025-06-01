@@ -333,18 +333,17 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
 
   // importance sampling result
   Vec3<float> L(0.f, 0.f, 0.f); // light direction
-  float PDF = 0.f; // Probability density function
+  float PDF = 0.f; // probability density function
 
   if (randFloat(1) < 0.5) {
     // sample light
     std::tie(L, PDF) = light.sampleLight(scene, P);
   } else {
-    // sample brdf
-    std::tie(L, PDF) = mtl.sample(V, N);
+    // sample bsdf
+    std::tie(L, PDF) = mtl.scatter(V, N);
   }
 
-  float NdotL = std::max(Vec3<float>::dot(N, L), 0.f);
-  if (PDF < EPSILON || NdotL < EPSILON) {
+  if (PDF < EPSILON) {
     return Vec3<float>(0.f, 0.f, 0.f);
   }
 
@@ -352,11 +351,14 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   // input light
   Vec3<float> L_i = trace(rayl, depth+1);
   
-  // evaluate BxDF
-  Vec3<float> BxDF = mtl.eval(V, N, L, UV);
+  // evaluate BSDF
+  Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
+
+  // incident cosine
+  float NdotL = fabs(Vec3<float>::dot(N, L));
 
   // output light
-  Vec3<float> L_o = L_i * BxDF * NdotL / PDF;
+  Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
 
   return L_o;
 }

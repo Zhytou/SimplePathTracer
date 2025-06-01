@@ -97,7 +97,7 @@ namespace spt
     }
 
     /**
-     * @brief Samples a direction and its PDF for Monte Carlo integration of the material's BxDF.
+     * @brief Samples a direction and its PDF for Monte Carlo integration of the material's BSDF.
      *
      * This function performs importance sampling based on the material's surface.
      * For example, it uses cosine-weighted hemisphere sampling for diffuse lobes.
@@ -109,12 +109,13 @@ namespace spt
      *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
      *         - Second: Probability density (PDF) of the sampled direction.
      */
-    std::pair<Vec3<float>, float> Material::sample(const Vec3<float> &V, const Vec3<float> &N) const {
-        // bxdf scatter type
+    std::pair<Vec3<float>, float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N) const {
+        // bsdf scatter type
         uint scatType = type & scatMask;
 
         switch (scatType) {
             case (BSDF_REFLECTION | BSDF_TRANSIMISSION): {
+                // ? same probability or use transparency
                 if (randFloat(1) < 0.5) {
                     return reflect(V, N);
                 } else {
@@ -134,7 +135,7 @@ namespace spt
     }
 
     /**
-     * @brief Get the direction of reflected light.
+     * @brief Samples the reflected ray direction and its PDF for Monte Carlo integration.
      *
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
@@ -147,7 +148,7 @@ namespace spt
         Vec3<float> L(0.f, 0.f, 0.f);
         float PDF = 0.f;
 
-        // bxdf surface type
+        // bsdf surface type
         uint surfType = type & surfMask;
 
         switch (surfType) {
@@ -163,16 +164,10 @@ namespace spt
                 PDF = 1;
             }
             break;
-            // glossy reflection (CGX importance sampling)
+            // glossy reflection (GGX importance sampling)
             case BSDF_GLOSSY: {
-                // CGX importance sampling
-                Vec3<float> localH = sampleGGX(roughness);
-
-                // orthogonal basis
-                Vec3<float> E1 = Vec3<float>::cross(V, N).normalize();
-                Vec3<float> E2 = Vec3<float>::cross(E1, N).normalize();
-                // convert H to world coordinates
-                Vec3<float> H = E1 * localH.x + E2 * localH.y + N * localH.z;
+                // GGX importance sampling
+                Vec3<float> H = sample(V, N, "GGX");
 
                 float HdotV = Vec3<float>::dot(H, V);
                 float HdotN = Vec3<float>::dot(H, N);
@@ -193,14 +188,8 @@ namespace spt
             // diffuse reflection (COSINE importance sampling)
             case BSDF_DIFFUSE: {
                 // COSINE importance sampling
-                Vec3<float> localL = sampleCosine();
-
-                // orthogonal basis
-                Vec3<float> E1 = Vec3<float>::cross(V, N).normalize();
-                Vec3<float> E2 = Vec3<float>::cross(E1, N).normalize();
-                // convert L to world coordinates
-                L = E1 * localL.x + E2 * localL.y + N * localL.z;
-                
+                Vec3<float> L = sample(V, N, "COSINE");
+            
                 float NdotL = Vec3<float>::dot(N, L);
 
                 if (NdotL < EPSILON) {
@@ -217,7 +206,7 @@ namespace spt
     }
 
     /**
-     * @brief Get the direction of transimitted light.
+     * @brief Samples the transmitted ray direction and its PDF for Monte Carlo integration.
      *
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
@@ -232,30 +221,30 @@ namespace spt
         Vec3<float> L(0.f, 0.f, 0.f);
         float PDF = 0.f;
 
-        // bxdf surface type
+        // cosine incident theta
+        float cosThetaI = Vec3<float>::dot(N, V); 
+
+        // create a 'temporary' normal, same hemishpere with V
+        Vec3<float> NN = (cosThetaI > 0) ? N : -N;
+
+        // ratio of incident ior to transmitted ior
+        // cosThetaI > 0: oustide -> material
+        // otherwise: material -> outside
+        float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
+
+        // square of sine transmitted theta
+        float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
+        // total internal reflection
+        if (sin2ThetaT > 1) {
+            return {L, PDF};
+        }
+
+        // bsdf surface type
         uint surfType = type & surfMask;
 
         switch (surfType) {
             // perfect specular trasimission
             case BSDF_SPECULAR: {
-                // cosine incident theta
-                float cosThetaI = Vec3<float>::dot(N, V); 
-
-                // create a 'temporary' normal, same hemishpere with V
-                Vec3<float> NN = (cosThetaI > 0) ? N : -N;
-    
-                // ratio of incident ior to transmitted ior
-                // cosThetaI > 0: oustide -> material
-                // otherwise: material -> outside
-                float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
-    
-                // square of sine transmitted theta
-                float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
-                // total internal reflection
-                if (sin2ThetaT > 1) {
-                    break;
-                }
-
                 // construct L
                 float cosThetaT = sqrtf(1 - sin2ThetaT);
                 L = - V * eta + NN * (eta * cosThetaI - cosThetaT);
@@ -263,24 +252,62 @@ namespace spt
                 PDF = 1;
             }
             break;
-            
+            case BSDF_GLOSSY: {
+                // GGX importance sampling
+
+            }
+            break;
         }
 
         return {L, PDF};
     }
 
+    Vec3<float> Material::sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const {
+        float a = randFloat(1), b = randFloat(1);
+
+        // local sampling direction
+        Vec3<float> localDir(0.f, 0.f, 0.f);
+
+        if (mode == "GGX") {
+            float alpha = roughness * roughness;
+            float alpha2 = alpha * alpha;
+
+            float cosTheta = sqrtf((1 - a) / (1 + (alpha2 - 1) * a));
+            float sinTheta = sqrtf(1 - cosTheta * cosTheta);
+            float Phi = 2 * PI * b;
+
+            localDir = {cosf(Phi) * sinTheta, sinf(Phi) * sinTheta, cosTheta};
+        } else if (mode == "COSINE") {
+            float cosTheta = sqrtf(a);
+            float sinTheta = sqrtf(1 - cosTheta * cosTheta);
+            float Phi =  2 * PI * b;
+
+            localDir = {cosf(Phi) * sinTheta, sinf(Phi) * sinTheta, cosTheta};
+        } else {
+            return localDir; // return default
+        }
+
+        // orthogonal basis
+        Vec3<float> E1 = Vec3<float>::cross(V, N).normalize();
+        Vec3<float> E2 = Vec3<float>::cross(E1, N).normalize();
+        // convert to world coordinates
+        Vec3<float> worldDir = E1 * localDir.x + E2 * localDir.y + N * localDir.z;
+        
+        return worldDir;
+    }
+
     /**
-     * @brief Evaluates the BxDF value for given direction and point.
+     * @brief Evaluates the BSDF value for given direction and point.
      * 
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
      * @param L     [in] Incident light direction (pointing AWAY from the surface). Must be normalized.
      * @param UV    [in] Texture coordinates.
      * 
-     * @return Vec3<float> The computed BxDF value.
+     * @return Vec3<float> The computed BSDF value.
      */
-    Vec3<float> Material::eval(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
-        Vec3<float> bxdf(0, 0, 0);
+    Vec3<float> Material::bsdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
+        Vec3<float> bsdf(0, 0, 0);
 
         // reflection
         if ((type & BSDF_REFLECTION)) {
@@ -290,7 +317,7 @@ namespace spt
             // make sure V, L, N, H in the same hemisphere
             if ((Vec3<float>::dot(V, N) > 0) && (Vec3<float>::dot(L, N) > 0)) {
                 // brdf
-                bxdf += brdf(V, N, L, H, UV);
+                bsdf += brdf(V, N, L, H, UV);
             }
         } 
 
@@ -311,11 +338,11 @@ namespace spt
             // make sure V and N in the same hemisphere, while L in the opposite one
             if ((Vec3<float>::dot(V, NN) > 0) && (Vec3<float>::dot(L, NN) < 0)) {
                 // btdf
-                bxdf += btdf(V, NN, L, H, UV, eta);
+                bsdf += btdf(V, NN, L, H, UV, eta);
             }
         }
 
-        return bxdf;
+        return bsdf;
     }
 
     /**
@@ -332,7 +359,7 @@ namespace spt
      * @note All direction vectors (V, N, L, H) in the SAME hemisphere.
      */
     Vec3<float> Material::brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const {
-        // bxdf surface type
+        // brdf surface type
         uint surfType = type & surfMask;
 
         // mtl info
@@ -390,7 +417,7 @@ namespace spt
      * @note V and N are in the SAME hemisphere (V·N ≥ 0), while L is in the OPPOSITE hemisphere (L·N ≤ 0).
      */
     Vec3<float> Material::btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const {
-        // bxdf surface type
+        // btdf surface type
         uint surfType = type & surfMask;
 
         // mtl info

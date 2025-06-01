@@ -14,7 +14,7 @@ namespace tinyobj {
 
 namespace spt {
 
-enum BxDFType {
+enum BSDFType {
   // type of scatter
   BSDF_REFLECTION = 1,
   BSDF_TRANSIMISSION = 1 << 1,
@@ -36,8 +36,8 @@ class Material {
   float ior;
   uint type;
   Texture* tex;
-  static uint scatMask; // bxdf scatter type mask
-  static uint surfMask; // bxdf surface type mask
+  static uint scatMask; // bsdf scatter type mask
+  static uint surfMask; // bsdf surface type mask
 
   static float GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness);
   static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
@@ -49,6 +49,8 @@ class Material {
 
   std::pair<Vec3<float>, float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
   std::pair<Vec3<float>, float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
+
+  Vec3<float> sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const;
 public:
   Material() = default;
 
@@ -65,11 +67,11 @@ public:
   Vec3<float> getEmission() const;
   Vec3<float> getAlbedo(Vec2<float> uv) const;
 
-  // evaluate BxDF
-  Vec3<float> eval(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
+  // evaluate BSDF
+  Vec3<float> bsdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
 
   // sample direction and corresponding pdf
-  std::pair<Vec3<float>, float> sample(const Vec3<float> &wi, const Vec3<float> &n) const;
+  std::pair<Vec3<float>, float> scatter(const Vec3<float> &wi, const Vec3<float> &n) const;
 };
 }  // namespace spt
 
