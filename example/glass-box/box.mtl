@@ -1,0 +1,26 @@
+newmtl Light
+Kd 0 0 0
+Pr 1.0
+Pm 0.0
+
+newmtl Green
+Kd 0.14 0.45 0.091
+Pr 1.0
+Pm 0.0
+
+newmtl Red
+Kd 0.63 0.065 0.05
+Pr 1.0
+Pm 0.0
+
+newmtl Gray
+Kd 0.725 0.71 0.68
+Pr 1.0
+Pm 0.0
+
+newmtl Glass
+Kd 0.5 0.5 0.5
+Pr 0.0
+Pm 0.0
+Ni 1.52
+Tr 0.98
