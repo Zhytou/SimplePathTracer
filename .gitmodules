@@ -4,9 +4,6 @@
 [submodule "third-parties/tinyxml2"]
 	path = third-parties/tinyxml2
 	url = git@github.com:leethomason/tinyxml2.git
-[submodule "third-parties/pugixml"]
-	path = third-parties/pugixml
-	url = git@github.com:zeux/pugixml.git
 [submodule "third-parties/stb"]
 	path = third-parties/stb
 	url = https://github.com/nothings/stb.git
