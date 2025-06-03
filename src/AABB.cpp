@@ -118,7 +118,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
 
   if (fabs(direction.x) < 0.000001f) {
     if (!(minXYZ.x <= origin.x && origin.x <= maxXYZ.x)) {
-      res.isHit = false;
+      res.hit = false;
       return;
     }
   } else {
@@ -133,7 +133,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
 
   if (fabs(direction.y) < 0.000001f) {
     if (!(minXYZ.y <= origin.y && origin.y <= maxXYZ.y)) {
-      res.isHit = false;
+      res.hit = false;
       return;
     }
   } else {
@@ -148,7 +148,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
 
   if (fabs(direction.z) < 0.000001f) {
     if (!(minXYZ.z <= origin.z && origin.z <= maxXYZ.z)) {
-      res.isHit = false;
+      res.hit = false;
       return;
     }
   } else {
@@ -164,7 +164,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   float t0, t1;
   t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
   t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
-  res.isHit = t0 <= t1;
+  res.hit = t0 <= t1;
   return;
 }
 }  // namespace spt

@@ -8,14 +8,15 @@
 namespace spt {
 
 struct HitResult {
-  bool isHit;
+  bool hit;
   int id;
   float distance;
-  Vec3<float> hitPoint;
+  Vec3<float> point;
+  Vec2<float> uv;
   Vec3<float> normal;
   Material material;
 
-  HitResult() : isHit(false), distance(-1) {}
+  HitResult() : hit(false), distance(-1) {}
 };
 
 class Hittable {

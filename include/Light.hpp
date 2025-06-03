@@ -33,7 +33,7 @@ namespace spt
             HitResult res;
             scene->hit(ray, res);
             
-            if (!res.isHit || res.material.getName() != lights[idx]->getMaterial().getName()) {
+            if (!res.hit || res.material.getName() != lights[idx]->getMaterial().getName()) {
                 dir = Vec3<float>(0, 0, 0);
             } else {
                 std::string name = lights[idx]->getMaterial().getName();

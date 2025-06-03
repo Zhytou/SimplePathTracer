@@ -14,12 +14,13 @@
 namespace spt {
 class BVH : public Hittable {
  private:
+  uint n;
   std::vector<std::shared_ptr<Hittable>> objects;
   AABB aabb;
   bool isLeaf;
 
  public:
-  BVH();
+  BVH(uint _n = 0);
   ~BVH() = default;
 
  public:
@@ -33,6 +34,7 @@ class BVH : public Hittable {
   static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int leftCount, int rightCount);
 
   // getter
+  uint getSize() const { return n; }
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
 

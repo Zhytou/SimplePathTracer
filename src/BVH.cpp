@@ -1,11 +1,11 @@
 #include "BVH.hpp"
 
 namespace spt {
-BVH::BVH() : isLeaf(false) {}
+BVH::BVH(uint _n) : isLeaf(false), n(_n) {}
 
 // construct
 std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int minCount) {
-  auto bvh = std::make_shared<BVH>();
+  auto bvh = std::make_shared<BVH>(objects.size());
 
   // bvh aabb
   bvh->aabb = AABB(objects.begin()+beg, objects.begin()+end);
@@ -117,22 +117,22 @@ void BVH::printStatus() const {
 // hit
 void BVH::hit(const Ray &ray, HitResult &res) const {
   // reset
-  res.isHit = false;
+  res.hit = false;
 
   aabb.hit(ray, res);
-  if (!res.isHit) {
+  if (!res.hit) {
     return;
   }
 
   if (isLeaf) {
     // reset result
-    res.isHit = false;
+    res.hit = false;
     // current result
     HitResult cres;
     // find the best result
     for (auto obj : objects){
       obj->hit(ray, cres);
-      if (cres.isHit && (!res.isHit || res.distance > cres.distance)) {
+      if (cres.hit && (!res.hit || res.distance > cres.distance)) {
         res = cres;
       }
     }
@@ -144,18 +144,18 @@ void BVH::hit(const Ray &ray, HitResult &res) const {
   objects[0]->hit(ray, lres);
   objects[1]->hit(ray, rres);
 
-  if (lres.isHit && rres.isHit) {
+  if (lres.hit && rres.hit) {
     if (lres.distance < rres.distance) {
       res = lres;
     } else {
       res = rres;
     }
-  } else if (lres.isHit) {
+  } else if (lres.hit) {
     res = lres;
-  } else if (rres.isHit) {
+  } else if (rres.hit) {
     res = rres;
   } else {
-    res.isHit = false;
+    res.hit = false;
   }
   return ;
 }
