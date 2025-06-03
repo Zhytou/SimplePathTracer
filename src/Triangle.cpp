@@ -1,4 +1,5 @@
 #include "Triangle.hpp"
+#include "Material.hpp"
 
 #include <cassert>
 
@@ -10,7 +11,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       v1(_v1),
       v2(_v2),
       v3(_v3),
-      normal(Vec3<float>::normalize(Vec3<float>::cross(_v2 - _v1, _v3 - _v1))),
+      normal(cross(_v2 - _v1, _v3 - _v1).normalize()),
       material(_m) {}
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
@@ -20,7 +21,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       v1(_v1),
       v2(_v2),
       v3(_v3),
-      normal(Vec3<float>::normalize(_n)),
+      normal(normalize(_n)),
       material(_m) {}
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
@@ -34,7 +35,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       vt1(_vt1),
       vt2(_vt2),
       vt3(_vt3),
-      normal(Vec3<float>::normalize(_n)),
+      normal(normalize(_n)),
       material(_m) {}
 
 Triangle::~Triangle() {}
@@ -57,50 +58,43 @@ Vec3<float> Triangle::getMaxXYZ() const {
 
 Vec3<float> Triangle::getRandomPoint() const {
   Vec3<float> e1 = v2 - v1, e2 = v3 - v2;
-  float a = sqrt(randFloat(1)), b = randFloat(1);
+  float a = sqrtf(rand<float>(1)), b = sqrtf(rand<float>(1));
   return e1 * a + e2 * a * b + v1;
 }
 
 Vec2<float> Triangle::getTexCoord(const Vec3<float>& coord) const {
-  Vec3<float> e1 = v2 - v1, e2 = v3 - v1;
-  Vec3<float> e = coord - v1;
-  float a, b;
-  if (e1.x * e2.y != e1.y * e2.x) {
-    a = (e.y * e2.x - e.x * e2.y) / (e2.x * e1.y - e1.x * e2.y);
-    b = (e.x * e1.y - e.y * e1.x) / (e2.x * e1.y - e1.x * e2.y);
-  } else if (e1.x * e2.z != e1.z * e2.x) {
-    a = (e.x * e2.z - e.z * e2.x) / (e1.x * e2.z - e1.z * e2.x);
-    b = (e.z * e1.x - e.x * e1.z) / (e1.x * e2.z - e1.z * e2.x);
-  } else if (e1.y * e2.z != e1.z * e2.y) {
-    a = (e.y * e2.z - e.z * e2.y) / (e1.y * e2.z - e1.z * e2.y);
-    b = (e.z * e1.z - e.y * e1.z) / (e1.y * e2.z - e1.z * e2.y);
-  } else {
-    a = 0;
-    b = 0;
-  }
-  Vec2<float> texCoord(0, 0);
-  texCoord = vt1 + (vt2 - vt1) * a + (vt3 - vt1) * b;
-  // if (texCoord.u >= 0 && texCoord.u <= 1 && texCoord.v >= 0 &&
-  //     texCoord.v <= 1) {
-  //   std::cout << "tex coord fail!\n"
-  //             << "a = " << a << " b = " << b << '\n';
-  //   this->printStatus();
-  // }
+  assert(contain(coord));
 
-  // 保证纹理坐标都在[0, 1]的范围内
-  while (texCoord.u < 0 || texCoord.u > 1) {
-    texCoord.u += texCoord.u < 0 ? 1 : -1;
+  Vec3<float> e1 = v2 - v1, e2 = v3 - v1;
+  Vec3<float> n = cross(e1, e2);
+  float area = n.length();
+
+  // too small to be a valid triangle
+  if (area < EPSILON) {
+    return vt1;
   }
-  while (texCoord.v < 0 || texCoord.v > 1) {
-    texCoord.v += texCoord.v < 0 ? 1 : -1;
-  }
+
+  // calculate gravity center
+  float a = cross(e2, coord - v1).length() / area;
+  float b = cross(coord - v1, e1).length() / area;
+  float c = 1 - a - b;
+
+  // interpolation
+  Vec2<float> texCoord = vt2 * a + vt3 * b + vt1 * c;
+
+  // make sure within the [0, 1] range
+  texCoord.u = std::fmod(texCoord.u, 1.0f);
+  texCoord.v = std::fmod(texCoord.v, 1.0f);
+  if (texCoord.u < 0) texCoord.u += 1.0f;
+  if (texCoord.v < 0) texCoord.v += 1.0f;
+
   return texCoord;
 }
 
 Material Triangle::getMaterial() const { return material; }
 
 float Triangle::getSize() const {
-  return Vec3<float>::cross(v2 - v1, v3 - v1).length() / 2;
+  return cross(v2 - v1, v3 - v1).length() / 2;
 }
 
 bool Triangle::contain(const Vec3<float>& p) const {
@@ -112,11 +106,11 @@ bool Triangle::contain(const Vec3<float>& p) const {
   Vec3<float> pv = p - v1;
   
   // pv = u*e1 + v*e2
-  float c1 = Vec3<float>::dot(pv, e1);
-  float c2 = Vec3<float>::dot(pv, e2);
-  float c3 = Vec3<float>::dot(e1, e1);
-  float c4 = Vec3<float>::dot(e2, e2);
-  float c5 = Vec3<float>::dot(e1, e2);
+  float c1 = dot(pv, e1);
+  float c2 = dot(pv, e2);
+  float c3 = dot(e1, e1);
+  float c4 = dot(e2, e2);
+  float c5 = dot(e1, e2);
 
   float denom = c3*c4-c5*c5;
   float u = (c1*c4-c2*c5)/denom;
@@ -130,22 +124,24 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> direction = ray.getDirection();
 
   // initialize hit result
-  res.isHit = false;
+  res.hit = false;
   res.id = this->getId();
 
-  float denom = Vec3<float>::dot(normal, direction);
-  if (fabs(denom) <= 1e-6) {
+  float denom = dot(normal, direction);
+  // ray is parallel to triangle face
+  if (fabs(denom) <= EPSILON) {
     return;
   }
 
-  float t = (Vec3<float>::dot(normal, v1)-Vec3<float>::dot(normal, origin))/denom;
+  float t = (dot(normal, v1) - dot(normal, origin))/denom;
   Vec3<float> p = ray.getPointAt(t);
   if (t < 0.05 || !contain(p)) {
     return;
   }
 
-  res.isHit = true;
-  res.hitPoint = p;
+  res.hit = true;
+  res.point = p;
+  res.uv = getTexCoord(p);
   res.distance = t;
   res.normal = normal;
   res.material = material;
@@ -155,7 +151,6 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
 void Triangle::printStatus() const {
   std::cout << "triangle: \n"
             << "id: " << this->getId() << '\n'
-            << "material: " << material.getName() << '\n'
             << "vertex 1: " << v1.x << '\t' << v1.y << '\t' << v1.z << '\n'
             << "vertex 2: " << v2.x << '\t' << v2.y << '\t' << v2.z << '\n'
             << "vertex 3: " << v3.x << '\t' << v3.y << '\t' << v3.z << '\n'
