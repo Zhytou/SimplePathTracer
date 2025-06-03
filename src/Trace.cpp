@@ -12,145 +12,80 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#define TINYXML2_HEADER_ONLY
+#include <tinyxml2.h>
+
 namespace spt {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
     : scene(nullptr), maxDepth(_depth), samples(_samples), maxProb(_p) {}
 
-bool Tracer::loadConfiguration(
-    const std::string &configName,
-    std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
-  std::ifstream ifs;
-  ifs.open(configName, std::ios::in);
-  if (!ifs.is_open()) {
+bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
+  // xml root
+  tinyxml2::XMLDocument doc;
+  doc.LoadFile(config.c_str());
+  if (doc.Error()) {
     return false;
   }
 
-  std::string buf;
-  int i, j;
+  // xml element
+  tinyxml2::XMLElement* element = nullptr;
+  
+  // camera element
+  element = doc.FirstChildElement("scene")->FirstChildElement("camera");
+  camera.setWidth(element->FloatAttribute("width"));
+  camera.setHeight(element->FloatAttribute("height"));
+  camera.setFovy(element->FloatAttribute("fovy"));
 
-  int width, height;
-  float fovy;
-  float xyzs[3][3];
-
-  // xml
-  getline(ifs, buf);
-  // camera
-  getline(ifs, buf);
-  i = 0;
-  while (i < buf.size()) {
-    switch (buf[i]) {
-      case 'w':
-        assert(buf[i + 1] == 'i' && buf[i + 2] == 'd' && buf[i + 3] == 't' &&
-               buf[i + 4] == 'h' && buf[i + 5] == '=' && buf[i + 6] == '\"');
-        i += 7;
-        j = buf.find('\"', i);
-        width = stoi(buf.substr(i, j - i));
-        i = j + 1;
-        break;
-      case 'h':
-        assert(buf[i + 1] == 'e' && buf[i + 2] == 'i' && buf[i + 3] == 'g' &&
-               buf[i + 4] == 'h' && buf[i + 5] == 't' && buf[i + 6] == '=' &&
-               buf[i + 7] == '\"');
-        i += 8;
-        j = buf.find('\"', i);
-        height = stoi(buf.substr(i, j - i));
-        i = j + 1;
-        break;
-      case 'f':
-        assert(buf[i + 1] == 'o' && buf[i + 2] == 'v' && buf[i + 3] == 'y' &&
-               buf[i + 4] == '=' && buf[i + 5] == '\"');
-        i += 6;
-        j = buf.find('\"', i);
-        fovy = stof(buf.substr(i, j - i));
-        i = j + 1;
-        break;
-      default:
-        i += 1;
-        break;
+  // camera sub element
+  std::string names[3] = {"eye", "lookat", "up"};
+  for (auto name : names) {
+    tinyxml2::XMLElement* subelem = element->FirstChildElement(name.c_str());
+    float x, y, z;
+    x = subelem->FloatAttribute("x");
+    y = subelem->FloatAttribute("y");
+    z = subelem->FloatAttribute("z");
+    
+    if (name == "eye") {
+      camera.setEye(x, y, z);
+    } else if (name == "lookat") {
+      camera.setLookAt(x, y, z);
+    } else {
+      camera.setUp(x, y, z);
     }
   }
 
-  // eye-lookat-up
-  for (int row = 0; row < 3; row++) {
-    getline(ifs, buf);
-    i = 0;
+  // light radiances elements
+  element = doc.FirstChildElement("scene")->FirstChildElement("light");
+  while(element != nullptr) {
+    std::string mtlname = element->Attribute("mtlname");
+    std::string radiance = element->Attribute("radiance");
+    std::vector<std::string> radiances = split(radiance, ',');
 
-    int col = 0;
-    while (i < buf.size()) {
-      if (i > 0 && buf[i - 1] == ' ' &&
-          (buf[i] == 'x' || buf[i] == 'y' || buf[i] == 'z')) {
-        assert(buf[i + 1] == '=' && buf[i + 2] == '\"');
-        i += 3;
-        j = buf.find('\"', i);
-        xyzs[row][col] = stof(buf.substr(i, j - i));
-        i = j + 1;
-        col += 1;
-      } else {
-        i += 1;
-      }
-    }
+    assert(radiances.size() == 3);
+    float x = std::stof(radiances[0]);
+    float y = std::stof(radiances[1]);
+    float z = std::stof(radiances[2]);
+    lightRadiances[mtlname] = Vec3<float>(x, y, z);
+    
+    element = element->NextSiblingElement("light");
   }
 
-  // TODO: 修改loadConfig逻辑，保证staircase.xml也能被正常解读
-  while (getline(ifs, buf)) {
-    std::string mtlname;
-    Vec3<float> radiance;
-    i = 0;
-    while (i < buf.size()) {
-      if (i > 0 && buf[i - 1] == ' ' && buf[i] == 'm') {
-        assert(buf.substr(i, 9) == "mtlname=\"");
-        i += 9;
-        j = buf.find('\"', i);
-        mtlname = buf.substr(i, j - i);
-        i = j + 1;
-      } else if (i > 0 && buf[i - 1] == ' ' && buf[i] == 'r') {
-        assert(buf.substr(i, 10) == "radiance=\"");
-        i += 10;
-        j = buf.find(',', i);
-        radiance.x = stof(buf.substr(i, j - i));
-        i = j + 1;
-
-        j = buf.find(',', i);
-        radiance.y = stof(buf.substr(i, j - i));
-        i = j + 1;
-
-        j = buf.find('\"', i);
-        radiance.z = stof(buf.substr(i, j - i));
-        i = j + 1;
-      } else {
-        i += 1;
-      }
-    }
-    if (!mtlname.empty()) {
-      lightRadiances.emplace(mtlname, radiance);
-    }
-  }
-
-  camera.setWidth(width);
-  camera.setHeight(height);
-  camera.setFovy(fovy);
-  camera.setEye(xyzs[0][0], xyzs[0][1], xyzs[0][2]);
-  camera.setLookAt(xyzs[1][0], xyzs[1][1], xyzs[1][2]);
-  camera.setWorld(xyzs[2][0], xyzs[2][1], xyzs[2][2]);
   return true;
 }
 
-bool Tracer::loadModel(
-    const std::string &modelName, const std::string &pathName,
-    const std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
+bool Tracer::loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
   std::string warn;
   std::string err;
-  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, &warn,
-                        modelName.c_str(), pathName.c_str())) {
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, &warn, model.c_str(), dir.c_str())) {
     return false;
   }
 
   std::vector<Material> nmaterials;
   for (const auto &material : materials) {
-    Material nmaterial(material, pathName);
+    Material nmaterial(material, dir);
     auto itr = lightRadiances.find(material.name);
     if (itr != lightRadiances.end()) {
       nmaterial.setEmission(itr->second);
@@ -165,8 +100,7 @@ bool Tracer::loadModel(
     for (size_t face_i = 0; face_i < triagnleNum; face_i++) {
       Vec3<float> points[3];
       for (size_t point_i = 0; point_i < 3; point_i++) {
-        int vertex_index =
-            shape.mesh.indices[face_i * 3 + point_i].vertex_index;
+        int vertex_index = shape.mesh.indices[face_i * 3 + point_i].vertex_index;
 
         points[point_i].x = attrib.vertices[vertex_index * 3 + 0];
         points[point_i].y = attrib.vertices[vertex_index * 3 + 1];
@@ -175,8 +109,7 @@ bool Tracer::loadModel(
 
       Vec2<float> point_textures[3];
       for (size_t point_i = 0; point_i < 3; point_i++) {
-        int texcoord_index =
-            shape.mesh.indices[face_i * 3 + point_i].texcoord_index;
+        int texcoord_index = shape.mesh.indices[face_i * 3 + point_i].texcoord_index;
 
         if (texcoord_index * 2 + 1 < 0 ||
             texcoord_index * 2 + 0 >= attrib.texcoords.size()) {
@@ -206,8 +139,7 @@ bool Tracer::loadModel(
         point_normals[point_i].z = attrib.normals[normal_index * 3 + 2];
       }
 
-      Vec3<float> normal =
-          Vec3<float>::cross(points[1] - points[0], points[2] - points[0]);
+      Vec3<float> normal = Vec3<float>::cross(points[1] - points[0], points[2] - points[0]);
       if (normalValid && (point_normals[0] == point_normals[1] ||
                           point_normals[0] == point_normals[2] ||
                           point_normals[1] == point_normals[2])) {
@@ -235,26 +167,20 @@ bool Tracer::loadModel(
   return true;
 }
 
-void Tracer::load(const std::string &pathName, const std::vector<std::string> &modelNames,
-                  const std::string &configName, int bvhMinCount) {
-  // Camera
+void Tracer::load(const std::string &dir, const std::vector<std::string> &models,
+                  const std::string &config, int bvhMinCount) {
+  // camera, light and material type
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
-  std::string config = pathName + configName;
-  if (!loadConfiguration(config, lightRadiances)) {
-    std::cout << "Camera config loading fails!" << std::endl;
+  if (!loadConfig(dir+config, lightRadiances)) {
     return;
   }
-  std::cout << "Camera config loading success!" << std::endl;
   
-  // Scene
-  for (auto modelName : modelNames) {
-    std::string model = pathName + modelName;
-    if (!loadModel(model, pathName, lightRadiances)) {
-      std::cout << "Model loading fails!" << std::endl;
+  // scene
+  for (auto model : models) {
+    if (!loadModel(model, dir, lightRadiances)) {
       return;
     }
   }
-  std::cout << "Model loading success!" << std::endl;
   scene = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
 
   printStatus();
@@ -335,7 +261,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float> L(0.f, 0.f, 0.f); // light direction
   float PDF = 0.f; // probability density function
 
-  if (randFloat(1) < 0.5) {
+  if (rand<float>(1) < 0.5) {
     // sample light
     std::tie(L, PDF) = light.sampleLight(scene, P);
   } else {
