@@ -5,7 +5,6 @@
 #include<map>
 #include<memory>
 
-#include "Vec.hpp"
 #include "Triangle.hpp"
 #include "BVH.hpp"
 
@@ -17,12 +16,14 @@ namespace spt
 
         public:
         void setLight(std::shared_ptr<Triangle> triangle) {
+            assert(triangle->getMaterial().isEmissive());
             areas[triangle->getMaterial().getName()] += triangle->getSize();
             lights.push_back(triangle);
         }
 
         std::pair<Vec3<float>, float> sampleLight(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
-            size_t idx = randInt(lights.size());
+            size_t idx = rand<int>(lights.size()-1);
+            assert(lights[idx] != nullptr);
             Vec3<float> pp = lights[idx]->getRandomPoint();
             
             Vec3<float> dir = Vec3<float>::normalize(pp - p);
@@ -32,7 +33,7 @@ namespace spt
             HitResult res;
             scene->hit(ray, res);
             
-            if (!res.isHit || res.id != lights[idx]->getId()) {
+            if (!res.isHit || res.material.getName() != lights[idx]->getMaterial().getName()) {
                 dir = Vec3<float>(0, 0, 0);
             } else {
                 std::string name = lights[idx]->getMaterial().getName();

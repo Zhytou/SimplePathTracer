@@ -1,8 +1,7 @@
 #ifndef SRE_RAY_HPP
 #define SRE_RAY_HPP
 
-#include "Random.hpp"
-#include "Vec.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 class Ray {

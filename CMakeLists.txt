@@ -10,8 +10,6 @@ add_library(
     src/BVH.cpp
     src/Camera.cpp
     src/Material.cpp
-    src/Random.cpp
-    src/Ray.cpp
     src/Texture.cpp
     src/Trace.cpp
     src/Triangle.cpp
@@ -21,9 +19,12 @@ target_include_directories(
     spt PUBLIC 
     include
     ${CMAKE_HOME_DIRECTORY}/third-parties/tinyobjloader
+    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyxml2
     ${CMAKE_HOME_DIRECTORY}/third-parties/stb
 )
 
 add_executable(main src/main.cpp)
 
-target_link_libraries(main spt)
+add_subdirectory(third-parties/tinyxml2)
+
+target_link_libraries(main spt tinyxml2)

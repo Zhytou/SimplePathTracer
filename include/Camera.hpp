@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include "Ray.hpp"
-#include "Vec.hpp"
 
 namespace spt {
 
@@ -25,10 +24,10 @@ class Camera {
   Camera() = default;
   ~Camera() = default;
 
-  // print.
+  // print
   void printStatus() const;
 
-  // getter.
+  // getter
   Ray getRay(const int& row, const int& col) const;
   int getWidth() const;
   int getHeight() const;
@@ -36,13 +35,13 @@ class Camera {
   Vec3<float> getLookAt() const;
   Vec3<float> getAxisZ() const;
 
-  // setter.
+  // setter
   void setWidth(const int& w);
   void setHeight(const int& h);
   void setFovy(const float& theta);
   void setEye(const float& x, const float& y, const float& z);
   void setLookAt(const float& x, const float& y, const float& z);
-  void setWorld(const float& x, const float& y, const float& z);
+  void setUp(const float& x, const float& y, const float& z);
 
  private:
   void update();

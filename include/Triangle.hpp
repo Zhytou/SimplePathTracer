@@ -4,9 +4,9 @@
 #include <iostream>
 
 #include "Hittable.hpp"
-#include "Material.hpp"
 
 namespace spt {
+class Material;
 
 class Triangle : public Hittable {
  private:

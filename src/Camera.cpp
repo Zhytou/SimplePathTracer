@@ -3,9 +3,9 @@
 namespace spt {
 
 Ray Camera::getRay(const int& row, const int& col) const {
-  float x = (static_cast<float>(col) + randFloat(1)) /
+  float x = (static_cast<float>(col) + rand<float>(1)) /
             static_cast<float>(width) * actualWidth;
-  float y = (static_cast<float>(height - row) + randFloat(1)) /
+  float y = (static_cast<float>(height - row) + rand<float>(1)) /
             static_cast<float>(height) * actualHeight;
   Vec3<float> pos = axisX * x + axisY * y + lowerLeftCorner;
   return Ray(eye, pos - eye);
@@ -41,7 +41,7 @@ void Camera::setLookAt(const float& x, const float& y, const float& z) {
   lookat.z = z;
   update();
 }
-void Camera::setWorld(const float& x, const float& y, const float& z) {
+void Camera::setUp(const float& x, const float& y, const float& z) {
   up.x = x;
   up.y = y;
   up.z = z;

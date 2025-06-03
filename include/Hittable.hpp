@@ -3,7 +3,7 @@
 
 #include "Material.hpp"
 #include "Ray.hpp"
-#include "Vec.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 

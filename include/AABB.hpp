@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "Hittable.hpp"
-#include "Vec.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 

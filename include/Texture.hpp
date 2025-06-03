@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "Vec.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 class Texture {
