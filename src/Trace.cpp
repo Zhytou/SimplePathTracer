@@ -1,6 +1,5 @@
 #include <omp.h>
-#include <algorithm>
-#include <fstream>
+#include <iomanip>
 
 #include "Trace.hpp"
 #include "Material.hpp"
@@ -196,6 +195,9 @@ void Tracer::load(const std::string &dir, const std::vector<std::string> &models
     }
   }
   scene = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
+
+  // info
+  print();
 }
 
 void Tracer::render(const std::string& imgName) {
@@ -220,6 +222,9 @@ void Tracer::render(const std::string& imgName) {
       img[idx+0] = std::min(255.f, color.x);
       img[idx+1] = std::min(255.f, color.y);
       img[idx+2] = std::min(255.f, color.z);
+
+      // show progress
+      showProgress(100.f * idx / (3 * h * w));
     }
   }
 
@@ -265,7 +270,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     if (PP == camera.getEye()) {
       dis = 1.f;
     }
-    return mtl.getEmission() ;
+    return mtl.getEmission() / (dis * dis);
   }
 
   // importance sampling result
@@ -298,6 +303,27 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
 
   return L_o;
+}
+
+void Tracer::print() const {
+  std::cout << "Tracer Info:\n"
+  << "----------------------\n"
+  << "Camera " << camera.getHeight() << 'x' << camera.getWidth() << ' '
+               << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt() << '\n'
+  << "Scene " << scene->getSize() << ' ' << scene->getNodeCount() << '\n';
+}
+
+void Tracer::showProgress(float percent) {
+    const int barWidth = 50;
+    std::cout << "[";
+    int pos = static_cast<int>(barWidth * percent / 100.0f);
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << std::setw(3) << static_cast<int>(percent) << "%\r";
+    std::cout.flush();
 }
 
 }  // namespace spt

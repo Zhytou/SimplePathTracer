@@ -57,15 +57,6 @@ float AABB::getArea() const {
   return deltaXYZ.x * deltaXYZ.y + deltaXYZ.x * deltaXYZ.z + deltaXYZ.y * deltaXYZ.z;
 }
 
-void AABB::printStatus() const {
-  std::cout << "AABB:\n"
-            << "minXYZ: " << minXYZ.x << '\t' << minXYZ.y << '\t' << minXYZ.z
-            << '\n'
-            << "maxXYZ: " << maxXYZ.x << '\t' << maxXYZ.y << '\t' << maxXYZ.z
-            << '\n';
-  std::cout << std::endl;
-}
-
 AABB AABB::merge(const AABB& aabb1, const AABB& aabb2) {
   Vec3<float> minXYZ, maxXYZ;
 
@@ -116,7 +107,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   Vec3<float> direction = ray.getDirection();
   Vec3<float> tMin, tMax;
 
-  if (fabs(direction.x) < 0.000001f) {
+  if (fabs(direction.x) < EPSILON) {
     if (!(minXYZ.x <= origin.x && origin.x <= maxXYZ.x)) {
       res.hit = false;
       return;
@@ -131,7 +122,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
     }
   }
 
-  if (fabs(direction.y) < 0.000001f) {
+  if (fabs(direction.y) < EPSILON) {
     if (!(minXYZ.y <= origin.y && origin.y <= maxXYZ.y)) {
       res.hit = false;
       return;
@@ -146,7 +137,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
     }
   }
 
-  if (fabs(direction.z) < 0.000001f) {
+  if (fabs(direction.z) < EPSILON) {
     if (!(minXYZ.z <= origin.z && origin.z <= maxXYZ.z)) {
       res.hit = false;
       return;

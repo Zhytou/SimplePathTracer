@@ -35,11 +35,9 @@ class BVH : public Hittable {
 
   // getter
   uint getSize() const { return n; }
+  uint getNodeCount() const;
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
-
-  // print
-  virtual void printStatus() const override;
 
   // hit
   virtual void hit(const Ray &ray, HitResult &res) const override;

@@ -64,21 +64,4 @@ void Camera::update() {
   lowerLeftCorner = lookat - axisX * actualWidth / 2 - axisY * actualHeight / 2;
 }
 
-void Camera::printStatus() const {
-  std::cout << "camera" << '\n';
-  std::cout << "h&w: " << height << '\t' << width << '\n';
-  std::cout << "actual h&w: " << actualHeight << '\t' << actualWidth << '\n';
-  std::cout << "position: " << eye.x << '\t' << eye.y << '\t' << eye.z << '\n';
-  std::cout << "target: " << lookat.x << '\t' << lookat.y << '\t' << lookat.z
-            << '\n';
-  std::cout << "axis x: " << axisX.x << '\t' << axisX.y << '\t' << axisX.z
-            << '\n';
-  std::cout << "axis y: " << axisY.x << '\t' << axisY.y << '\t' << axisY.z
-            << '\n';
-  std::cout << "axis z: " << axisZ.x << '\t' << axisZ.y << '\t' << axisZ.z
-            << '\n';
-  std::cout << "low left corner: " << lowerLeftCorner.x << '\t'
-            << lowerLeftCorner.y << '\t' << lowerLeftCorner.z << '\n';
-  std::cout << std::endl;
-}
 }  // namespace spt

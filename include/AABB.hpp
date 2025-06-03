@@ -22,15 +22,12 @@ class AABB : public Hittable {
   AABB(const std::vector<std::shared_ptr<Hittable>>::const_iterator& beg, const std::vector<std::shared_ptr<Hittable>>::const_iterator& end);
 
  public:
-  // getter.
+  // getter
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
   
   // calculate surface area
   float getArea() const;
-
-  // print.
-  virtual void printStatus() const override;
 
   // hit
   virtual void hit(const Ray& ray, HitResult& res) const override;

@@ -148,17 +148,4 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   return;
 }
 
-void Triangle::printStatus() const {
-  std::cout << "triangle: \n"
-            << "id: " << this->getId() << '\n'
-            << "vertex 1: " << v1.x << '\t' << v1.y << '\t' << v1.z << '\n'
-            << "vertex 2: " << v2.x << '\t' << v2.y << '\t' << v2.z << '\n'
-            << "vertex 3: " << v3.x << '\t' << v3.y << '\t' << v3.z << '\n'
-            << "vertex 1 texture: " << vt1.u << '\t' << vt1.v << '\n'
-            << "vertex 2 texture: " << vt2.u << '\t' << vt2.v << '\n'
-            << "vertex 3 texture: " << vt3.u << '\t' << vt3.v << '\n'
-            << "normal: " << normal.x << '\t' << normal.y << '\t' << normal.z
-            << '\n';
-  std::cout << std::endl;
-}
 }  // namespace spt

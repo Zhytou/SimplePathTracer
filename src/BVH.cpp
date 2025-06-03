@@ -100,18 +100,12 @@ float BVH::computeSAH(const AABB& parent, const AABB& left, const AABB& right, i
 Vec3<float> BVH::getMinXYZ() const { return aabb.getMinXYZ(); }
 Vec3<float> BVH::getMaxXYZ() const { return aabb.getMaxXYZ(); }
 
-// print
-void BVH::printStatus() const { 
-  for (auto obj : objects) {
-    if (isLeaf) {
-      std::cout << obj->getId() << '\t';
-    } else {
-      obj->printStatus();
-    }
-  }
+uint BVH::getNodeCount() const {
   if (isLeaf) {
-    std::cout << '\n';
+    return 1;
   }
+  
+  return dynamic_cast<BVH*>(objects[0].get())->getNodeCount() + dynamic_cast<BVH*>(objects[1].get())->getNodeCount();
 }
 
 // hit

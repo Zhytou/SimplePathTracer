@@ -27,15 +27,13 @@ class Triangle : public Hittable {
   ~Triangle();
 
  public:
+  // getter
   virtual Vec3<float> getMinXYZ() const override;
   virtual Vec3<float> getMaxXYZ() const override;
-  virtual Vec2<float> getTexCoord(const Vec3<float>& coord) const override;
+  Vec2<float> getTexCoord(const Vec3<float>& coord) const;
   Vec3<float> getRandomPoint() const;
   Material getMaterial() const;
   float getSize() const;
-
-  // print
-  virtual void printStatus() const override;
 
   // contain
   bool contain(const Vec3<float>& p) const;

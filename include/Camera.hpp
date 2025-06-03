@@ -24,9 +24,6 @@ class Camera {
   Camera() = default;
   ~Camera() = default;
 
-  // print
-  void printStatus() const;
-
   // getter
   Ray getRay(const int& row, const int& col) const;
   int getWidth() const;
