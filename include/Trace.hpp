@@ -11,7 +11,6 @@
 #include "Light.hpp"
 #include "Camera.hpp"
 #include "Ray.hpp"
-#include "Vec.hpp"
 
 namespace spt {
 class Tracer {
@@ -25,12 +24,8 @@ class Tracer {
   float maxProb;
 
  private:
-  bool loadConfiguration(
-      const std::string &configName,
-      std::unordered_map<std::string, Vec3<float>> &lightRadiances);
-  bool loadModel(
-      const std::string &modelName, const std::string &pathName,
-      const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
+  bool loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances);
+  bool loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
   Vec3<float> trace(const Ray &ray, size_t depth);
   void printStatus();
 
@@ -38,8 +33,7 @@ class Tracer {
   Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5);
   ~Tracer() = default;
 
-  void load(const std::string &pathName, const std::vector<std::string> &modelNames,
-            const std::string &configName, int bvhMinCount);
+  void load(const std::string &dir, const std::vector<std::string> &models, const std::string &config, int bvhMinCount);
   void render(const std::string& imgName = "result.png");
 };
 }  // namespace spt

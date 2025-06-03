@@ -79,7 +79,8 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
   std::vector<tinyobj::material_t> materials;
   std::string warn;
   std::string err;
-  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, &warn, model.c_str(), dir.c_str())) {
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, model.c_str(), dir.c_str())) {
+    std::cerr << err << std::endl;
     return false;
   }
 
@@ -172,12 +173,14 @@ void Tracer::load(const std::string &dir, const std::vector<std::string> &models
   // camera, light and material type
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
   if (!loadConfig(dir+config, lightRadiances)) {
+    std::cerr << "Error: Config load failure (file: " << config << ")" << std::endl;
     return;
   }
   
   // scene
   for (auto model : models) {
-    if (!loadModel(model, dir, lightRadiances)) {
+    if (!loadModel(dir+model, dir, lightRadiances)) {
+      std::cerr << "Error: Model load failure (file: " << model << ")" << std::endl;
       return;
     }
   }
@@ -299,7 +302,7 @@ void Tracer::printStatus() {
   // shapes
   std::cout << "shapes" << '\n'
             << "triange number: " << objects.size() << '\n';
-
+  
   // scenes
   // std::cout << "scenes" << '\n';
   // scenes->printStatus();
