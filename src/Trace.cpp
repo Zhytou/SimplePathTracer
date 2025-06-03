@@ -19,7 +19,7 @@ namespace spt {
 Tracer::Tracer(size_t _depth, size_t _samples, float _p)
     : scene(nullptr), maxDepth(_depth), samples(_samples), maxProb(_p) {}
 
-bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
+bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint& illuType) {
   // xml root
   tinyxml2::XMLDocument doc;
   doc.LoadFile(config.c_str());
@@ -70,10 +70,21 @@ bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::strin
     element = element->NextSiblingElement("light");
   }
 
+  // material illumination type
+  element = doc.FirstChildElement("scene")->FirstChildElement("material");
+  std::string type = element->Attribute("illutype");
+  if (type == "microfacet") {
+    illuType = BSDF_MICROFACET;
+  } else if(type == "blinn_phong") {
+    illuType = BSDF_BLINN_PHONG;
+  } else {
+    illuType = BSDF_PHONG;
+  }
+
   return true;
 }
 
-bool Tracer::loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances) {
+bool Tracer::loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint illuType, std::vector<std::shared_ptr<Hittable>>& objects) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -86,7 +97,7 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
 
   std::vector<Material> nmaterials;
   for (const auto &material : materials) {
-    Material nmaterial(material, dir);
+    Material nmaterial(material, dir, illuType);
     auto itr = lightRadiances.find(material.name);
     if (itr != lightRadiances.end()) {
       nmaterial.setEmission(itr->second);
@@ -119,9 +130,8 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
         } 
 
         point_textures[point_i].u = attrib.texcoords[texcoord_index * 2 + 0];
-        point_textures[point_i].v = attrib.texcoords[texcoord_index * 2 + 1];
+        point_textures[point_i].v = attrib.texcoords[texcoord_index * 2 + 1];      
       }
-      // std::cout << "texture load success!\n";
 
       bool normalValid = true;
       Vec3<float> point_normals[3];
@@ -140,7 +150,7 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
         point_normals[point_i].z = attrib.normals[normal_index * 3 + 2];
       }
 
-      Vec3<float> normal = Vec3<float>::cross(points[1] - points[0], points[2] - points[0]);
+      Vec3<float> normal = cross(points[1] - points[0], points[2] - points[0]);
       if (normalValid && (point_normals[0] == point_normals[1] ||
                           point_normals[0] == point_normals[2] ||
                           point_normals[1] == point_normals[2])) {
@@ -151,7 +161,7 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
           normal = point_normals[1];
         }
       } else {
-        if (Vec3<float>::dot(point_normals[0], normal) < 0) {
+        if (dot(point_normals[0], normal) < 0) {
           normal = -normal;
         }
       }
@@ -168,25 +178,24 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
   return true;
 }
 
-void Tracer::load(const std::string &dir, const std::vector<std::string> &models,
-                  const std::string &config, int bvhMinCount) {
+void Tracer::load(const std::string &dir, const std::vector<std::string> &models, const std::string &config, int bvhMinCount) {
   // camera, light and material type
   std::unordered_map<std::string, Vec3<float>> lightRadiances;
-  if (!loadConfig(dir+config, lightRadiances)) {
+  uint illuType;
+  if (!loadConfig(dir+config, lightRadiances, illuType)) {
     std::cerr << "Error: Config load failure (file: " << config << ")" << std::endl;
     return;
   }
   
   // scene
+  std::vector<std::shared_ptr<Hittable>> objects;
   for (auto model : models) {
-    if (!loadModel(dir+model, dir, lightRadiances)) {
+    if (!loadModel(dir+model, dir, lightRadiances, illuType, objects)) {
       std::cerr << "Error: Model load failure (file: " << model << ")" << std::endl;
       return;
     }
   }
   scene = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
-
-  printStatus();
 }
 
 void Tracer::render(const std::string& imgName) {
@@ -205,7 +214,7 @@ void Tracer::render(const std::string& imgName) {
       
       // gamma correction
       float gamma = 1.0f/2.2f;
-      color = Vec3<float>::pow(color, gamma) * 255.f;
+      color = pow(color, gamma) * 255.f;
 
       int idx = (row*w+col)*3;      
       img[idx+0] = std::min(255.f, color.x);
@@ -231,22 +240,21 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   HitResult res;
   scene->hit(rayv, res);
 
-  if (!res.isHit) {
+  if (!res.hit) {
     return Vec3<float>(0, 0, 0);
   }
-  assert(res.id >= 0 && res.id < objects.size());
+  assert(res.id >= 0 && res.id < scene->getSize());
 
   // view direction
   Vec3<float> V = -rayv.getDirection(); // P -> Eye
 
   // hit info
   Vec3<float>& N = res.normal;
-  Vec3<float>& P = res.hitPoint;
+  Vec3<float>& P = res.point;
+  Vec2<float>& UV = res.uv;
   Material& mtl = res.material;
   float dis = res.distance;
-
-  // tex coord
-  Vec2<float> UV = objects[res.id]->getTexCoord(P);
+  
   // update hit point
   P = P + N * EPSILON; // move, because of percision
   // origin point
@@ -257,7 +265,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     if (PP == camera.getEye()) {
       dis = 1.f;
     }
-    return mtl.getEmission() / (dis * dis);
+    return mtl.getEmission() ;
   }
 
   // importance sampling result
@@ -284,7 +292,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
 
   // incident cosine
-  float NdotL = fabs(Vec3<float>::dot(N, L));
+  float NdotL = fabs(dot(N, L));
 
   // output light
   Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
@@ -292,19 +300,4 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   return L_o;
 }
 
-void Tracer::printStatus() {
-  // configuration
-  std::cout << "sample number: " << samples << '\n'
-            << "tracing depth: " << maxDepth << '\n'
-            << "threshod probability: " << maxProb << '\n';
-  camera.printStatus();
-  
-  // shapes
-  std::cout << "shapes" << '\n'
-            << "triange number: " << objects.size() << '\n';
-  
-  // scenes
-  // std::cout << "scenes" << '\n';
-  // scenes->printStatus();
-}
 }  // namespace spt

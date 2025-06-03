@@ -16,7 +16,6 @@ namespace spt {
 class Tracer {
  private:
   std::shared_ptr<BVH> scene;
-  std::vector<std::shared_ptr<Hittable>> objects;
   Light light;
   Camera camera;
   size_t maxDepth;
@@ -24,10 +23,9 @@ class Tracer {
   float maxProb;
 
  private:
-  bool loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances);
-  bool loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances);
+  bool loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint& illuType);
+  bool loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint illuType, std::vector<std::shared_ptr<Hittable>>& objects);
   Vec3<float> trace(const Ray &ray, size_t depth);
-  void printStatus();
 
  public:
   Tracer(size_t _depth = 3, size_t _samples = 3, float _p = 0.5);
