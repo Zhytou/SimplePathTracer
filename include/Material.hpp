@@ -4,7 +4,6 @@
 #include <string>
 
 #include "Texture.hpp"
-#include "Vec.hpp"
 
 #define EPSILON 1e-6f
 
@@ -23,21 +22,41 @@ enum BSDFType {
   BSDF_DIFFUSE = 1 << 2,
   BSDF_GLOSSY = 1 << 3,
   BSDF_SPECULAR = 1 << 4,
+
+  // type of illumination model
+  BSDF_MICROFACET = 1 << 5,
+  BSDF_PHONG = 1 << 6,
+  BSDF_BLINN_PHONG = 1 << 7,
 };
 
 class Material {
   std::string name;
+  
+  // light property
   bool emissive;
   Vec3<float> emission;
-  Vec3<float> albedo;
-  float metallic;   // (0 = dielectric, 1 = metal)
-  float roughness;  // (0 = perfectly smooth, 1 = fully rough)
-  float transparency; // (0 = opaque, 1 = fully transparent)
-  float ior;
-  uint type;
+
+  // microfacet property
+  Vec3<float> albedo; // Kd
+  // m-r workflow
+  float metallic;   // Pm (0 = dielectric, 1 = metal)
+  float roughness;  // Pr (0 = perfectly smooth, 1 = fully rough)
+  // s-g workflow
+  Vec3<float> specular; // Ks
+  float glossiness; // sheen
+  
+  // phong/phong-blinn property
+  float shininess; // Ns
+
+  // shared property
   Texture* tex;
+  float transparency; // Tr or d (0 = opaque, 1 = fully transparent)
+  float ior; // Ni
+  
+  uint type;
   static uint scatMask; // bsdf scatter type mask
   static uint surfMask; // bsdf surface type mask
+  static uint illuMask; // bsdf illumimation model mask
 
   static float GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness);
   static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
@@ -56,7 +75,7 @@ public:
 
   ~Material() = default;
   
-  Material(const tinyobj::material_t& mtl, const std::string& dir);
+  Material(const tinyobj::material_t& mtl, const std::string& dir, uint illuType);
 
   bool isEmissive() const;
   

@@ -26,7 +26,7 @@ namespace spt
             assert(lights[idx] != nullptr);
             Vec3<float> pp = lights[idx]->getRandomPoint();
             
-            Vec3<float> dir = Vec3<float>::normalize(pp - p);
+            Vec3<float> dir = normalize(pp - p);
             float pdf = 0.f;
 
             Ray ray(p, dir);

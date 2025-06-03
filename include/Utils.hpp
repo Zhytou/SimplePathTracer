@@ -134,36 +134,44 @@ struct Vec3 {
 
   T length() const { return sqrt(x * x + y * y + z * z); }
 
-  static Vec3<T> normalize(const Vec3<T>& v) {
-    float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    return Vec3<T>(v.x / d, v.y / d, v.z / d);
-  }
-
-  static Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {
-    return Vec3<T>(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z,
-                   v1.x * v2.y - v1.y * v2.x);
-  }
-
-  static T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
-    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-  }
-
-  static T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
-    return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
-                (v1.z - v2.z) * (v1.z - v2.z));
-  }
-
-  template<typename K>
-  static Vec3<T> pow(const Vec3<T>& v, const K& k) {
-    return Vec3<T>(std::pow(v.x, k), std::pow(v.y, k), std::pow(v.z, k));
-  }
-
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const Vec2<T>& v) {
+  os << "Vec2(" << v.u << ", " << v.v << ")";
+  return os;
+}
 
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const Vec3<T>& v) {
   os << "Vec3(" << v.x << ", " << v.y << ", " << v.z << ")";
   return os;
+}
+
+template<typename T>
+static Vec3<T> normalize(const Vec3<T>& v) {
+  float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  return Vec3<T>(v.x / d, v.y / d, v.z / d);
+}
+
+template<typename T>
+static Vec3<T> cross(const Vec3<T>& v1, const Vec3<T>& v2) {
+  return Vec3<T>(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
+}
+
+template<typename T>
+T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
+  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+template<typename T>
+static T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
+  return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
+}
+
+template<typename T, typename K>
+static Vec3<T> pow(const Vec3<T>& v, const K& k) {
+  return Vec3<T>(std::pow(v.x, k), std::pow(v.y, k), std::pow(v.z, k));
 }
 
 template<typename T>

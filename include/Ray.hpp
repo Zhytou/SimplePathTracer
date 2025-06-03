@@ -12,7 +12,7 @@ class Ray {
  public:
   Ray() = default;
   ~Ray() = default;
-  Ray(const Vec3<float> &org, const Vec3<float> &dir) : origin(org), direction(Vec3<float>::normalize(dir)) {}
+  Ray(const Vec3<float> &org, const Vec3<float> &dir) : origin(org), direction(normalize(dir)) {}
 
   // getter
   Vec3<float> getOrigin() const { return origin; }
