@@ -37,7 +37,7 @@ class Material {
   Vec3<float> emission;
 
   // microfacet property
-  Vec3<float> albedo; // Kd
+  Vec3<float> diffuse; // Kd
   // m-r workflow
   float metallic;   // Pm (0 = dielectric, 1 = metal)
   float roughness;  // Pr (0 = perfectly smooth, 1 = fully rough)
@@ -49,7 +49,7 @@ class Material {
   float shininess; // Ns
 
   // shared property
-  Texture* tex;
+  Texture* albedo;
   float transparency; // Tr or d (0 = opaque, 1 = fully transparent)
   float ior; // Ni
   
@@ -84,7 +84,7 @@ public:
   std::string getName() const;
   uint getType() const;
   Vec3<float> getEmission() const;
-  Vec3<float> getAlbedo(Vec2<float> uv) const;
+  Vec3<float> getBaseColor(Vec2<float> uv) const;
 
   // evaluate BSDF
   Vec3<float> bsdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
