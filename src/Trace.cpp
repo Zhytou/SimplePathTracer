@@ -216,23 +216,20 @@ void Tracer::render(const std::string& imgName) {
       
       // gamma correction
       float gamma = 1.0f/2.2f;
-      color = pow(color, gamma) * 255.f;
+      color = pow<float>(color, gamma) * 255.f;
 
-      int idx = (row*w+col)*3;      
-      img[idx+0] = std::min(255.f, color.x);
-      img[idx+1] = std::min(255.f, color.y);
-      img[idx+2] = std::min(255.f, color.z);
+      int idx = (row * w + col ) * 3;      
+      img[idx + 0] = std::min(255.f, color.x);
+      img[idx + 1] = std::min(255.f, color.y);
+      img[idx + 2] = std::min(255.f, color.z);
 
       // show progress
-      showProgress(100.f * idx / (3 * h * w));
+      float percent = 100.f * (row * w + col) / (h * w - 1);
+      showProgress(percent);
     }
   }
 
   int result = stbi_write_png(imgName.c_str(), w, h, 3, img.data(), w*3);
-  if (result) {
-    std::cout << "Render success!" << std::endl;
-  } 
-
   return ;
 }
 
@@ -272,7 +269,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     }
     return mtl.getEmission() / (dis * dis);
   }
-
+  
   // importance sampling result
   Vec3<float> L(0.f, 0.f, 0.f); // light direction
   float PDF = 0.f; // probability density function
@@ -306,7 +303,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
 }
 
 void Tracer::print() const {
-  std::cout << "Tracer Info:\n"
+  std::cout << "Path Tracer Info:\n"
   << "----------------------\n"
   << "Camera " << camera.getHeight() << 'x' << camera.getWidth() << ' '
                << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt() << '\n'
@@ -314,16 +311,21 @@ void Tracer::print() const {
 }
 
 void Tracer::showProgress(float percent) {
-    const int barWidth = 50;
-    std::cout << "[";
-    int pos = static_cast<int>(barWidth * percent / 100.0f);
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << std::setw(3) << static_cast<int>(percent) << "%\r";
+  const int barWidth = 50;
+  std::cout << "[";
+  int pos = static_cast<int>(barWidth * percent / 100.0f);
+  for (int i = 0; i < barWidth; ++i) {
+    if (i < pos) std::cout << "=";
+    else if (i == pos) std::cout << ">";
+    else std::cout << " ";
+  }
+  std::cout << "] " << std::setw(5) << std::fixed << std::setprecision(2) << percent << "%";
+  if (percent >= 100.0f) {
+    std::cout << "\n";
+  } else {
+    std::cout << '\r';
     std::cout.flush();
+  }
 }
 
 }  // namespace spt
