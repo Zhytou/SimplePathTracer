@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <random>
 
-#define PI M_PI
+#define PI 3.14159265358979323846f
 
 namespace spt {
 
@@ -125,14 +125,14 @@ struct Vec3 {
   }
 
   Vec3<T>& normalize() {
-    float d = sqrt(x * x + y * y + z * z);
+    float d = ::sqrt(x * x + y * y + z * z);
     x /= d;
     y /= d;
     z /= d;
     return *this;
   }
 
-  T length() const { return sqrt(x * x + y * y + z * z); }
+  T length() const { return ::sqrt(x * x + y * y + z * z); }
 
 };
 
@@ -150,7 +150,7 @@ std::ostream& operator<<(std::ostream& os, const Vec3<T>& v) {
 
 template<typename T>
 static Vec3<T> normalize(const Vec3<T>& v) {
-  float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  float d = ::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
   return Vec3<T>(v.x / d, v.y / d, v.z / d);
 }
 
@@ -166,12 +166,12 @@ T dot(const Vec3<T>& v1, const Vec3<T>& v2) {
 
 template<typename T>
 static T distance(const Vec3<T>& v1, const Vec3<T>& v2) {
-  return sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
+  return ::sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
 }
 
 template<typename T, typename K>
 static Vec3<T> pow(const Vec3<T>& v, const K& k) {
-  return Vec3<T>(std::pow(v.x, k), std::pow(v.y, k), std::pow(v.z, k));
+  return Vec3<T>(::pow(v.x, k), ::pow(v.y, k), ::pow(v.z, k));
 }
 
 template<typename T>
