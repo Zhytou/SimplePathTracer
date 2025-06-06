@@ -11,8 +11,8 @@ namespace spt {
 class Camera {
  private:
   int width, height;
-  float actualDepth, actualWidth, actualHeight;
-  double fovy;
+  float focus;
+  float fovy;
   Vec3<float> eye;
   Vec3<float> lookat;
   Vec3<float> up;

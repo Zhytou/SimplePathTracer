@@ -3,10 +3,12 @@
 namespace spt {
 
 Ray Camera::getRay(const int& row, const int& col) const {
-  float x = (static_cast<float>(col) + rand<float>(1)) /
-            static_cast<float>(width) * actualWidth;
-  float y = (static_cast<float>(height - row) + rand<float>(1)) /
-            static_cast<float>(height) * actualHeight;
+  float y = tanf(PI * fovy / 180 * 0.5f) * focus * 2;
+  float x = 1.f * width / height * y;
+
+  y *= (height - row + rand(0.999f)) / height;
+  x *= (col + rand(0.999f)) / width;
+
   Vec3<float> pos = axisX * x + axisY * y + lowerLeftCorner;
   return Ray(eye, pos - eye);
 }
@@ -50,18 +52,15 @@ void Camera::setUp(const float& x, const float& y, const float& z) {
 
 void Camera::update() {
   // camera coordinate system
-  axisZ = eye - lookat;
-  axisZ.normalize();
-  axisX = cross(up, axisZ);
-  axisX.normalize();
-  axisY = cross(axisZ, axisX);
-  axisY.normalize();
+  axisZ = normalize(eye - lookat);
+  axisX = normalize(cross(up, axisZ));
+  axisY = normalize(cross(axisZ, axisX));
 
   // view port
-  actualDepth = distance(eye, lookat);
-  actualHeight = fabs(static_cast<float>(tan(PI * fovy / 180 * 0.5)) * actualDepth) * 2;
-  actualWidth = static_cast<float>(width) / static_cast<float>(height) * actualHeight;
-  lowerLeftCorner = lookat - axisX * actualWidth / 2 - axisY * actualHeight / 2;
+  focus = distance(eye, lookat);
+  float y = tanf(PI * fovy / 180 * 0.5f) * focus; // half height
+  float x = 1.f * width / height * y;
+  lowerLeftCorner = lookat - axisX * x - axisY * y;
 }
 
 }  // namespace spt
