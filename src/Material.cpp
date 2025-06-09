@@ -34,8 +34,8 @@ namespace spt
 
         // shineness
         shininess = mtl.shininess;
-        if (roughness == 0) {
-            roughness = sqrtf(2 / (shininess + 2)); // roughness for phong model
+        if (roughness == 0 && illuType != BSDF_MICROFACET) {
+            roughness = ::sqrtf(10.f / (shininess + 10.f)); // roughness for phong model
         }
         
         // transparency
@@ -55,22 +55,23 @@ namespace spt
         // type
         type = illuType;
         // scatter type
-        if (transparency == 0) {
+        if (transparency < 0.01f) {
             type = type | BSDF_REFLECTION;
-        } else if (transparency == 1.0) {
+        } else if (transparency > 0.9f) {
             type = type | BSDF_TRANSIMISSION;
         } else {
-            // 0 < transparency < 1
             type = type | (BSDF_REFLECTION | BSDF_TRANSIMISSION);
         }
         // surface type
-        if (roughness > 0.9) {
+        if (roughness > 0.9f) {
             type = type | BSDF_DIFFUSE;
-        } else if (roughness < 0.01 ){
+        } else if (roughness < 0.01f){
             type = type | BSDF_SPECULAR;
         } else {
             type = type | BSDF_GLOSSY;
         }
+
+        std::cout << name << ' ' << roughness << ' ' << transparency << '\n';
     }
 
     bool Material::isEmissive() const { 
@@ -94,7 +95,7 @@ namespace spt
         if (emissive) {
             return emission;
         } else {
-            return Vec3<float>(0.f, 0.f, 0.f);
+            return Vec3(0.f, 0.f, 0.f);
         }
     }
 
@@ -139,7 +140,7 @@ namespace spt
                 return transmit(V, N);
             }
             default: {
-                return {Vec3<float>(0.f, 0.f, 0.f), 0.f};
+                return {Vec3(0.f, 0.f, 0.f), 0.f};
             }
         }
     }
@@ -194,8 +195,8 @@ namespace spt
                     L = normalize(H * 2 * HdotV - V);
 
                     // calculate L's pdf with the Jacobian of the reflection mapping
-                    float D = GGX_D(H, N, roughness);
-                    float denom = std::max(4 * HdotV * HdotV, EPSILON);
+                    float D = GGX_D(HdotN, roughness);
+                    float denom = std::max(4 * HdotV, EPSILON);
                     PDF = D * HdotN / denom; 
                 }
             }
@@ -230,19 +231,19 @@ namespace spt
         Vec3<float> L(0.f, 0.f, 0.f);
         float PDF = 0.f;
 
-        // cosine incident theta
-        float cosThetaI = dot(N, V); 
-
-        // create a 'temporary' normal, same hemishpere with V
-        Vec3<float> NN = (cosThetaI > 0) ? N : -N;
-
-        // ratio of incident ior to transmitted ior
-        // cosThetaI > 0: oustide -> material
-        // otherwise: material -> outside
-        float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
-
         // construct transmission direction
-        auto constructL = [eta](const Vec3<float>& V, const Vec3<float>& N, float cosThetaI) {
+        auto constructL = [this](const Vec3<float>& V, const Vec3<float>& N) {
+            // cosine incident theta
+            float cosThetaI = dot(N, V); 
+
+            // create a 'temporary' normal, same hemishpere with V
+            Vec3<float> NN = (cosThetaI > 0) ? N : -N;
+
+            // ratio of incident ior to transmitted ior
+            // cosThetaI > 0: oustide -> material
+            // otherwise: material -> outside
+            float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
+
             // square of sine transmitted theta
             float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
             // total internal reflection
@@ -263,28 +264,31 @@ namespace spt
             // perfect specular trasimission
             case BSDF_SPECULAR: {
                 // construct L
-                L = constructL(V, NN, cosThetaI);
+                L = constructL(V, N);
                 // only one possible direction
                 PDF = 1.f;
             }
             break;
+            // TODO: fix BSDF_GLOSSY sample pdf calculation
             case BSDF_GLOSSY: {
                 // GGX importance sampling
-                Vec3<float> H = sample(V, NN, "GGX");
-
-                // actual incident theta
-                cosThetaI = dot(H, V);
+                Vec3<float> H = sample(V, N, "GGX");
 
                 // construct L
-                L = constructL(V, H, cosThetaI);
+                L = constructL(V, H);
 
+                if (L == Vec3(0.f, 0.f, 0.f)) {
+                    break;
+                }
                 // calculate L's pdf with the Jacobian of the reflection mapping
-                float D = GGX_D(H, N, roughness);
                 float HdotV = dot(H, V);
                 float HdotL = dot(H, L);
                 float HdotN = dot(H, N);
+                float eta = (HdotV > 0) ? (1.0f / ior) : ior;
+                float D = GGX_D(HdotN, roughness);
+                float nom = D * eta * eta * ::fabsf(HdotL);
                 float denom = std::max(::powf(eta * HdotV + HdotL, 2.f), EPSILON);
-                PDF = D * HdotN * eta * eta * ::fabsf(HdotL)/ denom; 
+                PDF = nom / denom; 
             }
             break;
         }
@@ -408,13 +412,13 @@ namespace spt
         // all the directions must be in same hemisphere
         assert(NdotL >= 0 && NdotV >= 0 && NdotH >= 0);
         
-        Vec3<float> F0 = Vec3<float>(0.04, 0.04, 0.04);
+        Vec3<float> F0(0.04f, 0.04f, 0.04f);
         F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
     
-        float D = GGX_D(H, N, roughness);
+        float D = GGX_D(NdotH, roughness);
         float G = Smith_G(NdotV, NdotL, roughness);
         Vec3<float> F = Fresnel_Schlick(VdotH, F0); 
-        Vec3<float> NF = (Vec3<float>(1, 1, 1) - F);
+        Vec3<float> NF = (Vec3(1.f, 1.f, 1.f) - F);
 
         switch (surfType) {
             case BSDF_DIFFUSE: {
@@ -444,7 +448,7 @@ namespace spt
                 return F * (baseColor / PI) / NdotV;
             }
             default: {
-                return Vec3<float>(0.f, 0.f, 0.f);
+                return Vec3(0.f, 0.f, 0.f);
             }
         }
     }
@@ -479,15 +483,13 @@ namespace spt
         // make sure V, H, N are in the same hemisphere, while L in the opposite one
         assert(NdotL <= 0 && NdotV >= 0 && NdotH >= 0);
         
-        Vec3<float> F0;
-        F0.x = powf((eta - 1.f) / (eta + 1.f), 2.f);
-        F0.y = powf((eta - 1.f) / (eta + 1.f), 2.f);
-        F0.z = powf((eta - 1.f) / (eta + 1.f), 2.f);
-    
-        float D = GGX_D(H, N, roughness);
-        float G = Smith_G(NdotV, NdotL, roughness);
+        Vec3<float> F0(eta, eta, eta);
+        F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
+
+        float D = GGX_D(NdotH, roughness);
+        float G = Smith_G(NdotV, ::fabsf(NdotL), roughness);
         Vec3<float> F = Fresnel_Schlick(VdotH, F0); 
-        Vec3<float> NF = (Vec3<float>(1, 1, 1) - F);
+        Vec3<float> NF = (Vec3(1.f, 1.f, 1.f) - F);
 
         switch (surfType) {
             case BSDF_SPECULAR: {
@@ -498,41 +500,43 @@ namespace spt
             }
             case BSDF_GLOSSY: {
                 float denom = std::max(::powf(eta * VdotH + LdotH, 2.f) * fabsf(NdotV * NdotL), EPSILON);
-                return NF * D * G * eta * eta * transparency * fabsf(VdotH * LdotH) / denom;
+                Vec3<float> nom = NF * D * G * eta * eta * transparency * fabsf(VdotH * LdotH);
+                return nom / denom;
             }
             default: {
-                return Vec3<float>(0.f, 0.f, 0.f);
+                return Vec3(0.f, 0.f, 0.f);
             }
         }
     }
 
-    float Material::GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness) {
+    float Material::GGX_D(float NdotH, float roughness) {
         float alpha = roughness * roughness;
         float alpha2 = alpha * alpha;
-        float NdotH = std::max(dot(N, H), 0.0f);
         float NdotH2 = NdotH * NdotH;
         
-        float denom = (NdotH2 * (alpha2 - 1.0f) + 1.0f);
-        return alpha2 / (PI * denom * denom);
+        float denom = NdotH2 * (alpha2 - 1.0f) + 1.0f;
+        denom = PI * denom * denom;
+        return alpha2 / denom;
     }
 
-    Vec3<float> Material::Fresnel_Schlick(float cosTheta, Vec3<float> F0) {
+    Vec3<float> Material::Fresnel_Schlick(float cosTheta, const Vec3<float>& F0) {
         return F0 + (Vec3<float>(1.f, 1.f, 1.f) - F0) * ::powf(1.0f - cosTheta, 5.0f);
     }
 
-    float Material::GeometrySchlickGGX(float cosTheta, float roughness) {
-        float r = (roughness + 1.0f);
-        float k = (r * r) / 8.0f;
-        
-        float nom = cosTheta;
-        float denom = cosTheta * (1.0f - k) + k;
-        
-        return nom / denom;
-    }
-
     float  Material::Smith_G(float NdotV, float NdotL, float roughness) {
-        float ggx1 = GeometrySchlickGGX(NdotV, roughness);
-        float ggx2 = GeometrySchlickGGX(NdotL, roughness);
+        // SIGGRAPH 2013：UE4
+        auto GeometrySchlickGGX = [roughness](float cosTheta) {
+            float r = (roughness + 1.0f);
+            float k = (r * r) / 8.0f;
+            
+            float nom = cosTheta;
+            float denom = cosTheta * (1.0f - k) + k;
+            
+            return nom / denom;
+        };
+
+        float ggx1 = GeometrySchlickGGX(NdotV);
+        float ggx2 = GeometrySchlickGGX(NdotL);
         
         return ggx1 * ggx2;
     }

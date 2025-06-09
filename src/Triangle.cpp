@@ -11,7 +11,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       v1(_v1),
       v2(_v2),
       v3(_v3),
-      normal(cross(_v2 - _v1, _v3 - _v1).normalize()),
+      normal(normalize(cross(_v2 - _v1, _v3 - _v1))),
       material(_m) {}
 
 Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
@@ -58,7 +58,7 @@ Vec3<float> Triangle::getMaxXYZ() const {
 
 Vec3<float> Triangle::getRandomPoint() const {
   Vec3<float> e1 = v2 - v1, e2 = v3 - v2;
-  float a = sqrtf(rand<float>(1)), b = sqrtf(rand<float>(1));
+  float a = sqrtf(rand(1.f)), b = sqrtf(rand(1.f));
   return e1 * a + e2 * a * b + v1;
 }
 

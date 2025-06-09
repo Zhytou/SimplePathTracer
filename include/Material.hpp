@@ -52,15 +52,14 @@ class Material {
   Texture* albedo;
   float transparency; // Tr or d (0 = opaque, 1 = fully transparent)
   float ior; // Ni
-  
+
   uint type;
   static uint scatMask; // bsdf scatter type mask
   static uint surfMask; // bsdf surface type mask
   static uint illuMask; // bsdf illumimation model mask
 
-  static float GGX_D(const Vec3<float>& H, const Vec3<float>& N, float roughness);
-  static Vec3<float> Fresnel_Schlick(float cosTheta, Vec3<float> F0);
-  static float GeometrySchlickGGX(float cosTheta, float roughness);
+  static float GGX_D(float NdotH, float roughness);
+  static Vec3<float> Fresnel_Schlick(float cosTheta, const Vec3<float>& F0);
   static float Smith_G(float NdotV, float NdotL, float roughness);
 
   Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;

@@ -204,7 +204,7 @@ void Tracer::render(const std::string& imgName) {
   int h = camera.getHeight(), w = camera.getWidth();
   std::vector<uint8_t> img(h * w * 3);
 
-#pragma omp parallel for num_threads(20)
+#pragma omp parallel for num_threads(30)
   for (int row = 0; row < h; row++) {
     for (int col = 0; col < w; col++) {
       Vec3<float> color(0, 0, 0);
@@ -257,24 +257,17 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Material& mtl = res.material;
   float dis = res.distance;
   
-  // update hit point
-  P = P + N * EPSILON; // move, because of percision
-  // origin point
-  Vec3<float> PP = rayv.getOrigin();
-
-  if (mtl.isEmissive()) {
-    // ?
-    if (PP == camera.getEye()) {
-      dis = 1.f;
-    }
-    return mtl.getEmission() / (dis * dis);
+  // P = P + N * EPSILON; // move, because of percision
+  if (rayv.getOrigin() == camera.getEye()) {
+    assert(depth == 0);
+    dis = 1.f; // no attenuation for camera view
   }
-  
+
   // importance sampling result
-  Vec3<float> L(0.f, 0.f, 0.f); // light direction
+  Vec3<float> L(0.f, 0.f, 0.f); // light direction P -> light
   float PDF = 0.f; // probability density function
 
-  if (rand<float>(1) < 0.5) {
+  if (rand(1.f) < 0.5f) {
     // sample light
     std::tie(L, PDF) = light.sampleLight(scene, P);
   } else {
@@ -282,7 +275,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     std::tie(L, PDF) = mtl.scatter(V, N);
   }
 
-  if (PDF < EPSILON) {
+  if (L == Vec3(0.f, 0.f, 0.f) || PDF < EPSILON) {
     return Vec3<float>(0.f, 0.f, 0.f);
   }
 
@@ -294,10 +287,13 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
 
   // incident cosine
-  float NdotL = fabs(dot(N, L));
+  float NdotL = ::fabsf(dot(N, L));
+
+  // emission light
+  Vec3<float> L_e = mtl.getEmission() / (dis * dis);
 
   // output light
-  Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
+  Vec3<float> L_o = L_i * BSDF * NdotL / PDF + L_e;
 
   return L_o;
 }
