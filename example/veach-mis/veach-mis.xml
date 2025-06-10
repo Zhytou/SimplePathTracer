@@ -8,4 +8,5 @@
 	<light mtlname="light1" radiance="300,300,300"/>
 	<light mtlname="light2" radiance="50,50,50"/>
 	<light mtlname="light3" radiance="10,10,10"/>
+	<material illutype="microfacet"/>
 </scene>

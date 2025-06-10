@@ -20,7 +20,7 @@ Pm 0.0
 
 newmtl Glass
 Kd 0.5 0.5 0.5
-Pr 0.0
-Pm 0.0
+Ns 1000
+Pr 0
 Ni 1.52
-Tr 0.98
+Tr 1

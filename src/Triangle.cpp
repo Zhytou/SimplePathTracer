@@ -5,8 +5,7 @@
 
 namespace spt {
 
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, const Material& _m)
+Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -14,9 +13,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       normal(normalize(cross(_v2 - _v1, _v3 - _v1))),
       material(_m) {}
 
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, const Vec3<float>& _n,
-                   const Material& _m)
+Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Vec3<float>& _n, const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),
@@ -24,10 +21,7 @@ Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
       normal(normalize(_n)),
       material(_m) {}
 
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-                   const Vec3<float>& _v3, const Vec2<float>& _vt1,
-                   const Vec2<float>& _vt2, const Vec2<float>& _vt3,
-                   const Vec3<float>& _n, const Material& _m)
+Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Vec2<float>& _vt1, const Vec2<float>& _vt2, const Vec2<float>& _vt3, const Vec3<float>& _n, const Material& _m)
     : Hittable(id),
       v1(_v1),
       v2(_v2),

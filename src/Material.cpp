@@ -55,10 +55,8 @@ namespace spt
         // type
         type = illuType;
         // scatter type
-        if (transparency < 0.01f) {
+        if (transparency < 0.3f) {
             type = type | BSDF_REFLECTION;
-        } else if (transparency > 0.9f) {
-            type = type | BSDF_TRANSIMISSION;
         } else {
             type = type | (BSDF_REFLECTION | BSDF_TRANSIMISSION);
         }
@@ -70,8 +68,6 @@ namespace spt
         } else {
             type = type | BSDF_GLOSSY;
         }
-
-        std::cout << name << ' ' << roughness << ' ' << transparency << '\n';
     }
 
     bool Material::isEmissive() const { 
@@ -124,24 +120,14 @@ namespace spt
         // bsdf scatter type
         uint scatType = type & scatMask;
 
-        switch (scatType) {
-            case (BSDF_REFLECTION | BSDF_TRANSIMISSION): {
-                // ? use transparency
-                if (rand(1.f) < transparency) {
-                    return transmit(V, N);
-                } else {
-                    return reflect(V, N);
-                }
-            }
-            case BSDF_REFLECTION: {
-               return reflect(V, N);
-            }
-            case BSDF_TRANSIMISSION: {
-                return transmit(V, N);
-            }
-            default: {
-                return {Vec3(0.f, 0.f, 0.f), 0.f};
-            }
+        auto [L_t, PDF_t] = transmit(V, N);
+        auto [L_r, PDF_r] = reflect(V, N);
+        float prob = rand(1.f);
+        
+        if ((scatType & BSDF_TRANSIMISSION) && PDF_t > 0.f && prob < transparency) {
+            return {L_t, PDF_t};
+        } else {
+            return {L_r, PDF_r};
         }
     }
 
@@ -266,7 +252,7 @@ namespace spt
                 // construct L
                 L = constructL(V, N);
                 // only one possible direction
-                PDF = 1.f;
+                PDF = L == Vec3(0.f, 0.f, 0.f) ? 0.f : 1.f;
             }
             break;
             // TODO: fix BSDF_GLOSSY sample pdf calculation
@@ -369,8 +355,14 @@ namespace spt
             // make sure H is in same hemisphere with NN
             H = (dot(NN, H) > 0) ? H : -H;
 
+            // ? Light sampling direction cannot guarantee sin2ThetaT + cos2ThetaT == 1
+            // float cosThetaI = dot(H, V);
+            // float sin2ThetaT = eta * eta * (1 - cosThetaI *  cosThetaI);
+            // float cos2ThetaT = dot(H, L);
+
             // make sure V and N in the same hemisphere, while L in the opposite one
-            if (dot(V, NN) > 0 && dot(L, NN) < 0) {
+            // also make sure transmission happens
+            if (dot(V, NN) > 0 && dot(L, NN) < 0 && dot(V, H) > 0 && dot(L, H) < 0) {
                 // btdf
                 bsdf += btdf(V, NN, L, H, UV, eta);
             }
@@ -425,7 +417,7 @@ namespace spt
                 if (illuType == BSDF_PHONG || illuType == BSDF_BLINN_PHONG) {
                     return baseColor;
                 } else {
-                    return baseColor / PI;
+                    return NF * (1 - metallic) * (1 - transparency) * baseColor / PI;
                 }
             }
             case BSDF_GLOSSY: {
@@ -495,8 +487,7 @@ namespace spt
             case BSDF_SPECULAR: {
                 // H should be same as N for perfect transmission
                 // assert(distance(N, H) < EPSILON);
-
-                return NF * transparency / ((eta * eta) * VdotH);
+                return NF * transparency / (eta * eta * VdotH);
             }
             case BSDF_GLOSSY: {
                 float denom = std::max(::powf(eta * VdotH + LdotH, 2.f) * fabsf(NdotV * NdotL), EPSILON);

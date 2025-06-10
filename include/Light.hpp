@@ -38,7 +38,7 @@ namespace spt
             lights.push_back(triangle);
         }
 
-        std::vector<std::pair<Vec3<float>, float>> sampleAllLights(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
+        std::vector<std::pair<Vec3<float>, float>> sampleAll(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
             std::vector<std::pair<Vec3<float>, float>> ret;
             
             for (int gidx = 0; gidx < groups.size(); gidx++) {
@@ -64,7 +64,7 @@ namespace spt
             return ret;
         }
 
-        std::pair<Vec3<float>, float> sampleLight(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
+        std::pair<Vec3<float>, float> sample(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
             ulong gidx = rand(groups.size() - 1);
             ulong lidx = groups[gidx][rand(groups[gidx].size() - 1)];
             
@@ -77,7 +77,7 @@ namespace spt
             scene->hit(ray, res);
             
             if (!res.hit || res.material.getName() != lights[lidx]->getMaterial().getName()) {
-                dir = Vec3<float>(0, 0, 0);
+                dir = Vec3(0.f, 0.f, 0.f);
             } else {
                 float area = areas[gidx];
                 pdf = 1 / area;

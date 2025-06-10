@@ -269,7 +269,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
 
   if (rand(1.f) < 0.5f) {
     // sample light
-    std::tie(L, PDF) = light.sampleLight(scene, P);
+    std::tie(L, PDF) = light.sample(scene, P);
   } else {
     // sample bsdf
     std::tie(L, PDF) = mtl.scatter(V, N);

@@ -124,6 +124,22 @@ struct Vec3 {
     return *this;
   }
 
+  bool operator>(const Vec3<T>& other) {
+    return x > other.x && y > other.y && z > other.z;
+  }
+
+  bool operator>=(const Vec3<T>& other) {
+    return x >= other.x && y >= other.y && z >= other.z;
+  }
+  
+  bool operator<(const Vec3<T>& other) {
+    return x < other.x && y < other.y && z < other.z;
+  }
+
+  bool operator<=(const Vec3<T>& other) {
+    return x <= other.x && y <= other.y && z <= other.z;
+  }
+
   Vec3<T>& normalize() {
     float d = ::sqrt(x * x + y * y + z * z);
     x /= d;
