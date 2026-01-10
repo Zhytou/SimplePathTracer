@@ -235,8 +235,15 @@ void Tracer::render(const std::string& imgName) {
 
 Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   assert(scene != nullptr);
+
+  // avoid infinite recursion
   if (depth >= maxDepth) {
-    return Vec3<float>(0, 0, 0);
+    return Vec3(0.f, 0.f, 0.f);
+  }
+
+  // russian roulette
+  if (depth > 3 && rand(1.f) > maxProb) {
+    return Vec3(0.f, 0.f, 0.f);
   }
 
   HitResult res;
@@ -255,19 +262,18 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float>& P = res.point;
   Vec2<float>& UV = res.uv;
   Material& mtl = res.material;
-  float dis = res.distance;
-  
-  // P = P + N * EPSILON; // move, because of percision
-  if (rayv.getOrigin() == camera.getEye()) {
-    assert(depth == 0);
-    dis = 1.f; // no attenuation for camera view
+  float dis = depth == 0 ? 1.f : res.distance; // no attenuation for camera view
+
+  // emissive light
+  if (mtl.isEmissive()) {
+    return mtl.getEmission() / (dis * dis); // emission
   }
 
   // importance sampling result
   Vec3<float> L(0.f, 0.f, 0.f); // light direction P -> light
   float PDF = 0.f; // probability density function
 
-  if (rand(1.f) < 0.5f) {
+  if (rand(1.f) < 0.2f) {
     // sample light
     std::tie(L, PDF) = light.sample(scene, P);
   } else {
@@ -289,11 +295,8 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   // incident cosine
   float NdotL = ::fabsf(dot(N, L));
 
-  // emission light
-  Vec3<float> L_e = mtl.getEmission() / (dis * dis);
-
   // output light
-  Vec3<float> L_o = L_i * BSDF * NdotL / PDF + L_e;
+  Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
 
   return L_o;
 }

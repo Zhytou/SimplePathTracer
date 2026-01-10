@@ -6,24 +6,24 @@
 using namespace spt;
 
 int main() {
-  srand(time(nullptr));
-  char windName[] = "simple render engine";
-  int depth = 3;
-  int spp = 4;
-  float threshold = 0.8;
-  Tracer tracer(depth, spp, threshold);
+  int depth = 4;
+  int spp = 8;
+  float prob = 0.8;
+  Tracer tracer(depth, spp, prob);
 
-  // tracer.load("../example/veach-mis/", {"veach-mis.obj"}, "veach-mis.xml");
-  // tracer.load("../example/staircase/", {"stairscase.obj"}, "staircase.xml");
-  // tracer.load("../example/cornell-box/", {"cornell-box.obj"}, "cornell-box.xml");
-  // tracer.load("../example/box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml");
-  tracer.load("../example/metal-box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml");
+  // tracer.load("../example/veach-mis/", {"veach-mis.obj"}, "veach-mis.xml", 30);
+  // tracer.load("../example/phong-veach-mis/", {"veach-mis.obj"}, "veach-mis.xml", 30);
+  // tracer.load("../example/staircase/", {"stairscase.obj"}, "staircase.xml", 40);
+  // tracer.load("../example/cornell-box/", {"cornell-box.obj"}, "cornell-box.xml", 50);
+  tracer.load("../example/box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml", 4);
+  // tracer.load("../example/metal-box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml", 4);
+  // tracer.load("../example/glass-box/", {"floor.obj", "light.obj", "left.obj", "right.obj", "shortbox.obj", "tallbox.obj"}, "cornell-box.xml", 4);
 
   // render
   time_t start = time(0);
   tracer.render();
   time_t end = time(0);
-  std::cout << "Rendering time: " << difftime(end, start) << "s" << std::endl;
+  std::cout << "Time " << difftime(end, start) << "s" << std::endl;
 
   return 0;
 }

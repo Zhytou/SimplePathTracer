@@ -355,11 +355,6 @@ namespace spt
             // make sure H is in same hemisphere with NN
             H = (dot(NN, H) > 0) ? H : -H;
 
-            // ? Light sampling direction cannot guarantee sin2ThetaT + cos2ThetaT == 1
-            // float cosThetaI = dot(H, V);
-            // float sin2ThetaT = eta * eta * (1 - cosThetaI *  cosThetaI);
-            // float cos2ThetaT = dot(H, L);
-
             // make sure V and N in the same hemisphere, while L in the opposite one
             // also make sure transmission happens
             if (dot(V, NN) > 0 && dot(L, NN) < 0 && dot(V, H) > 0 && dot(L, H) < 0) {
@@ -474,7 +469,11 @@ namespace spt
 
         // make sure V, H, N are in the same hemisphere, while L in the opposite one
         assert(NdotL <= 0 && NdotV >= 0 && NdotH >= 0);
-        
+
+        if (1 - VdotH * VdotH == eta * eta * (1 - LdotH * LdotH)) {
+            return Vec3(0.f, 0.f, 0.f);
+        }
+
         Vec3<float> F0(eta, eta, eta);
         F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
 
