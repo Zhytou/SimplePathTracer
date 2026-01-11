@@ -65,31 +65,32 @@ class Material {
   Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
   Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const;
 
-  std::pair<Vec3<float>, float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
-  std::pair<Vec3<float>, float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
+  Vec3<float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
+  Vec3<float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
 
   Vec3<float> sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const;
-public:
+
+  public:
   Material() = default;
-
   ~Material() = default;
-  
   Material(const tinyobj::material_t& mtl, const std::string& dir, uint illuType);
-
-  bool isEmissive() const;
-  
-  void setEmission(Vec3<float> e);
 
   std::string getName() const;
   uint getType() const;
-  Vec3<float> getEmission() const;
   Vec3<float> getBaseColor(Vec2<float> uv) const;
-
+  Vec3<float> getEmission() const;
+  bool isDelta() const;
+  bool isEmissive() const;
+  void setEmission(Vec3<float> e);
+  
   // evaluate BSDF
   Vec3<float> bsdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
 
-  // sample direction and corresponding pdf
-  std::pair<Vec3<float>, float> scatter(const Vec3<float> &wi, const Vec3<float> &n) const;
+  // compute pdf
+  float pdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo) const;
+
+  // sample direction
+  Vec3<float> scatter(const Vec3<float> &wi, const Vec3<float> &n) const;
 };
 }  // namespace spt
 

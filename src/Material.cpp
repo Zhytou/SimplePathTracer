@@ -61,13 +61,19 @@ namespace spt
             type = type | (BSDF_REFLECTION | BSDF_TRANSIMISSION);
         }
         // surface type
-        if (roughness > 0.9f) {
-            type = type | BSDF_DIFFUSE;
-        } else if (roughness < 0.01f){
+        if (roughness < 0.01f || (type & BSDF_TRANSIMISSION)) {
+            // !NOTE: if surface is transparent, must be specular
+            // TODO: add GLOSSY trasmission
             type = type | BSDF_SPECULAR;
+        } else if (roughness > 0.9f) {
+            type = type | BSDF_DIFFUSE;
         } else {
             type = type | BSDF_GLOSSY;
         }
+    }
+
+    bool Material::isDelta() const {
+        return (type & surfMask) == BSDF_SPECULAR;
     }
 
     bool Material::isEmissive() const { 
@@ -104,7 +110,7 @@ namespace spt
     }
 
     /**
-     * @brief Samples a direction and its PDF for Monte Carlo integration of the material's BSDF.
+     * @brief Samples a direction for Monte Carlo integration of the material's BSDF.
      *
      * This function performs importance sampling based on the material's surface.
      * For example, it uses cosine-weighted hemisphere sampling for diffuse lobes.
@@ -112,38 +118,25 @@ namespace spt
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
      * 
-     * @return std::pair<Vec3<float>, float> 
-     *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
-     *         - Second: Probability density (PDF) of the sampled direction.
+     * @return Vec3<float> Sampled outgoing direction (pointing AWAY from the surface).
      */
-    std::pair<Vec3<float>, float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N) const {
+    Vec3<float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N) const {
         // bsdf scatter type
         uint scatType = type & scatMask;
 
-        auto [L_t, PDF_t] = transmit(V, N);
-        auto [L_r, PDF_r] = reflect(V, N);
+        auto L_t = transmit(V, N);
+        auto L_r = reflect(V, N);
         float prob = rand(1.f);
         
-        if ((scatType & BSDF_TRANSIMISSION) && PDF_t > 0.f && prob < transparency) {
-            return {L_t, PDF_t};
+        if ((scatType & BSDF_TRANSIMISSION) && prob < transparency) {
+            return L_t;
         } else {
-            return {L_r, PDF_r};
+            return L_r;
         }
     }
 
-    /**
-     * @brief Samples the reflected ray direction and its PDF for Monte Carlo integration.
-     *
-     * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
-     * @param N     [in] Surface normal. Must be normalized.
-     * 
-     * @return std::pair<Vec3<float>, float> 
-     *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
-     *         - Second: Probability density (PDF) of the sampled direction.
-     */
-    std::pair<Vec3<float>, float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N) const {
+    Vec3<float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N) const {
         Vec3<float> L(0.f, 0.f, 0.f);
-        float PDF = 0.f;
 
         // bsdf surface type
         uint surfType = type & surfMask;
@@ -156,66 +149,33 @@ namespace spt
                 L = normalize(N * 2 * NdotV - V);
                 // validate
                 // assert(distance(normalize(V + L),  N) < EPSILON);
-
-                // only one possible direction
-                PDF = 1.f;
             }
             break;
-            // glossy reflection (Mixture of GGX importance sampling and Cosine importance sampling)
+            // glossy reflection
             case BSDF_GLOSSY: {
-                // higher roughness, higher diffuse probability
-                if (rand(1.f) < roughness) {
-                    // COSINE importance sampling
-                    L = sample(V, N, "COSINE");
-                
-                    float NdotL = dot(N, L);
-                    PDF = NdotL / PI;
-                } else {
-                    // GGX importance sampling
-                    Vec3<float> H = sample(V, N, "GGX");
+                // GGX importance sampling
+                Vec3<float> H = sample(V, N, "GGX");
 
-                    float HdotV = dot(H, V);
-                    float HdotN = dot(H, N);
+                float HdotV = dot(H, V);
+                float HdotN = dot(H, N);
 
-                    // construct L
-                    L = normalize(H * 2 * HdotV - V);
-
-                    // calculate L's pdf with the Jacobian of the reflection mapping
-                    float D = GGX_D(HdotN, roughness);
-                    float denom = std::max(4 * HdotV, EPSILON);
-                    PDF = D * HdotN / denom; 
-                }
+                // construct L
+                L = normalize(H * 2 * HdotV - V);
             }
             break;
-            // diffuse reflection (COSINE importance sampling)
+            // diffuse reflection
             case BSDF_DIFFUSE: {
                 // COSINE importance sampling
                 L = sample(V, N, "COSINE");
-            
-                float NdotL = dot(N, L);
-                PDF = NdotL / PI;            
             }
             break;
         }
 
-        return {L, PDF};
+        return L;
     }
 
-    /**
-     * @brief Samples the transmitted ray direction and its PDF for Monte Carlo integration.
-     *
-     * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
-     * @param N     [in] Surface normal. Must be normalized.
-     * 
-     * @return std::pair<Vec3<float>, float> 
-     *         - First:  Sampled outgoing direction (L) pointing AWAY from the surface.
-     *         - Second: Probability density (PDF) of the sampled direction.
-     * 
-     * @note Snell's law is sinThetaI / sinThetaT = iorT / iorI
-     */
-    std::pair<Vec3<float>, float> Material::transmit(const Vec3<float> &V, const Vec3<float> &N) const {
+    Vec3<float> Material::transmit(const Vec3<float> &V, const Vec3<float> &N) const {
         Vec3<float> L(0.f, 0.f, 0.f);
-        float PDF = 0.f;
 
         // construct transmission direction
         auto constructL = [this](const Vec3<float>& V, const Vec3<float>& N) {
@@ -251,35 +211,61 @@ namespace spt
             case BSDF_SPECULAR: {
                 // construct L
                 L = constructL(V, N);
-                // only one possible direction
-                PDF = L == Vec3(0.f, 0.f, 0.f) ? 0.f : 1.f;
             }
             break;
-            // TODO: fix BSDF_GLOSSY sample pdf calculation
             case BSDF_GLOSSY: {
                 // GGX importance sampling
                 Vec3<float> H = sample(V, N, "GGX");
-
                 // construct L
-                L = constructL(V, H);
-
-                if (L == Vec3(0.f, 0.f, 0.f)) {
-                    break;
-                }
-                // calculate L's pdf with the Jacobian of the reflection mapping
-                float HdotV = dot(H, V);
-                float HdotL = dot(H, L);
-                float HdotN = dot(H, N);
-                float eta = (HdotV > 0) ? (1.0f / ior) : ior;
-                float D = GGX_D(HdotN, roughness);
-                float nom = D * eta * eta * ::fabsf(HdotL);
-                float denom = std::max(::powf(eta * HdotV + HdotL, 2.f), EPSILON);
-                PDF = nom / denom; 
+                L = normalize(constructL(V, H));
             }
             break;
         }
 
-        return {L, PDF};
+        return L;
+    }
+
+    float Material::pdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L) const {
+        float PDF = 0.f;
+
+        // bsdf surface type
+        uint surfType = type & surfMask;
+
+        switch (surfType) {
+            // perfect specular reflection or transimission
+            case BSDF_SPECULAR: {
+                PDF = 0.f;
+            }
+            break;
+            // glossy reflection or transimission
+            case BSDF_GLOSSY: {
+                Vec3<float> H = normalize(V + L);
+                float HdotV = dot(H, V);
+                float HdotN = dot(H, N);
+                float D = GGX_D(HdotN, roughness);
+                float denom = std::max(4 * HdotV, EPSILON);
+                PDF = D * HdotN / denom; 
+
+                // TODO: add pdf calculation for glossy transimission
+                // float HdotV = dot(H, V);
+                // float HdotL = dot(H, L);
+                // float HdotN = dot(H, N);
+                // float eta = (HdotV > 0) ? (1.0f / ior) : ior;
+                // float D = GGX_D(HdotN, roughness);
+                // float nom = D * eta * eta * ::fabsf(HdotL);
+                // float denom = std::max(::powf(eta * HdotV + HdotL, 2.f), EPSILON);
+                // PDF = nom / denom; 
+            }
+            break;
+            // diffuse reflection
+            case BSDF_DIFFUSE: {
+                float NdotL = dot(N, L);
+                PDF = NdotL / PI;            
+            }
+            break;
+        }
+        
+        return PDF;
     }
 
     Vec3<float> Material::sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const {
@@ -329,20 +315,7 @@ namespace spt
     Vec3<float> Material::bsdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
         Vec3<float> bsdf(0, 0, 0);
 
-        // reflection
-        if ((type & BSDF_REFLECTION)) {
-            // half vector
-            Vec3<float> H = normalize(V + L);
-
-            // make sure V, L, N, H in the same hemisphere
-            if (dot(V, N) > 0 && dot(L, N) > 0) {
-                // brdf
-                bsdf += brdf(V, N, L, H, UV);
-            }
-        } 
-
-        // transimission
-        if ((type & BSDF_TRANSIMISSION)) {
+        if ((type & BSDF_TRANSIMISSION)) { // transimission
             // create a 'temporary' normal, same hemishpere with V
             Vec3<float> NN = (dot(N, V) > 0) ? N : -N;
 
@@ -355,30 +328,26 @@ namespace spt
             // make sure H is in same hemisphere with NN
             H = (dot(NN, H) > 0) ? H : -H;
 
-            // make sure V and N in the same hemisphere, while L in the opposite one
-            // also make sure transmission happens
+            // !NOTE: make sure V and N in the same hemisphere, while L in the opposite one
+            // !NOTE: also make sure transmission happens
             if (dot(V, NN) > 0 && dot(L, NN) < 0 && dot(V, H) > 0 && dot(L, H) < 0) {
                 // btdf
-                bsdf += btdf(V, NN, L, H, UV, eta);
+                bsdf = btdf(V, NN, L, H, UV, eta);
             }
-        }
+        } else{ // reflection 
+            // half vector
+            Vec3<float> H = normalize(V + L);
+
+            // !NOTE: make sure V, L, N, H in the same hemisphere
+            if (dot(V, N) > 0 && dot(L, N) > 0) {
+                // brdf
+                bsdf = brdf(V, N, L, H, UV);
+            }
+        } 
 
         return bsdf;
     }
 
-    /**
-     * @brief Evaluates the BRDF (Bidirectional Reflectance Distribution Function) for a given material.
-     *
-     * @param V   [in] View direction (pointing AWAY from the surface). Must be normalized.
-     * @param N   [in] Surface normal (pointing AWAY from the surface). Must be normalized.
-     * @param L   [in] Light direction (pointing AWAY from the surface). Must be normalized.
-     * @param H   [in] Half-vector (normalized midpoint between V and L). Must be normalized.
-     * @param UV  [in] Texture coordinates.
-     *
-     * @return Vec3<float> The BRDF value (RGB color) for the given input directions.
-     * 
-     * @note All direction vectors (V, N, L, H) in the SAME hemisphere.
-     */
     Vec3<float> Material::brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const {
         // brdf surface type
         uint surfType = type & surfMask;
@@ -431,8 +400,9 @@ namespace spt
             case BSDF_SPECULAR: {
                 // H should be same as N for perfect reflection
                 // assert(distance(N, H) < EPSILON);
-
-                return F * (baseColor / PI) / NdotV;
+                // !NOTE: F already encodes the color and reflectance
+                // !      so for perfect specular reflection, return F directly—no diffuse or albedo scaling needed.
+                return F;
             }
             default: {
                 return Vec3(0.f, 0.f, 0.f);
@@ -440,19 +410,6 @@ namespace spt
         }
     }
 
-    /**
-     * @brief Evaluates the BTDF (Bidirectional transmittance distribution function) for a given material.
-     * 
-     * @param V   [in] View direction (pointing AWAY from surface). Must be normalized.
-     * @param N   [in] Geometric normal (pointing AWAY from surface). Must be normalized.
-     * @param L   [in] Light direction (pointing AWAY from surface). Must be normalized.
-     * @param H   [in] Half-vector (normalized midpoint: normalize(V + L)). Must be normalized.
-     * @param UV  [in] Texture coordinates.
-     * 
-     * @return Vec3<float> BTDF value (RGB color).
-     * 
-     * @note V and N are in the SAME hemisphere (V·N ≥ 0), while L is in the OPPOSITE hemisphere (L·N ≤ 0).
-     */
     Vec3<float> Material::btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const {
         // btdf surface type
         uint surfType = type & surfMask;
@@ -486,7 +443,7 @@ namespace spt
             case BSDF_SPECULAR: {
                 // H should be same as N for perfect transmission
                 // assert(distance(N, H) < EPSILON);
-                return NF * transparency / (eta * eta * VdotH);
+                return NF / (eta * eta);
             }
             case BSDF_GLOSSY: {
                 float denom = std::max(::powf(eta * VdotH + LdotH, 2.f) * fabsf(NdotV * NdotL), EPSILON);
