@@ -7,3 +7,6 @@
 [submodule "third-parties/stb"]
 	path = third-parties/stb
 	url = https://github.com/nothings/stb.git
+[submodule "third-parties/tinyexr"]
+	path = third-parties/tinyexr
+	url = https://github.com/syoyo/tinyexr.git
