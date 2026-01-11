@@ -56,6 +56,8 @@ Vec3<float> Triangle::getRandomPoint() const {
   return e1 * a + e2 * a * b + v1;
 }
 
+Vec3<float> Triangle::getNormal() const { return normal; }
+
 Vec2<float> Triangle::getTexCoord(const Vec3<float>& coord) const {
   assert(contain(coord));
 
