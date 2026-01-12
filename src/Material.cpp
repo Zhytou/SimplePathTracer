@@ -199,7 +199,8 @@ namespace spt
             // cosine transmitted theta
             float cosThetaT = sqrtf(1 - sin2ThetaT);
 
-            Vec3<float> L = - V * eta + N * (eta * cosThetaI - cosThetaT);
+            // !NOTE: Snell's law (ior₁·sinθ₁ = ior₂·sinθ₂)
+            Vec3<float> L = - V * eta + NN * (eta * cosThetaI - cosThetaT);
             return L;
         };
 

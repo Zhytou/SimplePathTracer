@@ -51,7 +51,7 @@ class Material {
   // shared property
   Texture* albedo;
   float transparency; // Tr or d (0 = opaque, 1 = fully transparent)
-  float ior; // Ni
+  float ior; // index of refraction Ni
 
   uint type;
   static uint scatMask; // bsdf scatter type mask
