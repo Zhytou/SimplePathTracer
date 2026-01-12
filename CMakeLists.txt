@@ -6,6 +6,9 @@ set(CMAKE_BUILD_TYPE Debug)
 
 find_package(ZLIB REQUIRED)
 
+add_subdirectory(third-parties/tinyxml2)
+add_subdirectory(third-parties/tinyexr)
+
 add_library(
     spt SHARED 
     src/AABB.cpp
@@ -16,7 +19,6 @@ add_library(
     src/Trace.cpp
     src/Triangle.cpp
 )
-
 target_include_directories(
     spt PUBLIC 
     include
@@ -27,9 +29,11 @@ target_include_directories(
     ${CMAKE_HOME_DIRECTORY}/third-parties/stb
 )
 
+add_executable(extractor src/extractor.cpp)
+target_include_directories(
+    extractor PUBLIC
+    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyobjloader
+)
+
 add_executable(main src/main.cpp)
-
-add_subdirectory(third-parties/tinyxml2)
-add_subdirectory(third-parties/tinyexr)
-
 target_link_libraries(main spt tinyxml2 miniz)
