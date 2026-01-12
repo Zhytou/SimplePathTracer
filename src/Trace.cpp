@@ -1,5 +1,6 @@
 #include <omp.h>
 #include <iomanip>
+#include <functional>
 
 #include "Trace.hpp"
 #include "Material.hpp"
@@ -8,15 +9,18 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
+#define TINYEXR_IMPLEMENTATION
+#include <tinyexr.h>
 
 #define TINYXML2_HEADER_ONLY
 #include <tinyxml2.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 namespace spt {
-Tracer::Tracer(size_t _depth, size_t _samples, float _p)
-    : scene(nullptr), maxDepth(_depth), samples(_samples), maxProb(_p) {}
+Tracer::Tracer(size_t depth, size_t rrdepth, size_t samples, float prob)
+    : scene(nullptr), maxd(depth), rrd(rrdepth), spp(samples), rrp(prob) {}
 
 bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint& illuType) {
   // xml root
@@ -208,11 +212,11 @@ void Tracer::render(const std::string& imgName) {
   for (int row = 0; row < h; row++) {
     for (int col = 0; col < w; col++) {
       Vec3<float> color(0, 0, 0);
-      for (int k = 0; k < samples; k++) {
+      for (int k = 0; k < spp; k++) {
         Ray ray = camera.getRay(row, col);
         color += trace(ray, 0);
       }
-      color /= samples;
+      color /= spp;
       
       // gamma correction
       float gamma = 1.0f/2.2f;
@@ -237,12 +241,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   assert(scene != nullptr);
 
   // avoid infinite recursion
-  if (depth >= maxDepth) {
-    return Vec3(0.f, 0.f, 0.f);
-  }
-
-  // russian roulette
-  if (depth > 3 && rand(1.f) > maxProb) {
+  if (depth >= maxd) {
     return Vec3(0.f, 0.f, 0.f);
   }
 
@@ -254,8 +253,10 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   }
   assert(res.id >= 0 && res.id < scene->getSize());
 
-  // view direction
+  // view direction(wi)
   Vec3<float> V = -rayv.getDirection(); // P -> Eye
+  // light direction(wo)
+  Vec3<float> L(0.f, 0.f, 0.f); // P -> light
 
   // hit info
   Vec3<float>& N = res.normal;
@@ -266,39 +267,61 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
 
   // emissive light
   if (mtl.isEmissive()) {
-    return mtl.getEmission() / (dis * dis); // emission
+    return mtl.getEmission(); // (dis * dis); // emissive luminosity
   }
 
-  // importance sampling result
-  Vec3<float> L(0.f, 0.f, 0.f); // light direction P -> light
-  float PDF = 0.f; // probability density function
+  // output luminosity
+  Vec3<float> Lum_o(0.f, 0.f, 0.f);
+  // direct light
+  // !NOTE: only GLOSSY and DIFFUSE support light sampling
+  if (!mtl.isDelta()) {
+    float PDF_d = 0.f; // probability density function for direct light sampling
+    Vec3<float> Lum_d(0.f, 0.f, 0.f); // direct luminosity
+    std::tie(Lum_d, L, PDF_d) = light.sample(scene, P);
 
-  if (rand(1.f) < 0.2f) {
-    // sample light
-    std::tie(L, PDF) = light.sample(scene, P);
-  } else {
-    // sample bsdf
-    std::tie(L, PDF) = mtl.scatter(V, N);
+    Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
+    float NdotL = std::max(dot(N, L), 0.f);
+
+    if (PDF_d > 0) {
+      // multiple importance sampling
+      float weight = mix(PDF_d, mtl.pdf(V, N, L));
+      Lum_o = Lum_d * BSDF * NdotL / PDF_d * weight;
+    }
   }
 
-  if (L == Vec3(0.f, 0.f, 0.f) || PDF < EPSILON) {
-    return Vec3<float>(0.f, 0.f, 0.f);
+  // indirect light
+  // russian roulette
+  float rrweight = 1.f;
+  if (depth > 3) {
+    if (rand(1.f) > rrp) {
+      return Vec3(0.f, 0.f, 0.f);
+    }
+    rrweight = 1 / rrp;
   }
-
+  L = mtl.scatter(V, N); // sample bsdf
   Ray rayl(P, L);
-  // input light
-  Vec3<float> L_i = trace(rayl, depth+1);
-  
-  // evaluate BSDF
-  Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
+  Vec3<float> Lum_ind = trace(rayl, depth+1); // indirect luminosity
+  Vec3<float> BSDF = mtl.bsdf(V, N, L, UV); // evaluate BSDF
+  float NdotL = ::fabsf(dot(N, L)); // incident cosine
 
-  // incident cosine
-  float NdotL = ::fabsf(dot(N, L));
-
-  // output light
-  Vec3<float> L_o = L_i * BSDF * NdotL / PDF;
-
-  return L_o;
+  // !NOTE: Monte Carlo in this framework is designed for continuous BSDFs integration(e.g., diffuse).
+  // !      For perfect specular reflection or transmission (delta distributions), the direction is deterministic.
+  // ! Consequently:
+  // !  - The PDF is effectively infinite (Dirac delta), so we do NOT divide by PDF.
+  // !  - The cosine term (N·L) is inherently handled by the delta function’s 
+  // !    integration property and should NOT be explicitly multiplied.
+  // ! Instead, we directly evaluate the reflected/transmitted radiance scaled by 
+  // ! the Fresnel factor (and η² for transmission), ensuring energy conservation.
+  if (mtl.isDelta()) {
+    Lum_o = Lum_ind * BSDF * rrweight;
+  } else {
+    // multiple importance sampling
+    float PDF_ind = mtl.pdf(V, N, L); // probability density function for indirect light sampling(namely bsdf sampling)
+    float PDF_d = light.pdf(scene, rayl);
+    float weight = mix(PDF_ind, PDF_d);
+    Lum_o += Lum_ind * BSDF * NdotL / PDF_ind * weight * rrweight;
+  }
+  return Lum_o;
 }
 
 void Tracer::print() const {
@@ -306,7 +329,8 @@ void Tracer::print() const {
   << "----------------------\n"
   << "Camera " << camera.getHeight() << 'x' << camera.getWidth() << ' '
                << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt() << '\n'
-  << "Scene " << scene->getSize() << ' ' << scene->getNodeCount() << '\n';
+  << "Scene " << scene->getSize() << ' ' << scene->getNodeCount() << '\n'
+  << "Max-depth " << maxd <<  " RR-depth " << rrp << " Samples per pixel "<< spp << '\n';
 }
 
 void Tracer::showProgress(float percent) {
@@ -325,6 +349,12 @@ void Tracer::showProgress(float percent) {
     std::cout << '\r';
     std::cout.flush();
   }
+}
+
+float mix(float pdf1, float pdf2) {
+  // pdf1 *= pdf1;
+  // pdf2 *= pdf2;
+  return pdf1 / (pdf1 + pdf2);
 }
 
 }  // namespace spt
