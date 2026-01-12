@@ -37,12 +37,10 @@ class Material {
   Vec3<float> emission;
 
   // microfacet property
-  Vec3<float> diffuse; // Kd
   // m-r workflow
   float metallic;   // Pm (0 = dielectric, 1 = metal)
   float roughness;  // Pr (0 = perfectly smooth, 1 = fully rough)
   // s-g workflow
-  Vec3<float> specular; // Ks
   float glossiness; // sheen
   
   // phong/phong-blinn property
@@ -50,7 +48,8 @@ class Material {
 
   // shared property
   Texture* albedo;
-  float transparency; // Tr or d (0 = opaque, 1 = fully transparent)
+  Vec3<float> diffuse; // diffuse color for phong or basecolor for microfacet Kd
+  Vec3<float> specular; // specular color for phong or specular for microfacet s-g workflow Ks
   float ior; // index of refraction Ni
 
   uint type;
@@ -79,6 +78,7 @@ class Material {
   uint getType() const;
   Vec3<float> getBaseColor(Vec2<float> uv) const;
   Vec3<float> getEmission() const;
+  Vec3<float> getFresnel0(const Vec3<float>& baseColor) const;
   bool isDelta() const;
   bool isEmissive() const;
   void setEmission(Vec3<float> e);

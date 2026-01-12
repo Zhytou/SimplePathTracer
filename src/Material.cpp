@@ -38,9 +38,6 @@ namespace spt
             roughness = ::sqrtf(10.f / (shininess + 10.f)); // roughness for phong model
         }
         
-        // transparency
-        transparency = 1 - mtl.dissolve;
-
         // ior
         ior = mtl.ior;
 
@@ -55,10 +52,10 @@ namespace spt
         // type
         type = illuType;
         // scatter type
-        if (transparency < 0.3f) {
-            type = type | BSDF_REFLECTION;
-        } else {
+        if (ior > 1.f) {
             type = type | (BSDF_REFLECTION | BSDF_TRANSIMISSION);
+        } else {
+            type = type | BSDF_REFLECTION;
         }
         // surface type
         if (roughness < 0.01f || (type & BSDF_TRANSIMISSION)) {
@@ -109,6 +106,19 @@ namespace spt
         }
     }
 
+    Vec3<float> Material::getFresnel0(const Vec3<float>& baseColor) const {
+        Vec3<float> F0(0.04f, 0.04f, 0.04f);
+
+        if (type & BSDF_TRANSIMISSION) { // dielectric (supports both reflection and transmission)
+            F0 = Vec3<float>(ior, ior, ior);
+            F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
+        } else { // opaque (supports only reflection)
+            F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
+        }
+        
+        return F0;
+    }
+
     /**
      * @brief Samples a direction for Monte Carlo integration of the material's BSDF.
      *
@@ -121,18 +131,23 @@ namespace spt
      * @return Vec3<float> Sampled outgoing direction (pointing AWAY from the surface).
      */
     Vec3<float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N) const {
-        // bsdf scatter type
-        uint scatType = type & scatMask;
-
-        auto L_t = transmit(V, N);
-        auto L_r = reflect(V, N);
+        Vec3<float> L(0.f, 0.f, 0.f);
         float prob = rand(1.f);
+        // !NOTE: Fresnel reflectance at normal incidence for dielectric material
+        // ! if the material does not support transmission, F0 is 0;
+        // ! otherwise, it represents the fraction of light reflected when viewing the surface head-on (0° angle).
+        float F0 = (ior - 1) * (ior - 1) / ((ior + 1) * (ior + 1));
         
-        if ((scatType & BSDF_TRANSIMISSION) && prob < transparency) {
-            return L_t;
-        } else {
-            return L_r;
+        if ((type & BSDF_TRANSIMISSION) && prob > F0) {
+            L = transmit(V, N);
         }
+        
+        // reflect if total internal reflection occurs or material only supports reflection
+        if (L == Vec3<float>(0.f, 0.f, 0.f)) {
+            L = reflect(V, N);
+        }
+
+        return L;
     }
 
     Vec3<float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N) const {
@@ -192,7 +207,7 @@ namespace spt
 
             // square of sine transmitted theta
             float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
-            // total internal reflection
+            // return if total internal reflection occurs
             if (sin2ThetaT > 1) {
                 return Vec3<float>{0.f, 0.f, 0.f};
             }
@@ -248,6 +263,7 @@ namespace spt
                 PDF = D * HdotN / denom; 
 
                 // TODO: add pdf calculation for glossy transimission
+                // Vec3<float> H = normalize(V * eta + L);
                 // float HdotV = dot(H, V);
                 // float HdotL = dot(H, L);
                 // float HdotN = dot(H, N);
@@ -314,9 +330,9 @@ namespace spt
      * @return Vec3<float> The computed BSDF value.
      */
     Vec3<float> Material::bsdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
-        Vec3<float> bsdf(0, 0, 0);
+        Vec3<float> bsdf(0.f, 0.f, 0.f);
 
-        if ((type & BSDF_TRANSIMISSION)) { // transimission
+        if (dot(V, L) < 0.f) { // transimission
             // create a 'temporary' normal, same hemishpere with V
             Vec3<float> NN = (dot(N, V) > 0) ? N : -N;
 
@@ -335,7 +351,7 @@ namespace spt
                 // btdf
                 bsdf = btdf(V, NN, L, H, UV, eta);
             }
-        } else{ // reflection 
+        } else {// reflection 
             // half vector
             Vec3<float> H = normalize(V + L);
 
@@ -344,8 +360,8 @@ namespace spt
                 // brdf
                 bsdf = brdf(V, N, L, H, UV);
             }
-        } 
-
+        }
+        
         return bsdf;
     }
 
@@ -356,8 +372,10 @@ namespace spt
         // bsdf illumination model
         uint illuType = type & illuMask;
 
-        // mtl info
+        // material color
         Vec3<float> baseColor = getBaseColor(UV);
+        // Fresnel reflectance at normal incidence
+        Vec3<float> F0 = getFresnel0(baseColor);
     
         // cosine constants
         float NdotL = dot(N, L);
@@ -368,10 +386,7 @@ namespace spt
         
         // all the directions must be in same hemisphere
         assert(NdotL >= 0 && NdotV >= 0 && NdotH >= 0);
-        
-        Vec3<float> F0(0.04f, 0.04f, 0.04f);
-        F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
-    
+            
         float D = GGX_D(NdotH, roughness);
         float G = Smith_G(NdotV, NdotL, roughness);
         Vec3<float> F = Fresnel_Schlick(VdotH, F0); 
@@ -380,9 +395,9 @@ namespace spt
         switch (surfType) {
             case BSDF_DIFFUSE: {
                 if (illuType == BSDF_PHONG || illuType == BSDF_BLINN_PHONG) {
-                    return baseColor;
+                    return baseColor / PI;
                 } else {
-                    return NF * (1 - metallic) * (1 - transparency) * baseColor / PI;
+                    return NF * (1 - metallic) * baseColor / PI;
                 }
             }
             case BSDF_GLOSSY: {
@@ -390,9 +405,13 @@ namespace spt
                     // ideal reflected direction
                     Vec3<float> R = N * 2 * NdotL - L;
                     float VdotR = dot(V, R);
-                    return baseColor + specular * shininess * ::powf(VdotR, shininess);
+
+                    // !NOTE: normalize Phong/Blinn-Phong to form a valid BRDF, which ensures the integrated reflectance over the hemisphere remains ≤ 1.
+                    // !      diffuse term is divided by π so that a pure white Lambert surface
+                    // !      specular term uses the empirical normalization factor (shininess + 8) / (8π) or (shininess + 2) / (2π)
+                    return baseColor / PI + specular * ::powf(VdotR, shininess) * (shininess + 2.f) / (2.f * PI);;
                 } else if (illuType == BSDF_BLINN_PHONG) {
-                    return baseColor + specular * shininess * ::powf(NdotH, shininess);
+                    return baseColor / PI + specular * ::powf(NdotH, shininess) * (shininess + 8.f) / (8.f * PI);;
                 } else {
                     float denom = std::max(4.0f * NdotV * NdotL, EPSILON);
                     return NF * (1 - metallic) * baseColor / PI + F * D * G / denom;
@@ -415,9 +434,11 @@ namespace spt
         // btdf surface type
         uint surfType = type & surfMask;
 
-        // mtl info
+        // material color
         Vec3<float> baseColor = getBaseColor(UV);
-    
+        // Fresnel reflectance at normal incidence
+        Vec3<float> F0 = getFresnel0(baseColor);
+
         // cosine constants
         float NdotL = dot(N, L);
         float NdotV = dot(N, V);
@@ -428,12 +449,10 @@ namespace spt
         // make sure V, H, N are in the same hemisphere, while L in the opposite one
         assert(NdotL <= 0 && NdotV >= 0 && NdotH >= 0);
 
-        if (1 - VdotH * VdotH == eta * eta * (1 - LdotH * LdotH)) {
+        // return if total internal reflection occurs
+        if ((1 - VdotH * VdotH) * eta * eta > 1.f ) {
             return Vec3(0.f, 0.f, 0.f);
         }
-
-        Vec3<float> F0(eta, eta, eta);
-        F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
 
         float D = GGX_D(NdotH, roughness);
         float G = Smith_G(NdotV, ::fabsf(NdotL), roughness);
@@ -448,7 +467,7 @@ namespace spt
             }
             case BSDF_GLOSSY: {
                 float denom = std::max(::powf(eta * VdotH + LdotH, 2.f) * fabsf(NdotV * NdotL), EPSILON);
-                Vec3<float> nom = NF * D * G * eta * eta * transparency * fabsf(VdotH * LdotH);
+                Vec3<float> nom = NF * D * G * eta * eta * fabsf(VdotH * LdotH);
                 return nom / denom;
             }
             default: {
