@@ -15,6 +15,7 @@ namespace spt
         std::map<std::string, ulong> mtlnames; // mtlname -> group index
         std::vector<std::vector<ulong>> groups; // group index -> light index
         std::vector<float> areas; // group index -> group area sum
+        std::vector<float> cprobs; // group index -> cumulative probabilty range
 
         public:
         void setLight(std::shared_ptr<Triangle> triangle) {
@@ -38,8 +39,30 @@ namespace spt
             lights.push_back(triangle);
         }
 
+        // set light cumulative distribution function
+        void setCDF() {
+            cprobs.resize(areas.size());
+            std::partial_sum(areas.begin(), areas.end(), cprobs.begin());
+
+            float sum = std::accumulate(areas.begin(), areas.end(), 0);
+            for (float &prob : cprobs) {
+                prob /= sum;
+            }
+        }
+
+        // get random light group index based on cprobs
+        ulong getGroup() {
+            float prob = rand(1.f);
+            for (ulong gidx = 0; gidx < groups.size(); gidx++) {
+                if (cprobs[gidx] > prob) {
+                    return gidx;
+                }
+            }
+            return groups.size() - 1;
+        }
+
         std::tuple<Vec3<float>, Vec3<float>, float> sample(const std::shared_ptr<BVH>& scene, const Vec3<float>& p) {
-            ulong gidx = rand(groups.size() - 1);
+            ulong gidx = getGroup();
             ulong lidx = groups[gidx][rand(groups[gidx].size() - 1)];
             
             Vec3<float> n = lights[lidx]->getNormal();
