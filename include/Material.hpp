@@ -64,7 +64,7 @@ class Material {
   Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
   Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const;
 
-  Vec3<float> reflect(const Vec3<float> &V, const Vec3<float> &N) const;
+  Vec3<float> reflect(const Vec3<float> &V, const Vec3<float> &N, const Vec2<float>& UV) const;
   Vec3<float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
 
   Vec3<float> sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const;
@@ -87,10 +87,10 @@ class Material {
   Vec3<float> bsdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
 
   // compute pdf
-  float pdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo) const;
+  float pdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
 
   // sample direction
-  Vec3<float> scatter(const Vec3<float> &wi, const Vec3<float> &n) const;
+  Vec3<float> scatter(const Vec3<float> &wi, const Vec3<float> &n, const Vec2<float>& uv) const;
 };
 }  // namespace spt
 

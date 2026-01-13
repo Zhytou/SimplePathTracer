@@ -34,8 +34,10 @@ namespace spt
 
         // shineness
         shininess = mtl.shininess;
+
+        //! NOTE: BRDF sampling uses roughness for GGX; convert shininess to roughness for Phong model.
         if (roughness == 0 && illuType != BSDF_MICROFACET) {
-            roughness = ::sqrtf(10.f / (shininess + 10.f)); // roughness for phong model
+            roughness = ::powf(10.f / (shininess + 10.f), 1 / 8.f);
         }
         
         // ior
@@ -113,7 +115,9 @@ namespace spt
             F0 = Vec3<float>(ior, ior, ior);
             F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
         } else { // opaque (supports only reflection)
-            F0 = F0 * (1 - metallic) + baseColor * metallic; // mix
+            // for metals, baseColor = F0 (reflectance at normal incidence);
+            // for non-metals, F0 ≈ 0.04. Mix based on metallic.
+            F0 = F0 * (1 - metallic) + baseColor * metallic;
         }
         
         return F0;
@@ -127,16 +131,15 @@ namespace spt
      *
      * @param V     [in] Outgoing view direction (pointing AWAY from the surface). Must be normalized.
      * @param N     [in] Surface normal. Must be normalized.
+     * @param UV    [in] Texture coordinate.
      * 
      * @return Vec3<float> Sampled outgoing direction (pointing AWAY from the surface).
      */
-    Vec3<float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N) const {
+    Vec3<float> Material::scatter(const Vec3<float> &V, const Vec3<float> &N, const Vec2<float>& UV) const {
         Vec3<float> L(0.f, 0.f, 0.f);
         float prob = rand(1.f);
-        // !NOTE: Fresnel reflectance at normal incidence for dielectric material
-        // ! if the material does not support transmission, F0 is 0;
-        // ! otherwise, it represents the fraction of light reflected when viewing the surface head-on (0° angle).
-        float F0 = (ior - 1) * (ior - 1) / ((ior + 1) * (ior + 1));
+        Vec3<float> color = getBaseColor(UV);
+        float F0 = getFresnel0(color).max();
         
         if ((type & BSDF_TRANSIMISSION) && prob > F0) {
             L = transmit(V, N);
@@ -144,13 +147,13 @@ namespace spt
         
         // reflect if total internal reflection occurs or material only supports reflection
         if (L == Vec3<float>(0.f, 0.f, 0.f)) {
-            L = reflect(V, N);
+            L = reflect(V, N, UV);
         }
 
         return L;
     }
 
-    Vec3<float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N) const {
+    Vec3<float> Material::reflect(const Vec3<float> &V, const Vec3<float> &N, const Vec2<float>& UV) const {
         Vec3<float> L(0.f, 0.f, 0.f);
 
         // bsdf surface type
@@ -159,23 +162,23 @@ namespace spt
         switch (surfType) {
             // perfect specular reflection
             case BSDF_SPECULAR: {
-                // construct L
                 float NdotV = dot(N, V);
                 L = normalize(N * 2 * NdotV - V);
-                // validate
-                // assert(distance(normalize(V + L),  N) < EPSILON);
             }
             break;
             // glossy reflection
             case BSDF_GLOSSY: {
-                // GGX importance sampling
-                Vec3<float> H = sample(V, N, "GGX");
+                // GGX and COSINE combined importance sampling
+                Vec3<float> color = getBaseColor(UV);
+                float F0 = getFresnel0(color).max();
 
-                float HdotV = dot(H, V);
-                float HdotN = dot(H, N);
-
-                // construct L
-                L = normalize(H * 2 * HdotV - V);
+                if (rand(1.f) > F0) {
+                    L = sample(V, N, "COSINE");
+                } else {
+                    Vec3<float> H = sample(V, N, "GGX");
+                    float HdotV = dot(H, V);
+                    L = normalize(H * 2 * HdotV - V);
+                }
             }
             break;
             // diffuse reflection
@@ -241,7 +244,7 @@ namespace spt
         return L;
     }
 
-    float Material::pdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L) const {
+    float Material::pdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
         float PDF = 0.f;
 
         // bsdf surface type
@@ -255,12 +258,17 @@ namespace spt
             break;
             // glossy reflection or transimission
             case BSDF_GLOSSY: {
+                // pdf of GGX and COSINE combined importance sampling
+                Vec3<float> color = getBaseColor(UV);
+                float F0 = getFresnel0(color).max();
+
                 Vec3<float> H = normalize(V + L);
                 float HdotV = dot(H, V);
                 float HdotN = dot(H, N);
+                float NdotL = dot(N, L);
                 float D = GGX_D(HdotN, roughness);
                 float denom = std::max(4 * HdotV, EPSILON);
-                PDF = D * HdotN / denom; 
+                PDF = F0 * D * HdotN / denom + (1 - F0) *  NdotL / PI; 
 
                 // TODO: add pdf calculation for glossy transimission
                 // Vec3<float> H = normalize(V * eta + L);
@@ -295,14 +303,14 @@ namespace spt
             float alpha = roughness * roughness;
             float alpha2 = alpha * alpha;
 
-            float cosTheta = sqrtf((1 - a) / (1 + (alpha2 - 1) * a));
-            float sinTheta = sqrtf(1 - cosTheta * cosTheta);
+            float cosTheta = sqrtf((1.f - a) / (1.f + (alpha2 - 1.f) * a));
+            float sinTheta = sqrtf(1.f - cosTheta * cosTheta);
             float Phi = 2 * PI * b;
 
             localDir = {cosf(Phi) * sinTheta, sinf(Phi) * sinTheta, cosTheta};
         } else if (mode == "COSINE") {
             float cosTheta = sqrtf(a);
-            float sinTheta = sqrtf(1 - cosTheta * cosTheta);
+            float sinTheta = sqrtf(1.f - cosTheta * cosTheta);
             float Phi =  2 * PI * b;
 
             localDir = {cosf(Phi) * sinTheta, sinf(Phi) * sinTheta, cosTheta};
