@@ -64,7 +64,7 @@ namespace spt
             // !NOTE: if surface is transparent, must be specular
             // TODO: add GLOSSY trasmission
             type = type | BSDF_SPECULAR;
-        } else if (roughness > 0.9f) {
+        } else if (roughness > 0.7f) {
             type = type | BSDF_DIFFUSE;
         } else {
             type = type | BSDF_GLOSSY;
@@ -340,7 +340,7 @@ namespace spt
     Vec3<float> Material::bsdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
         Vec3<float> bsdf(0.f, 0.f, 0.f);
 
-        if (dot(V, L) < 0.f) { // transimission
+        if ((type & BSDF_TRANSIMISSION) && dot(V, N) * dot(L, N) < 0.f) { // transimission and view light direction in different hemisphere
             // create a 'temporary' normal, same hemishpere with V
             Vec3<float> NN = (dot(N, V) > 0) ? N : -N;
 
