@@ -1,4 +1,5 @@
 #include <omp.h>
+#include <ctime>
 #include <iomanip>
 #include <functional>
 
@@ -22,24 +23,22 @@ namespace spt {
 Tracer::Tracer(size_t depth, size_t rrdepth, size_t samples, float prob)
     : scene(nullptr), maxd(depth), rrd(rrdepth), spp(samples), rrp(prob) {}
 
-bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint& illuType) {
+bool Tracer::load(const std::string& dir, const std::string &config, int bvhcnt) {
+  // 1. load config
   // xml root
   tinyxml2::XMLDocument doc;
-  doc.LoadFile(config.c_str());
+  doc.LoadFile((dir + config).c_str());
   if (doc.Error()) {
+    std::cerr << "Error: Config load failure (file: " << dir+config << ")" << std::endl;
     return false;
   }
-
-  // xml element
   tinyxml2::XMLElement* element = nullptr;
   
-  // camera element
-  element = doc.FirstChildElement("scene")->FirstChildElement("camera");
-  camera.setWidth(element->FloatAttribute("width"));
-  camera.setHeight(element->FloatAttribute("height"));
+  // 1.1 camera
+  element = doc.FirstChildElement("scene")->FirstChildElement("camera");  
+  camera.setWidth(element->FloatAttribute("width"));  
+  camera.setHeight(element->FloatAttribute("height"));  
   camera.setFovy(element->FloatAttribute("fovy"));
-
-  // camera sub element
   std::string names[3] = {"eye", "lookat", "up"};
   for (auto name : names) {
     tinyxml2::XMLElement* subelem = element->FirstChildElement(name.c_str());
@@ -57,7 +56,8 @@ bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::strin
     }
   }
 
-  // light radiances elements
+  // 1.2 light radiances
+  std::unordered_map<std::string, Vec3<float>> lightRadiances;
   element = doc.FirstChildElement("scene")->FirstChildElement("light");
   while(element != nullptr) {
     std::string mtlname = element->Attribute("mtlname");
@@ -73,7 +73,8 @@ bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::strin
     element = element->NextSiblingElement("light");
   }
 
-  // material illumination type
+  // 1.3 material illumination
+  uint illuType = 0;
   element = doc.FirstChildElement("scene")->FirstChildElement("material");
   std::string type = element->Attribute("illutype");
   if (type == "microfacet") {
@@ -83,6 +84,42 @@ bool Tracer::loadConfig(const std::string &config, std::unordered_map<std::strin
   } else {
     illuType = BSDF_PHONG;
   }
+
+  // 1.4 model
+  std::vector<std::string> models;
+  element = doc.FirstChildElement("scene")->FirstChildElement("model");
+  while(element != nullptr) {
+    std::string name = element->Attribute("name");
+    models.push_back(name);
+
+    element = element->NextSiblingElement("model");
+  }
+
+  // 2. load models
+  std::vector<std::shared_ptr<Hittable>> objects;
+  for (auto model : models) {
+    model = dir + model;
+    if (!loadModel(model, dir, lightRadiances, illuType, objects)) {
+      std::cerr << "Error: Model load failure (file: " << model << ")" << std::endl;
+      return false;
+    }
+  }
+  scene = BVH::constructBVH(objects, 0, objects.size(), bvhcnt);
+
+  // 3. light
+  light.setCDF();
+
+  // 4. info
+  std::cout << "Path Tracer Info:";
+  std::cout << "\n----------------------";
+  std::cout << "\nImage " << camera.getHeight() << 'x' << camera.getWidth();
+  std::cout << "\nCamera " << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt();
+  std::cout << "\nScene " << scene->getSize() << ' ' << scene->getNodeCount() << ' ';
+  for(auto model : models) {
+    std::cout << model << ' ';
+  }
+  std::cout << "\nMax-depth " << maxd <<  " RR-depth " << rrp << " Samples per pixel "<< spp;
+  std::cout << "\n----------------------\n";
 
   return true;
 }
@@ -181,30 +218,8 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
   return true;
 }
 
-void Tracer::load(const std::string &dir, const std::vector<std::string> &models, const std::string &config, int bvhMinCount) {
-  // camera, light and material type
-  std::unordered_map<std::string, Vec3<float>> lightRadiances;
-  uint illuType;
-  if (!loadConfig(dir+config, lightRadiances, illuType)) {
-    std::cerr << "Error: Config load failure (file: " << config << ")" << std::endl;
-    return;
-  }
-  
-  // scene
-  std::vector<std::shared_ptr<Hittable>> objects;
-  for (auto model : models) {
-    if (!loadModel(dir+model, dir, lightRadiances, illuType, objects)) {
-      std::cerr << "Error: Model load failure (file: " << model << ")" << std::endl;
-      return;
-    }
-  }
-  scene = BVH::constructBVH(objects, 0, objects.size(), bvhMinCount);
-
-  // info
-  print();
-}
-
-void Tracer::render(const std::string& imgName) {
+void Tracer::render(const std::string& png) {
+  time_t beg = time(0);
   int h = camera.getHeight(), w = camera.getWidth();
   std::vector<uint8_t> img(h * w * 3);
 
@@ -229,11 +244,12 @@ void Tracer::render(const std::string& imgName) {
 
       // show progress
       float percent = 100.f * (row * w + col) / (h * w - 1);
-      showProgress(percent);
+      time_t cur = time(0);
+      showProgress(percent, difftime(cur, beg));
     }
   }
 
-  int result = stbi_write_png(imgName.c_str(), w, h, 3, img.data(), w*3);
+  int result = stbi_write_png(png.c_str(), w, h, 3, img.data(), w*3);
   return ;
 }
 
@@ -267,7 +283,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
 
   // emissive light
   if (mtl.isEmissive()) {
-    return mtl.getEmission(); // (dis * dis); // emissive luminosity
+    return mtl.getEmission() / (dis * dis); // emissive luminosity
   }
 
   // output luminosity
@@ -282,23 +298,23 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     Vec3<float> BSDF = mtl.bsdf(V, N, L, UV);
     float NdotL = std::max(dot(N, L), 0.f);
 
-    if (PDF_d > 0) {
+    if (PDF_d > 0.f) {
       // multiple importance sampling
-      float weight = mix(PDF_d, mtl.pdf(V, N, L));
+      float weight = mix(PDF_d, mtl.pdf(V, N, L, UV));
       Lum_o = Lum_d * BSDF * NdotL / PDF_d * weight;
     }
   }
-
+  
   // indirect light
   // russian roulette
   float rrweight = 1.f;
-  if (depth > 3) {
+  if (depth >= rrd) {
     if (rand(1.f) > rrp) {
       return Vec3(0.f, 0.f, 0.f);
     }
     rrweight = 1 / rrp;
   }
-  L = mtl.scatter(V, N); // sample bsdf
+  L = mtl.scatter(V, N, UV); // sample bsdf
   Ray rayl(P, L);
   Vec3<float> Lum_ind = trace(rayl, depth+1); // indirect luminosity
   Vec3<float> BSDF = mtl.bsdf(V, N, L, UV); // evaluate BSDF
@@ -316,24 +332,16 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     Lum_o = Lum_ind * BSDF * rrweight;
   } else {
     // multiple importance sampling
-    float PDF_ind = mtl.pdf(V, N, L); // probability density function for indirect light sampling(namely bsdf sampling)
+    float PDF_ind = mtl.pdf(V, N, L, UV); // probability density function for indirect light sampling(namely bsdf sampling)
     float PDF_d = light.pdf(scene, rayl);
     float weight = mix(PDF_ind, PDF_d);
     Lum_o += Lum_ind * BSDF * NdotL / PDF_ind * weight * rrweight;
   }
+
   return Lum_o;
 }
 
-void Tracer::print() const {
-  std::cout << "Path Tracer Info:\n"
-  << "----------------------\n"
-  << "Camera " << camera.getHeight() << 'x' << camera.getWidth() << ' '
-               << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt() << '\n'
-  << "Scene " << scene->getSize() << ' ' << scene->getNodeCount() << '\n'
-  << "Max-depth " << maxd <<  " RR-depth " << rrp << " Samples per pixel "<< spp << '\n';
-}
-
-void Tracer::showProgress(float percent) {
+void Tracer::showProgress(float percent, float second) {
   const int barWidth = 50;
   std::cout << "[";
   int pos = static_cast<int>(barWidth * percent / 100.0f);
@@ -342,7 +350,9 @@ void Tracer::showProgress(float percent) {
     else if (i == pos) std::cout << ">";
     else std::cout << " ";
   }
-  std::cout << "] " << std::setw(5) << std::fixed << std::setprecision(2) << percent << "%";
+  std::cout << "] ";
+  std::cout << std::setw(5) << std::fixed << std::setprecision(2) << percent << "%";
+  std::cout << ' ' << std::setw(5) << std::fixed << std::setprecision(0) << second << "s";
   if (percent >= 100.0f) {
     std::cout << "\n";
   } else {

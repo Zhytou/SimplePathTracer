@@ -24,18 +24,17 @@ class Tracer {
   float rrp;    // probability of russian roulette
 
  private:
-  bool loadConfig(const std::string &config, std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint& illuType);
   bool loadModel(const std::string &model, const std::string &dir, const std::unordered_map<std::string, Vec3<float>> &lightRadiances, uint illuType, std::vector<std::shared_ptr<Hittable>>& objects);
   Vec3<float> trace(const Ray &ray, size_t depth);
 
   void print() const;
-  static void showProgress(float percent);
+  static void showProgress(float percent, float second);
 
  public:
-  Tracer(size_t depth = 10, size_t rrdepth = 3, size_t samples = 3, float p = 0.5);
+  Tracer(size_t depth = 10, size_t rrdepth = 3, size_t samples = 3, float p = 0.8);
   ~Tracer() = default;
 
-  void load(const std::string &dir, const std::vector<std::string> &models, const std::string &config, int bvhMinCount);
+  bool load(const std::string& dir, const std::string &config, int bvhMinCount = 20);
   void render(const std::string& imgName = "result.png");
 };
 
