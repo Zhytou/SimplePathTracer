@@ -71,12 +71,15 @@ namespace spt
             Vec3<float> dir = normalize(pp - p);
             float pdf = 0.f;
             float cos = std::max(dot(dir, -n), 0.f);
+            // float cos = ::fabsf(dot(dir, n));
 
             Ray ray(p, dir);
             HitResult res;
             scene->hit(ray, res);
             
-            if (res.hit && res.id == lights[lidx]->getId()) {
+            // if (res.hit && res.id == lights[lidx]->getId()) {
+            // if (res.hit && res.material.getName() == lights[lidx]->getMaterial().getName()) {
+            if (res.hit && res.material.isEmissive()) {
                 float nom = res.distance * res.distance;
                 float denom = std::max(areas[gidx] * cos, 0.00001f);
                 lum = lights[lidx]->getMaterial().getEmission();

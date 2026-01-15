@@ -121,10 +121,10 @@ void BVH::hit(const Ray &ray, HitResult &res) const {
   if (isLeaf) {
     // reset result
     res.hit = false;
-    // current result
-    HitResult cres;
     // find the best result
     for (auto obj : objects){
+      // current result
+      HitResult cres;
       obj->hit(ray, cres);
       if (cres.hit && (!res.hit || res.distance > cres.distance)) {
         res = cres;

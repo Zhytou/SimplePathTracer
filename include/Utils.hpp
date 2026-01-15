@@ -150,6 +150,9 @@ struct Vec3 {
 
   T length() const { return ::sqrt(x * x + y * y + z * z); }
 
+  T max() const { return std::max(std::max(x, y), z); }
+
+  T min() const { return std::min(std::min(x, y), z); }
 };
 
 template<typename T>

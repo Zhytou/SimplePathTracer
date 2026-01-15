@@ -1,5 +1,5 @@
 #include <omp.h>
-#include <ctime>
+#include <chrono>
 #include <iomanip>
 #include <functional>
 
@@ -112,6 +112,7 @@ bool Tracer::load(const std::string& dir, const std::string &config, int bvhcnt)
   // 4. info
   std::cout << "Path Tracer Info:";
   std::cout << "\n----------------------";
+  std::cout << "\nConfig " << config;
   std::cout << "\nImage " << camera.getHeight() << 'x' << camera.getWidth();
   std::cout << "\nCamera " << camera.getEye() << ' ' << camera.getLookAt() << ' ' << camera.getLookAt();
   std::cout << "\nScene " << scene->getSize() << ' ' << scene->getNodeCount() << ' ';
@@ -219,7 +220,7 @@ bool Tracer::loadModel(const std::string &model, const std::string &dir, const s
 }
 
 void Tracer::render(const std::string& png) {
-  time_t beg = time(0);
+  const auto beg = std::chrono::steady_clock::now();
   int h = camera.getHeight(), w = camera.getWidth();
   std::vector<uint8_t> img(h * w * 3);
 
@@ -244,8 +245,9 @@ void Tracer::render(const std::string& png) {
 
       // show progress
       float percent = 100.f * (row * w + col) / (h * w - 1);
-      time_t cur = time(0);
-      showProgress(percent, difftime(cur, beg));
+      auto cur = std::chrono::steady_clock::now();
+      std::chrono::duration<float> dur = cur - beg;
+      showProgress(percent, dur.count());
     }
   }
 
@@ -304,7 +306,7 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
       Lum_o = Lum_d * BSDF * NdotL / PDF_d * weight;
     }
   }
-  
+
   // indirect light
   // russian roulette
   float rrweight = 1.f;
@@ -350,9 +352,8 @@ void Tracer::showProgress(float percent, float second) {
     else if (i == pos) std::cout << ">";
     else std::cout << " ";
   }
-  std::cout << "] ";
-  std::cout << std::setw(5) << std::fixed << std::setprecision(2) << percent << "%";
-  std::cout << ' ' << std::setw(5) << std::fixed << std::setprecision(0) << second << "s";
+  std::cout << "] " << std::setw(5) << std::fixed << std::setprecision(2) << percent;
+  std::cout << "% " << std::setw(5) << second << 's';
   if (percent >= 100.0f) {
     std::cout << "\n";
   } else {
