@@ -141,10 +141,12 @@ struct Vec3 {
   }
 
   Vec3<T>& normalize() {
-    float d = ::sqrt(x * x + y * y + z * z);
-    x /= d;
-    y /= d;
-    z /= d;
+    double d = length();
+    if (d > 0.f) {
+      x /= d;
+      y /= d;
+      z /= d;
+    }
     return *this;
   }
 
@@ -169,8 +171,11 @@ std::ostream& operator<<(std::ostream& os, const Vec3<T>& v) {
 
 template<typename T>
 static Vec3<T> normalize(const Vec3<T>& v) {
-  float d = ::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  return Vec3<T>(v.x / d, v.y / d, v.z / d);
+  double d = v.length();
+  if (d > 0.f) {
+    return Vec3<T>(v.x / d, v.y / d, v.z / d);
+  }
+  return v;
 }
 
 template<typename T>
