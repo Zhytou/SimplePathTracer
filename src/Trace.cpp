@@ -263,11 +263,20 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     return Vec3(0.f, 0.f, 0.f);
   }
 
+  // russian roulette
+  float rrweight = 1.f;
+  if (depth >= rrd) {
+    if (rand(1.f) > rrp) {
+      return Vec3(0.f, 0.f, 0.f);
+    }
+    rrweight = 1.f / rrp;
+  }
+
   HitResult res;
   scene->hit(rayv, res);
 
   if (!res.hit) {
-    return Vec3<float>(0, 0, 0);
+    return Vec3<float>(0.f, 0.f, 0.f);
   }
   assert(res.id >= 0 && res.id < scene->getSize());
 
@@ -277,15 +286,15 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   Vec3<float> L(0.f, 0.f, 0.f); // P -> light
 
   // hit info
-  Vec3<float>& N = res.normal;
-  Vec3<float>& P = res.point;
-  Vec2<float>& UV = res.uv;
-  Material& mtl = res.material;
+  Vec3<float> N = res.normal;
+  Vec3<float> P = res.point;
+  Vec2<float> UV = res.uv;
+  Material mtl = res.material;
   float dis = depth == 0 ? 1.f : res.distance; // no attenuation for camera view
 
   // emissive light
   if (mtl.isEmissive()) {
-    return mtl.getEmission() / (dis * dis); // emissive luminosity
+    return mtl.getEmission(); // emissive luminosity
   }
 
   // output luminosity
@@ -303,19 +312,11 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
     if (PDF_d > 0.f) {
       // multiple importance sampling
       float weight = mix(PDF_d, mtl.pdf(V, N, L, UV));
-      Lum_o = Lum_d * BSDF * NdotL / PDF_d * weight;
+      Lum_o = Lum_d * BSDF * NdotL / PDF_d * weight * rrweight;
     }
   }
 
   // indirect light
-  // russian roulette
-  float rrweight = 1.f;
-  if (depth >= rrd) {
-    if (rand(1.f) > rrp) {
-      return Vec3(0.f, 0.f, 0.f);
-    }
-    rrweight = 1 / rrp;
-  }
   L = mtl.scatter(V, N, UV); // sample bsdf
   Ray rayl(P, L);
   Vec3<float> Lum_ind = trace(rayl, depth+1); // indirect luminosity
@@ -333,13 +334,16 @@ Vec3<float> Tracer::trace(const Ray &rayv, size_t depth) {
   if (mtl.isDelta()) {
     Lum_o = Lum_ind * BSDF * rrweight;
   } else {
-    // multiple importance sampling
-    float PDF_ind = mtl.pdf(V, N, L, UV); // probability density function for indirect light sampling(namely bsdf sampling)
+    // probability density function for bsdf sampling and light sampling
+    float PDF_ind = mtl.pdf(V, N, L, UV); 
     float PDF_d = light.pdf(scene, rayl);
+    // multiple importance sampling
     float weight = mix(PDF_ind, PDF_d);
-    Lum_o += Lum_ind * BSDF * NdotL / PDF_ind * weight * rrweight;
+    if (PDF_ind > 0.f) {
+      Lum_o += Lum_ind * BSDF * NdotL / PDF_ind * weight * rrweight;
+    }
   }
-
+  
   return Lum_o;
 }
 
