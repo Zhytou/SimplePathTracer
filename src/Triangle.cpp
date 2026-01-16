@@ -109,6 +109,9 @@ bool Triangle::contain(const Vec3<float>& p) const {
   float c5 = dot(e1, e2);
 
   float denom = c3*c4-c5*c5;
+  if (denom < EPSILON) {
+    return false;
+  }
   float u = (c1*c4-c2*c5)/denom;
   float v = (c2*c3-c1*c5)/denom;
 
@@ -124,14 +127,14 @@ void Triangle::hit(const Ray& ray, HitResult& res) const {
   res.id = this->getId();
 
   float denom = dot(normal, direction);
-  // ray is parallel to triangle face
+  // return if ray is parallel to triangle face
   if (fabs(denom) <= EPSILON) {
     return;
   }
 
   float t = (dot(normal, v1) - dot(normal, origin))/denom;
   Vec3<float> p = ray.getPointAt(t);
-  if (t < 0.05 || !contain(p)) {
+  if (t < EPSILON || !contain(p)) {
     return;
   }
 

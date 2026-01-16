@@ -147,16 +147,14 @@ namespace spt
         float NDotV = ::fabsf(dot(N, V));
         float F = Fresnel_Schlick(NDotV, F0).max();
         
-        if (isTransparent() && prob > 0) {
+        if (isTransparent() && prob > F) {
             L = transmit(V, N);
-        } else {
+        }
+
+        // reflect if total internal reflection occurs or material only supports reflection
+        if (L == Vec3<float>(0.f, 0.f, 0.f)) {
             L = reflect(V, N, UV);
         }
-        
-        // reflect if total internal reflection occurs or material only supports reflection
-        // if (L == Vec3<float>(0.f, 0.f, 0.f)) {
-        //     L = reflect(V, N, UV);
-        // }
 
         return L;
     }
@@ -240,8 +238,6 @@ namespace spt
             case BSDF_SPECULAR: {
                 // construct L
                 L = normalize(constructL(V, N));
-                // TODO: for staircase.obj only when using L=-V, transimission render is correct
-                // L = -V;
             }
             break;
             case BSDF_GLOSSY: {

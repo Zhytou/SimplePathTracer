@@ -155,7 +155,7 @@ void AABB::hit(const Ray& ray, HitResult& res) const {
   float t0, t1;
   t0 = std::max(tMin.z, std::max(tMin.y, tMin.x));
   t1 = std::min(tMax.z, std::min(tMax.y, tMax.x));
-  res.hit = t0 <= t1;
+  res.hit = (t0 <= t1) && (t1 > 0.f);
   return;
 }
 }  // namespace spt
