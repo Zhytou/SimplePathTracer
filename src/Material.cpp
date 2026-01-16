@@ -60,7 +60,7 @@ namespace spt
             type = type | BSDF_REFLECTION;
         }
         // surface type
-        if (roughness < 0.01f || (type & BSDF_TRANSIMISSION)) {
+        if (roughness < 0.01f || isTransparent()) {
             // !NOTE: if surface is transparent, must be specular
             // TODO: add GLOSSY trasmission
             type = type | BSDF_SPECULAR;
@@ -77,6 +77,10 @@ namespace spt
 
     bool Material::isEmissive() const { 
         return emissive;
+    }
+
+    bool Material::isTransparent() const { 
+        return type & BSDF_TRANSIMISSION;
     }
 
     void Material::setEmission(Vec3<float> e) { 
@@ -111,7 +115,7 @@ namespace spt
     Vec3<float> Material::getFresnel0(const Vec3<float>& baseColor) const {
         Vec3<float> F0(0.04f, 0.04f, 0.04f);
 
-        if (type & BSDF_TRANSIMISSION) { // dielectric (supports both reflection and transmission)
+        if (isTransparent()) { // dielectric (supports both reflection and transmission)
             F0 = Vec3<float>(ior, ior, ior);
             F0 = pow((F0 - Vec3(1.f, 1.f, 1.f)) / (F0 + Vec3(1.f, 1.f, 1.f)), 2.f);
         } else { // opaque (supports only reflection)
@@ -139,16 +143,20 @@ namespace spt
         Vec3<float> L(0.f, 0.f, 0.f);
         float prob = rand(1.f);
         Vec3<float> color = getBaseColor(UV);
-        float F0 = getFresnel0(color).max();
+        Vec3<float> F0 = getFresnel0(color);
+        float NDotV = ::fabsf(dot(N, V));
+        float F = Fresnel_Schlick(NDotV, F0).max();
         
-        if ((type & BSDF_TRANSIMISSION) && prob > F0) {
+        if (isTransparent() && prob > 0) {
             L = transmit(V, N);
+        } else {
+            L = reflect(V, N, UV);
         }
         
         // reflect if total internal reflection occurs or material only supports reflection
-        if (L == Vec3<float>(0.f, 0.f, 0.f)) {
-            L = reflect(V, N, UV);
-        }
+        // if (L == Vec3<float>(0.f, 0.f, 0.f)) {
+        //     L = reflect(V, N, UV);
+        // }
 
         return L;
     }
@@ -170,9 +178,11 @@ namespace spt
             case BSDF_GLOSSY: {
                 // GGX and COSINE combined importance sampling
                 Vec3<float> color = getBaseColor(UV);
-                float F0 = getFresnel0(color).max();
+                Vec3<float> F0 = getFresnel0(color);
+                float NdotV = dot(N, V);
+                float F = Fresnel_Schlick(NdotV, F0).max();
 
-                if (rand(1.f) > F0) {
+                if (rand(1.f) > F) {
                     L = sample(V, N, "COSINE");
                 } else {
                     Vec3<float> H = sample(V, N, "GGX");
@@ -209,14 +219,14 @@ namespace spt
             float eta = (cosThetaI > 0) ? (1.0f / ior) : ior; 
 
             // square of sine transmitted theta
+            cosThetaI = ::fabsf(cosThetaI);
             float sin2ThetaT = eta * eta * (1 - cosThetaI * cosThetaI);
             // return if total internal reflection occurs
-            if (sin2ThetaT > 1) {
-                return Vec3<float>{0.f, 0.f, 0.f};
+            if (sin2ThetaT - 1.f > EPSILON) {
+                return Vec3<float>(0.f, 0.f, 0.f);
             }
             // cosine transmitted theta
-            float cosThetaT = sqrtf(1 - sin2ThetaT);
-
+            float cosThetaT = ::sqrtf(1.f - sin2ThetaT);
             // !NOTE: Snell's law (ior₁·sinθ₁ = ior₂·sinθ₂)
             Vec3<float> L = - V * eta + NN * (eta * cosThetaI - cosThetaT);
             return L;
@@ -226,10 +236,12 @@ namespace spt
         uint surfType = type & surfMask;
 
         switch (surfType) {
-            // perfect specular trasimission
+            // perfect specular transimission
             case BSDF_SPECULAR: {
                 // construct L
-                L = constructL(V, N);
+                L = normalize(constructL(V, N));
+                // TODO: for staircase.obj only when using L=-V, transimission render is correct
+                // L = -V;
             }
             break;
             case BSDF_GLOSSY: {
@@ -340,7 +352,7 @@ namespace spt
     Vec3<float> Material::bsdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec2<float>& UV) const {
         Vec3<float> bsdf(0.f, 0.f, 0.f);
 
-        if ((type & BSDF_TRANSIMISSION) && dot(V, N) * dot(L, N) < 0.f) { // transimission and view light direction in different hemisphere
+        if (isTransparent() && dot(V, N) * dot(L, N) < 0.f) { // transimission and view light direction in different hemisphere
             // create a 'temporary' normal, same hemishpere with V
             Vec3<float> NN = (dot(N, V) > 0) ? N : -N;
 
@@ -397,7 +409,8 @@ namespace spt
             
         float D = GGX_D(NdotH, roughness);
         float G = Smith_G(NdotV, NdotL, roughness);
-        Vec3<float> F = Fresnel_Schlick(VdotH, F0); 
+        //! NOTE: use macroscopic normal to calculate fresnel 
+        Vec3<float> F = Fresnel_Schlick(NdotV, F0); 
         Vec3<float> NF = (Vec3(1.f, 1.f, 1.f) - F);
 
         switch (surfType) {
@@ -464,7 +477,8 @@ namespace spt
 
         float D = GGX_D(NdotH, roughness);
         float G = Smith_G(NdotV, ::fabsf(NdotL), roughness);
-        Vec3<float> F = Fresnel_Schlick(VdotH, F0); 
+        //! NOTE: use macroscopic normal to calculate fresnel 
+        Vec3<float> F = Fresnel_Schlick(NdotV, F0);  
         Vec3<float> NF = (Vec3(1.f, 1.f, 1.f) - F);
 
         switch (surfType) {

@@ -81,6 +81,7 @@ class Material {
   Vec3<float> getFresnel0(const Vec3<float>& baseColor) const;
   bool isDelta() const;
   bool isEmissive() const;
+  bool isTransparent() const;
   void setEmission(Vec3<float> e);
   
   // evaluate BSDF
