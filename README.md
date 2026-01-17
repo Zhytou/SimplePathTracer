@@ -23,22 +23,16 @@ make main
 
 **渲染效果**：
 
-- 片元数量32
-- SPP 256
-- 512*512
-- 渲染时间：709s
-
 ![res](res/box_spp32_mis_492s.png)
 
-![res](res/glossy-metal-box_spp32_mis_450s.png)
+![res](res/metal-box_spp32_mis_462s.png)
 
 ![res](res/glossy-metal-box_spp32_mis_450s.png)
 
 ![res](res/glass-panel_spp32_mis_518s.png)
 
-- 片元数量234945
-- SPP 128
-- 512*512
-- 渲染时间：5324s
-
 ![res](res/dragon_spp32_mis_1641s.png)
+
+![res](res/staircase_spp32_mis_1796s.png)
+
+![res](res/veach-mis_spp32_mis_2434s.png)
