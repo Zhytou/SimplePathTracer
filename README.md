@@ -1,6 +1,6 @@
 # Simple Path Tracer
 
-[![wakatime](https://wakatime.com/badge/github/Zhytou/SimpleRenderEngine.svg)](https://wakatime.com/badge/github/Zhytou/SimpleRenderEngine)
+[![wakatime](https://wakatime.com/badge/github/Zhytou/SimplePathTracer.svg)](https://wakatime.com/badge/github/Zhytou/SimplePathTracer)
 
 **编译运行**：
 
