@@ -5,19 +5,19 @@
 
 using namespace spt;
 
-int depth = 6;
-int rrdepth = 3;
-int spp = 32;
+int depth = 4;
+int rrdepth = 2;
+int spp = 4;
 
-std::string dir = "../example/box/";
-std::string config = "box.xml";
+std::string dir = "../example/staircase/";
+std::string config = "staircase.xml";
 
 int main() {
   std::stringstream name;
   name << config.substr(0, config.size()-4) << '_' << "spp" << spp << ".png";
 
   Tracer tracer(depth, rrdepth, spp);
-  tracer.load(dir, config);
+  tracer.load(dir, config, 40);
   tracer.render(name.str());
 
   return 0;
