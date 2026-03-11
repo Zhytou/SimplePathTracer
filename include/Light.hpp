@@ -78,8 +78,8 @@ namespace spt
             scene->hit(ray, res);
             
             // if (res.hit && res.id == lights[lidx]->getId()) {
-            // if (res.hit && res.material.getName() == lights[lidx]->getMaterial().getName()) {
-            if (res.hit && res.material.isEmissive()) {
+            if (res.hit && res.material.getName() == lights[lidx]->getMaterial().getName()) {
+            // if (res.hit && res.material.isEmissive()) {
                 float nom = res.distance * res.distance;
                 float denom = std::max(areas[gidx] * cos, 0.00001f);
                 lum = lights[lidx]->getMaterial().getEmission();

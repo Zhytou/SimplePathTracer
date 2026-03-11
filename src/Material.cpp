@@ -38,6 +38,7 @@ namespace spt
         //! NOTE: BRDF sampling uses roughness for GGX; convert shininess to roughness for Phong model.
         if (roughness == 0 && illuType != BSDF_MICROFACET) {
             roughness = ::powf(10.f / (shininess + 10.f), 1 / 8.f);
+            std::cout << name << ' ' << shininess << ' ' << roughness << '\n';
         }
         
         // ior

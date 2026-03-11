@@ -357,7 +357,7 @@ void Tracer::showProgress(float percent, float second) {
     else std::cout << " ";
   }
   std::cout << "] " << std::setw(5) << std::fixed << std::setprecision(2) << percent;
-  std::cout << "% " << std::setw(5) << second << 's';
+  std::cout << "% " << std::setw(7) << second << 's';
   if (percent >= 100.0f) {
     std::cout << "\n";
   } else {
