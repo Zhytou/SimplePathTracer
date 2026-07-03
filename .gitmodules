@@ -1,12 +1,9 @@
-[submodule "third-parties/tinyobjloader"]
-	path = third-parties/tinyobjloader
-	url = git@github.com:tinyobjloader/tinyobjloader.git
-[submodule "third-parties/tinyxml2"]
-	path = third-parties/tinyxml2
-	url = git@github.com:leethomason/tinyxml2.git
-[submodule "third-parties/stb"]
-	path = third-parties/stb
+[submodule "3rd/stb_image"]
+	path = 3rd/stb_image
 	url = https://github.com/nothings/stb.git
-[submodule "third-parties/tinyexr"]
-	path = third-parties/tinyexr
-	url = https://github.com/syoyo/tinyexr.git
+[submodule "3rd/rapidjson"]
+	path = 3rd/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
+[submodule "3rd/tinyobjloader"]
+	path = 3rd/tinyobjloader
+	url = https://github.com/tinyobjloader/tinyobjloader.git
