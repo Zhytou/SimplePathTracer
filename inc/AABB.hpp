@@ -1,44 +1,41 @@
-#ifndef SRE_AABB_HPP
-#define SRE_AABB_HPP
+#ifndef SPT_AABB_HPP
+#define SPT_AABB_HPP
 
 #include <cassert>
-#include <vector>
+#include <cfloat>
 #include <memory>
+#include <vector>
 
-#include "Hittable.hpp"
+#include "Ray.hpp"
 #include "Utils.hpp"
 
 namespace spt {
 
-class AABB : public Hittable {
- private:
-  Vec3<float> minXYZ, maxXYZ;
+class AABB {
+   public:
+    AABB()  = default;
+    ~AABB() = default;
+    AABB(const Vec3<float>& xyz1, const Vec3<float>& xyz2) : m_xyz1(xyz1), m_xyz2(xyz2) {}
 
- public:
-  AABB();
-  AABB(const Vec3<float>& a, const Vec3<float>& b);
-  AABB(const std::shared_ptr<Hittable>& object);
-  AABB(const std::vector<std::shared_ptr<Hittable>>& objects);
-  AABB(const std::vector<std::shared_ptr<Hittable>>::const_iterator& beg, const std::vector<std::shared_ptr<Hittable>>::const_iterator& end);
+    bool intersect(const Ray& ray, float tmin, float tmax) const;
+    AABB& merge(const AABB& other);
 
- public:
-  // getter
-  virtual Vec3<float> getMinXYZ() const override;
-  virtual Vec3<float> getMaxXYZ() const override;
-  
-  // calculate surface area
-  float getArea() const;
+    Vec3<float> getCenter() const { return (m_xyz1 + m_xyz2) / 2.f; }
+    Vec3<float> getDelta() const { return m_xyz2 - m_xyz1; }
+    float getArea() const {
+        Vec3<float> xyz = m_xyz2 - m_xyz1;
+        return xyz.x * xyz.y + xyz.x * xyz.z + xyz.y * xyz.z;
+    }
+    std::pair<Vec3<float>, Vec3<float>> getBounds() const { return {m_xyz1, m_xyz2}; }
+    void setBounds(const Vec3<float>& xyz1, const Vec3<float>& xyz2) {
+        m_xyz1 = xyz1;
+        m_xyz2 = xyz2;
+    }
 
-  // hit
-  virtual void hit(const Ray& ray, HitResult& res) const override;
-
-  // merge
-  static AABB merge(const AABB& aabb1, const AABB& aabb2);
-  static AABB merge(const std::vector<AABB>& aabbs);
-
-  // expand
-  void expand(const AABB& aabb);
+   protected:
+    Vec3<float> m_xyz1 = Vec3<float>{INFINITY, INFINITY, INFINITY};
+    Vec3<float> m_xyz2 = Vec3<float>{-INFINITY, -INFINITY, -INFINITY};
 };
-}  // namespace spt
+} // namespace spt
 
 #endif
