@@ -1,66 +1,39 @@
 #include "Camera.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 
-Ray Camera::getRay(const int& row, const int& col) const {
-  float y = tanf(PI * fovy / 180 * 0.5f) * focus * 2;
-  float x = 1.f * width / height * y;
-
-  y *= (height - row + rand(0.999f)) / height;
-  x *= (col + rand(0.999f)) / width;
-
-  Vec3<float> pos = axisX * x + axisY * y + lowerLeftCorner;
-  return Ray(eye, pos - eye);
-}
-int Camera::getWidth() const { return width; }
-int Camera::getHeight() const { return height; }
-Vec3<float> Camera::getEye() const { return eye; }
-Vec3<float> Camera::getLookAt() const { return lookat; }
-Vec3<float> Camera::getAxisZ() const { return axisZ; }
-
-// setter.
-void Camera::setWidth(const int& w) {
-  width = w;
-  update();
-}
-void Camera::setHeight(const int& h) {
-  height = h;
-  update();
-}
-void Camera::setFovy(const float& theta) {
-  fovy = theta;
-  update();
-}
-void Camera::setEye(const float& x, const float& y, const float& z) {
-  eye.x = x;
-  eye.y = y;
-  eye.z = z;
-  update();
-}
-void Camera::setLookAt(const float& x, const float& y, const float& z) {
-  lookat.x = x;
-  lookat.y = y;
-  lookat.z = z;
-  update();
-}
-void Camera::setUp(const float& x, const float& y, const float& z) {
-  up.x = x;
-  up.y = y;
-  up.z = z;
-  update();
-}
-
 void Camera::update() {
-  // camera coordinate system
-  axisZ = normalize(eye - lookat);
-  axisX = normalize(cross(up, axisZ));
-  axisY = normalize(cross(axisZ, axisX));
+    Vec3<float> forward = normalize(m_target - m_eye);
 
-  // view port
-  focus = distance(eye, lookat);
-  float y = tanf(PI * fovy / 180 * 0.5f) * focus; // half height
-  float x = 1.f * width / height * y;
-  lowerLeftCorner = lookat - axisX * x - axisY * y;
+    m_axises[0] = normalize(cross(forward, m_up)); // X
+    m_axises[1] = cross(m_axises[0], forward);     // Y
+    m_axises[2] = forward;                         // Z
+
+    m_focus = (m_target - m_eye).length();
+    m_pixel = (2.f * ::tanf(m_fovy * 0.5f * PI / 180.f) * m_focus) / m_height;
 }
 
-}  // namespace spt
+Ray PerspectiveCamera::emit(int row, int col) {
+    float x = (col + 0.5f - m_width / 2.f) * m_pixel;
+    float y = -(row + 0.5f - m_height / 2.f) * m_pixel;
+    float z = m_focus;
+
+    Vec3<float> pos = m_eye;
+    Vec3<float> dir = m_axises[0] * x + m_axises[1] * y + m_axises[2] * z;
+
+    return Ray(pos, dir);
+}
+
+Ray OrthographicCamera::emit(int row, int col) {
+    float x = (col + 0.5f - m_width / 2.f) * m_pixel;
+    float y = -(row + 0.5f - m_height / 2.f) * m_pixel;
+    float z = m_focus;
+
+    Vec3<float> pos = m_eye + m_axises[0] * x + m_axises[1] * y;
+    Vec3<float> dir = m_axises[2] * z;
+
+    return Ray(pos, dir);
+}
+
+} // namespace spt
