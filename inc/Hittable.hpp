@@ -1,42 +1,37 @@
-#ifndef SRE_HITTABLE_HPP
-#define SRE_HITTABLE_HPP
+#ifndef SPT_HITTABLE_HPP
+#define SPT_HITTABLE_HPP
 
+#include "AABB.hpp"
 #include "Material.hpp"
 #include "Ray.hpp"
 #include "Utils.hpp"
 
 namespace spt {
 
-struct HitResult {
-  bool hit;
-  int id;
-  float distance;
-  Vec3<float> point;
-  Vec2<float> uv;
-  Vec3<float> normal;
-  Material material;
-
-  HitResult() : hit(false), distance(-1) {}
+struct HitRecord {
+    int id                             = -1;
+    float distance                     = INFINITY;
+    Vec3<float> point                  = Vec3<float>{0.f, 0.f, 0.f};
+    Vec2<float> texcoord               = Vec2<float>{0.f, 0.f};
+    Vec3<float> normal                 = Vec3<float>{0.f, 0.f, 0.f};
+    std::shared_ptr<Material> material = nullptr;
 };
 
 class Hittable {
- private:
-  size_t id;
+   public:
+    Hittable(int id = -1) : m_id(id) {}
+    virtual ~Hittable() {}
 
- public:
-  Hittable(size_t _id = -1) : id(_id) {}
-  virtual ~Hittable() {}
+    int getID() const { return m_id; }
+    void setID(int id) { m_id = id; }
 
- public:
-  // getter
-  size_t getId() const { return id; }
-  virtual Vec3<float> getMinXYZ() const = 0;
-  virtual Vec3<float> getMaxXYZ() const = 0;
+    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const = 0;
+    virtual AABB wrap() const                                                      = 0;
 
-  // hit
-  virtual void hit(const Ray& ray, HitResult& res) const = 0;
+   protected:
+    int m_id;
 };
 
-}  // namespace spt
+} // namespace spt
 
 #endif
