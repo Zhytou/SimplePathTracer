@@ -24,7 +24,7 @@ std::pair<int, Vec3<float>> Light::sample() const {
     idx      = std::min(idx, static_cast<int>(m_triangles.size()) - 1);
 
     int id            = m_triangles[idx]->getID();
-    Vec3<float> point = m_triangles[idx]->getNormal();
+    Vec3<float> point = m_triangles[idx]->getRandomPoint();
 
     return {id, point};
 }
@@ -32,7 +32,7 @@ std::pair<int, Vec3<float>> Light::sample() const {
 float Light::pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) {
     if (m_sum < EPS || m_triangles.empty()) { return 0.f; }
 
-    float cos_light = std::max(dot(wo, -n), 0.f);
+    float cos_light = std::max(dot(-wo, n), 0.f);
     if (cos_light < EPS) { return 0.f; }
 
     float pdf  = 1.f / m_sum;
