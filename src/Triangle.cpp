@@ -5,146 +5,108 @@
 
 namespace spt {
 
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Material& _m)
-    : Hittable(id),
-      v1(_v1),
-      v2(_v2),
-      v3(_v3),
-      normal(normalize(cross(_v2 - _v1, _v3 - _v1))),
-      material(_m) {}
-
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Vec3<float>& _n, const Material& _m)
-    : Hittable(id),
-      v1(_v1),
-      v2(_v2),
-      v3(_v3),
-      normal(normalize(_n)),
-      material(_m) {}
-
-Triangle::Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2, const Vec3<float>& _v3, const Vec2<float>& _vt1, const Vec2<float>& _vt2, const Vec2<float>& _vt3, const Vec3<float>& _n, const Material& _m)
-    : Hittable(id),
-      v1(_v1),
-      v2(_v2),
-      v3(_v3),
-      vt1(_vt1),
-      vt2(_vt2),
-      vt3(_vt3),
-      normal(normalize(_n)),
-      material(_m) {}
-
-Triangle::~Triangle() {}
-
-Vec3<float> Triangle::getMinXYZ() const {
-  Vec3<float> minXYZ;
-  minXYZ.x = std::min(v1.x, std::min(v2.x, v3.x));
-  minXYZ.y = std::min(v1.y, std::min(v2.y, v3.y));
-  minXYZ.z = std::min(v1.z, std::min(v2.z, v3.z));
-  return minXYZ;
-}
-
-Vec3<float> Triangle::getMaxXYZ() const {
-  Vec3<float> maxXYZ;
-  maxXYZ.x = std::max(v1.x, std::max(v2.x, v3.x));
-  maxXYZ.y = std::max(v1.y, std::max(v2.y, v3.y));
-  maxXYZ.z = std::max(v1.z, std::max(v2.z, v3.z));
-  return maxXYZ;
-}
-
 Vec3<float> Triangle::getRandomPoint() const {
-  Vec3<float> e1 = v2 - v1, e2 = v3 - v2;
-  float a = sqrtf(rand(1.f)), b = sqrtf(rand(1.f));
-  return e1 * a + e2 * a * b + v1;
+    Vec3<float> e1 = m_vertex[2] - m_vertex[0], e2 = m_vertex[1] - m_vertex[0];
+    float a = sqrtf(rand(1.f)), b = sqrtf(rand(1.f));
+    return e1 * a + e2 * a * b + m_vertex[0];
 }
 
-Vec3<float> Triangle::getNormal() const { return normal; }
+bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+    // ===================================================================================
+    // [Mathematical Derivation: Möller–Trumbore Intersection Algorithm]
+    //
+    // 1. Core Equation (Equating Ray and Barycentric Equations):
+    // Ray: P(t) = O + t*D
+    // Triangle Surface: P(u,v) = (1-u-v)*V0 + u*V1 + v*V2 = V0 + u*E1 + v*E2
+    // Where E1 = V1 - V0, and E2 = V2 - V0.
+    //
+    // Equating them gives: O + t*D = V0 + u*E1 + v*E2
+    // Moving unknowns to the left side: -t*D + u*E1 + v*E2 = O - V0
+    //
+    // 2. Matrix Form (Ax = B):
+    // [ -D,  E1,  E2 ] * [ t,  u,  v ]^T = T_vec   (Where T_vec = O - V0)
+    //
+    // 3. Solving via Cramer's Rule:
+    // We use the scalar triple product identity: det(A, B, C) = (A x B) · C
+    //
+    // det   = det(-D, E1, E2) = (D x E2) · E1       ==> Let P_vec = D x E2, det = E1 · P_vec
+    // u_num = det(T_vec, E1, E2) = (T_vec x D) · E2 ==> u = (T_vec · P_vec) / det
+    // v_num = det(-D, E1, T_vec) = (T_vec x E1) · D ==> Let Q_vec = T_vec x E1, v = D · Q_vec / det
+    // t_num = det(-D, E1, T_vec) = (T_vec x E1) · E2 ==> t = (E2 · Q_vec) / det
+    //
+    // 4. Variable Meanings:
+    // - E1, E2 : Edge vectors of the triangle.
+    // - T_vec  : Vector from V0 to the ray origin (Translation vector).
+    // - P_vec  : Vector perpendicular to both the ray direction and edge E2.
+    // - Q_vec  : Vector perpendicular to both T_vec and edge E1.
+    // ===================================================================================
 
-Vec2<float> Triangle::getTexCoord(const Vec3<float>& coord) const {
-  assert(contain(coord));
+    Vec3<float> origin    = ray.getOrigin();
+    Vec3<float> direction = ray.getDirection();
 
-  Vec3<float> e1 = v2 - v1, e2 = v3 - v1;
-  Vec3<float> n = cross(e1, e2);
-  float area = n.length();
+    Vec3<float> e1 = m_vertex[2] - m_vertex[0];
+    Vec3<float> e2 = m_vertex[1] - m_vertex[0];
 
-  // too small to be a valid triangle
-  if (area < EPSILON) {
-    return vt1;
-  }
+    // 1. Calculate the determinant (det) of matrix [-D, E1, E2]
+    Vec3<float> pvec = cross(direction, e2);
+    float det        = dot(e1, pvec);
 
-  // calculate gravity center
-  float a = cross(e2, coord - v1).length() / area;
-  float b = cross(coord - v1, e1).length() / area;
-  float c = 1 - a - b;
+    // 2. Check if the ray is parallel to the triangle plane
+    if (fabs(det) < EPS) {
+        return false;
+    }
+    float invdet = 1.0f / det;
 
-  // interpolation
-  Vec2<float> texCoord = vt2 * a + vt3 * b + vt1 * c;
+    // 3. Calculate and validate Barycentric coordinate 'u'
+    Vec3<float> tvec = origin - m_vertex[0];
+    float u          = dot(tvec, pvec) * invdet;
+    if (u < 0.0f || u > 1.0f) {
+        return false;
+    }
 
-  // make sure within the [0, 1] range
-  texCoord.u = std::fmod(texCoord.u, 1.0f);
-  texCoord.v = std::fmod(texCoord.v, 1.0f);
-  if (texCoord.u < 0) texCoord.u += 1.0f;
-  if (texCoord.v < 0) texCoord.v += 1.0f;
+    // 4. Calculate and validate Barycentric coordinate 'v'
+    Vec3<float> qvec = cross(tvec, e1);
+    float v          = dot(direction, qvec) * invdet;
+    if (v < 0.0f || u + v > 1.0f) {
+        return false;
+    }
 
-  return texCoord;
+    // 5. Calculate the ray parameter 't' (distance)
+    float t = dot(e2, qvec) * invdet;
+    if (t < tmin || t > tmax) {
+        return false;
+    }
+
+    // 6. Interpolate texture coordinates using weights: w = 1 - u - v
+    float w              = 1.0f - u - v;
+    Vec2<float> texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
+
+    // 7. UV Wrap Mode: Repeat logic
+    texcoord.u = std::fmod(texcoord.u, 1.0f);
+    texcoord.v = std::fmod(texcoord.v, 1.0f);
+    if (texcoord.u < 0) { texcoord.u += 1.0f; }
+    if (texcoord.v < 0) { texcoord.v += 1.0f; }
+
+    // 8. Set hit record
+    rec.id       = this->getID();
+    rec.distance = t;
+    rec.point    = ray.getPointAt(t);
+    rec.texcoord = texcoord;
+    rec.normal   = dot(m_normal, direction) > 0.f ? -m_normal : m_normal; // flip normal if ray direction is facing away
+    rec.material = m_material;
+
+    return true;
 }
 
-Material Triangle::getMaterial() const { return material; }
-
-float Triangle::getSize() const {
-  return cross(v2 - v1, v3 - v1).length() / 2;
+AABB Triangle::wrap() const {
+    Vec3<float> xyz1, xyz2;
+    xyz1.x = std::min(m_vertex[0].x, std::min(m_vertex[1].x, m_vertex[2].x));
+    xyz1.y = std::min(m_vertex[0].y, std::min(m_vertex[1].y, m_vertex[2].y));
+    xyz1.z = std::min(m_vertex[0].z, std::min(m_vertex[1].z, m_vertex[2].z));
+    xyz2.x = std::max(m_vertex[0].x, std::max(m_vertex[1].x, m_vertex[2].x));
+    xyz2.y = std::max(m_vertex[0].y, std::max(m_vertex[1].y, m_vertex[2].y));
+    xyz2.z = std::max(m_vertex[0].z, std::max(m_vertex[1].z, m_vertex[2].z));
+    return AABB(xyz1, xyz2);
 }
 
-bool Triangle::contain(const Vec3<float>& p) const {
-  // edge
-  Vec3<float> e1 = v2 - v1;
-  Vec3<float> e2 = v3 - v1;
-
-  // vector
-  Vec3<float> pv = p - v1;
-  
-  // pv = u*e1 + v*e2
-  float c1 = dot(pv, e1);
-  float c2 = dot(pv, e2);
-  float c3 = dot(e1, e1);
-  float c4 = dot(e2, e2);
-  float c5 = dot(e1, e2);
-
-  float denom = c3*c4-c5*c5;
-  if (denom < EPSILON) {
-    return false;
-  }
-  float u = (c1*c4-c2*c5)/denom;
-  float v = (c2*c3-c1*c5)/denom;
-
-  return u >= 0 && v >= 0 && u+v <= 1;
-}
-
-void Triangle::hit(const Ray& ray, HitResult& res) const {
-  Vec3<float> origin = ray.getOrigin();
-  Vec3<float> direction = ray.getDirection();
-
-  // initialize hit result
-  res.hit = false;
-  res.id = this->getId();
-
-  float denom = dot(normal, direction);
-  // return if ray is parallel to triangle face
-  if (fabs(denom) <= EPSILON) {
-    return;
-  }
-
-  float t = (dot(normal, v1) - dot(normal, origin))/denom;
-  Vec3<float> p = ray.getPointAt(t);
-  if (t < EPSILON || !contain(p)) {
-    return;
-  }
-
-  res.hit = true;
-  res.point = p;
-  res.uv = getTexCoord(p);
-  res.distance = t;
-  res.normal = normal;
-  res.material = material;
-  return;
-}
-
-}  // namespace spt
+} // namespace spt

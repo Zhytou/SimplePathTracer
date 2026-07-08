@@ -1,47 +1,42 @@
-#ifndef SRE_TRIANGLE_HPP
-#define SRE_TRIANGLE_HPP
-
-#include <iostream>
+#ifndef SPT_TRIANGLE_HPP
+#define SPT_TRIANGLE_HPP
 
 #include "Hittable.hpp"
+#include "Material.hpp"
+
+#include <array>
+#include <iostream>
+#include <memory>
 
 namespace spt {
-class Material;
 
 class Triangle : public Hittable {
- private:
-  Vec3<float> v1, v2, v3;
-  Vec2<float> vt1, vt2, vt3;
-  Vec3<float> normal;
-  Material material;
+   public:
+    Triangle(int id) : Hittable(id) {}
+    ~Triangle() {}
 
- public:
-  Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-           const Vec3<float>& _v3, const Material& _m);
-  Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-           const Vec3<float>& _v3, const Vec3<float>& _n, const Material& _m);
-  Triangle(size_t id, const Vec3<float>& _v1, const Vec3<float>& _v2,
-           const Vec3<float>& _v3, const Vec2<float>& _vt1,
-           const Vec2<float>& _vt2, const Vec2<float>& _vt3,
-           const Vec3<float>& _n, const Material& _m);
-  ~Triangle();
+    Vec3<float> getNormal() const { return m_normal; }
+    std::shared_ptr<Material> getMaterial() const { return m_material; }
+    int getMaterialID() const { return m_matid; }
+    float getArea() const { return cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0]).length() / 2; }
+    Vec3<float> getRandomPoint() const;
+    void setVertex(const std::array<Vec3<float>, 3>& v) { m_vertex = v; }
+    void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
+    void setNormal(const Vec3<float>& n) { m_normal = n; }
+    void setMaterial(std::shared_ptr<Material> m) { m_material = m; }
+    void setMaterialID(int id) { m_matid = id; }
 
- public:
-  // getter
-  virtual Vec3<float> getMinXYZ() const override;
-  virtual Vec3<float> getMaxXYZ() const override;
-  Vec3<float> getNormal() const;
-  Vec2<float> getTexCoord(const Vec3<float>& coord) const;
-  Vec3<float> getRandomPoint() const;
-  Material getMaterial() const;
-  float getSize() const;
+    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
+    virtual AABB wrap() const override;
 
-  // contain
-  bool contain(const Vec3<float>& p) const;
-
-  // hit
-  virtual void hit(const Ray& ray, HitResult& res) const override;
+   private:
+    std::array<Vec3<float>, 3> m_vertex;
+    std::array<Vec2<float>, 3> m_texcoord;
+    Vec3<float> m_normal;
+    std::shared_ptr<Material> m_material;
+    int m_matid = -1;
 };
-}  // namespace spt
+
+} // namespace spt
 
 #endif
