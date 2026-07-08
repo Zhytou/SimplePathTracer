@@ -1,11 +1,11 @@
-#ifndef SRE_BVH_HPP
-#define SRE_BVH_HPP
+#ifndef SPT_BVH_HPP
+#define SPT_BVH_HPP
 
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "AABB.hpp"
 #include "Hittable.hpp"
@@ -13,36 +13,24 @@
 
 namespace spt {
 class BVH : public Hittable {
- private:
-  uint n;
-  std::vector<std::shared_ptr<Hittable>> objects;
-  AABB aabb;
-  bool isLeaf;
+   public:
+    BVH(int count, bool leaf) : Hittable(-1), m_count(count), m_leaf(leaf) {}
 
- public:
-  BVH(uint _n = 0);
-  ~BVH() = default;
+    static std::shared_ptr<BVH> constructBVH(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end, int cnt);
+    static void sortObjects(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end, int axis);
+    static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int cnt1, int cnt2);
+    static AABB mergeAABBs(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end);
 
- public:
-  // construct
-  static std::shared_ptr<BVH> constructBVH( std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int minCount=30);
-  
-  // sort
-  static void sortObjects(std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int axis) ;
+    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
+    virtual AABB wrap() const override { return m_aabb; }
 
-  // compute
-  static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int leftCount, int rightCount);
-
-  // getter
-  uint getSize() const { return n; }
-  uint getNodeCount() const;
-  virtual Vec3<float> getMinXYZ() const override;
-  virtual Vec3<float> getMaxXYZ() const override;
-
-  // hit
-  virtual void hit(const Ray &ray, HitResult &res) const override;
+   private:
+    int m_count;
+    bool m_leaf;
+    std::vector<std::shared_ptr<Hittable>> m_children;
+    AABB m_aabb;
 };
 
-}  // namespace spt
+} // namespace spt
 
 #endif

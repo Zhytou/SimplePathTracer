@@ -1,156 +1,115 @@
 #include "BVH.hpp"
 
 namespace spt {
-BVH::BVH(uint _n) : isLeaf(false), n(_n) {}
 
-// construct
-std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int minCount) {
-  auto bvh = std::make_shared<BVH>(objects.size());
+std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end, int cnt) {
+    int num     = end - beg;
+    auto bvh    = std::make_shared<BVH>(num, false);
+    bvh->m_aabb = mergeAABBs(triangles, beg, end);
 
-  // bvh aabb
-  bvh->aabb = AABB(objects.begin()+beg, objects.begin()+end);
+    // 1. Construct leaf node if the number of triangles in the current bvh is less than or equal to cnt
+    if (num <= cnt) {
+        bvh->m_leaf = true;
+        bvh->m_children.assign(triangles.begin() + beg, triangles.begin() + end);
+        return bvh;
+    }
 
-  // total node count
-  int totCount = end - beg;
+    // 2. Find the longest axis to split the triangles by
+    auto delta = bvh->m_aabb.getDelta();
+    int axis   = delta.x >= delta.max() ? 0 : (delta.y >= delta.max() ? 1 : 2);
+    sortObjects(triangles, beg, end, axis);
 
-  // leaf bvh node
-  if (totCount <= minCount) {
-    bvh->isLeaf = true;
-    bvh->objects.assign(objects.begin()+beg, objects.begin()+end);
+    // 3. Iterate to find best split
+    std::pair<int, float> split = {-1, INFINITY};
+    for (int idx = beg + 1; idx < end; idx += cnt) {
+        int lcnt = idx - beg;
+        int rcnt = num - lcnt;
+
+        auto left  = mergeAABBs(triangles, beg, idx);
+        auto right = mergeAABBs(triangles, idx, end);
+        float cost = computeSAH(bvh->m_aabb, left, right, lcnt, rcnt);
+
+        if (cost < split.second) {
+            split = {idx, cost};
+        }
+    }
+
+    // 4. Make it a leaf node if splitting is more expensive than keeping it as a leaf
+    if (split.first == -1 || split.second >= num * 1.1f) {
+        bvh->m_leaf = true;
+        bvh->m_children.assign(triangles.begin() + beg, triangles.begin() + end);
+        return bvh;
+    }
+
+    // construct sub bvh
+    bvh->m_children.assign(2, nullptr);
+    bvh->m_children[0] = constructBVH(triangles, beg, split.first, cnt);
+    bvh->m_children[1] = constructBVH(triangles, split.first, end, cnt);
+
     return bvh;
-  }
-
-  // delta xyz
-  Vec3<float> deltaXYZ = bvh->getMaxXYZ()-bvh->getMinXYZ();
-  int axis = 0;
-  if (deltaXYZ.y > std::max(deltaXYZ.x, deltaXYZ.z)) {
-    axis = 1;
-  } else if(deltaXYZ.z > std::max(deltaXYZ.x, deltaXYZ.y)) {
-    axis = 2;
-  }
-
-  // sort objects by the longest axis
-  sortObjects(objects, beg, end, axis);
-  
-  // iterate to find best split
-  int bestSplit = -1;
-  float minCost = -1;
-
-  // adaptive step to accelerate
-  int step = std::max(1, totCount/10);
-
-  for (int split = beg+1; split < end; split += step) {
-    AABB aabb1(objects.begin()+beg, objects.begin()+split); // [beg, split)
-    AABB aabb2(objects.begin()+split, objects.begin()+end); // [split, end)
-    
-    int leftCount = split - beg;
-    int rightCount = totCount - leftCount;
-
-    float cost = computeSAH(bvh->aabb, aabb1, aabb2, leftCount, rightCount);
-
-    if (minCost == -1 || cost < minCost) {
-      minCost = cost;
-      bestSplit = split;
-    }
-  }
-
-  // if no split improves cost, make this a leaf node
-  if (bestSplit == -1 || minCost >= totCount) {
-    bvh->isLeaf=true;
-    bvh->objects.assign(objects.begin()+beg, objects.begin()+end);
-    return bvh;
-  }
-
-  // construct sub bvh
-  bvh->objects.assign(2, nullptr);
-  bvh->objects[0] = constructBVH(objects, beg, bestSplit);
-  bvh->objects[1] = constructBVH(objects, bestSplit, end);
-
-  return bvh;
 }
 
-// sort objects by axis
-void BVH::sortObjects(std::vector<std::shared_ptr<Hittable>>& objects, int beg, int end, int axis) {
-  std::stable_sort(objects.begin()+beg, objects.begin()+end, [axis](std::shared_ptr<Hittable> obj1, std::shared_ptr<Hittable> obj2){
-    Vec3<float> xyz1 = obj1->getMinXYZ();
-    Vec3<float> xyz2 = obj2->getMinXYZ();
+void BVH::sortObjects(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end, int axis) {
+    std::stable_sort(triangles.begin() + beg, triangles.begin() + end, [axis](std::shared_ptr<Triangle> triangle1, std::shared_ptr<Triangle> triangle2) {
+        auto xyz1 = triangle1->wrap().getCenter();
+        auto xyz2 = triangle2->wrap().getCenter();
 
-    if (axis == 0) {
-      return xyz1.x < xyz2.x;
-    } else if (axis == 1) {
-      return xyz1.y < xyz2.y;
+        if (axis == 0) {
+            return xyz1.x < xyz2.x;
+        } else if (axis == 1) {
+            return xyz1.y < xyz2.y;
+        } else {
+            return xyz1.z < xyz2.z;
+        }
+    });
+}
+
+AABB BVH::mergeAABBs(std::vector<std::shared_ptr<Triangle>>& triangles, int beg, int end) {
+    AABB aabb;
+    for (int i = beg; i < end; i++) {
+        auto aabbi = triangles[i]->wrap();
+        aabb.merge(aabbi);
+    }
+    return aabb;
+}
+
+float BVH::computeSAH(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount) {
+    float cost = 1 + left.getArea() / parent.getArea() * lcount + right.getArea() / parent.getArea() * rcount;
+    return cost;
+}
+
+bool BVH::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+    // 1. Check AABB intersection
+    if (!m_aabb.intersect(ray, tmin, tmax)) { return false; }
+
+    // 2. Check triangle intersection, if leaf node
+    if (m_leaf) {
+        bool ishit = false;
+        for (auto child : m_children) {
+            HitRecord crec;
+            if (child->hit(ray, tmin, tmax, crec)) {
+                ishit = true;
+                tmax  = std::min(crec.distance, tmax);
+                rec   = crec;
+            }
+        }
+        return ishit;
+    }
+
+    // 3. Check sub bvh intersection, if not leaf node
+    assert(m_children.size() == 2);
+    HitRecord lrec, rrec;
+    bool lhit = m_children[0]->hit(ray, tmin, tmax, lrec);
+    bool rhit = m_children[1]->hit(ray, tmin, lhit ? lrec.distance : tmax, rrec);
+    if (rhit) {
+        rec = rrec;
+    } else if (lhit) {
+        rec = lrec;
     } else {
-      return xyz1.z < xyz2.z;
+        return false;
     }
-  });
+
+    return true;
 }
 
-// compute SAH cost
-float BVH::computeSAH(const AABB& parent, const AABB& left, const AABB& right, int leftCount, int rightCount) {
-  float parentArea = parent.getArea();
-  float leftArea = left.getArea();
-  float rightArea = right.getArea();
-
-  float cost = 1 + leftArea / parentArea * leftCount + rightArea / parentArea * rightCount;
-
-  return cost;
-}
-
-// getter
-Vec3<float> BVH::getMinXYZ() const { return aabb.getMinXYZ(); }
-Vec3<float> BVH::getMaxXYZ() const { return aabb.getMaxXYZ(); }
-
-uint BVH::getNodeCount() const {
-  if (isLeaf) {
-    return 1;
-  }
-  
-  return dynamic_cast<BVH*>(objects[0].get())->getNodeCount() + dynamic_cast<BVH*>(objects[1].get())->getNodeCount();
-}
-
-// hit
-void BVH::hit(const Ray &ray, HitResult &res) const {
-  // reset
-  res.hit = false;
-
-  aabb.hit(ray, res);
-  if (!res.hit) {
-    return;
-  }
-
-  if (isLeaf) {
-    // reset result
-    res.hit = false;
-    // find the best result
-    for (auto obj : objects){
-      // current result
-      HitResult cres;
-      obj->hit(ray, cres);
-      if (cres.hit && (!res.hit || res.distance > cres.distance)) {
-        res = cres;
-      }
-    }
-    return;
-  }
-
-  assert(objects.size()==2); // left and right sub bvh
-  HitResult lres, rres;
-  objects[0]->hit(ray, lres);
-  objects[1]->hit(ray, rres);
-
-  if (lres.hit && rres.hit) {
-    if (lres.distance < rres.distance) {
-      res = lres;
-    } else {
-      res = rres;
-    }
-  } else if (lres.hit) {
-    res = lres;
-  } else if (rres.hit) {
-    res = rres;
-  } else {
-    res.hit = false;
-  }
-  return ;
-}
-}  // namespace spt
+} // namespace spt
