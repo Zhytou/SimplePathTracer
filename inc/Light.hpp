@@ -15,6 +15,10 @@ class Light {
     Light()  = default;
     ~Light() = default;
 
+    const std::vector<std::shared_ptr<Triangle>>& getTriangles() const { return m_triangles; }
+    const std::vector<float>& getPsums() const { return m_psums; }
+    float getSum() const { return m_sum; }
+
     // Set a light triangle
     void add(std::shared_ptr<Triangle> triangle);
 

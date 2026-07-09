@@ -10,15 +10,15 @@ void Light::add(std::shared_ptr<Triangle> triangle) {
     }
 
     // 2. Add triangle to light list
+    m_sum += triangle->getArea();
     m_triangles.push_back(triangle);
     m_psums.push_back(m_sum);
-    m_sum += triangle->getArea();
 }
 
 std::pair<int, Vec3<float>> Light::sample() const {
-    if (m_triangles.empty()) { return {-1, Vec3<float>()}; } // No light source
+    if (m_triangles.empty()) { throw std::runtime_error("Light::sample: no light source!"); } // No light source
 
-    int x    = rand(1.0f, 0.0f) * m_sum;
+    float x  = rand(1.0f, 0.0f) * m_sum;
     auto itr = std::lower_bound(m_psums.begin(), m_psums.end(), x);
     int idx  = std::distance(m_psums.begin(), itr);
     idx      = std::min(idx, static_cast<int>(m_triangles.size()) - 1);
@@ -30,9 +30,9 @@ std::pair<int, Vec3<float>> Light::sample() const {
 }
 
 float Light::pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) {
-    if (m_sum < EPS || m_triangles.empty()) { return 0.f; }
+    if (m_triangles.empty()) { throw std::runtime_error("Light::pdf: no light source!"); }
 
-    float cos_light = std::max(dot(-wo, n), 0.f);
+    float cos_light = fabs(dot(n, wo)); // wo could be pointed to light normal or pointed away from light normal
     if (cos_light < EPS) { return 0.f; }
 
     float pdf  = 1.f / m_sum;
