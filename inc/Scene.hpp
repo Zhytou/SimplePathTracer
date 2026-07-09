@@ -26,11 +26,13 @@ class Scene {
     //@param mid index of current material in obj file
     //@param attrib attributes of the triangle
     //@param shape shape of the triangle
+    //@return: shared pointer to the loaded triangle
     std::shared_ptr<Triangle> loadTriangle(int tid, int mid, const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape);
     // Load material from obj file
     //@param oid index of current obj file in the json configuration
     //@param mtldir directory of the material file in the obj file
     //@param material material of the triangle
+    //@return: shared pointer to the loaded material
     std::shared_ptr<Material> loadMaterial(const std::filesystem::path& mtldir, const tinyobj::material_t& material);
 
     std::shared_ptr<BVH> getBVH() const { return m_bvh; }

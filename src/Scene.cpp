@@ -1,6 +1,7 @@
 #include "Scene.hpp"
 
 #include <array>
+#include <format>
 #include <fstream>
 #include <rapidjson/document.h>
 #include <tiny_obj_loader.h>
@@ -12,7 +13,7 @@ namespace fs = std::filesystem;
 void Scene::init(const fs::path& path) {
     // 0. Read config file
     std::ifstream file(path);
-    if (!file.is_open()) { throw std::runtime_error("Scene::initialize: Error opening config file"); }
+    if (!file.is_open()) { throw std::runtime_error(std::format("Scene::init: Invalid config file path {}", path.string())); }
     std::stringstream buffer;
     buffer << file.rdbuf();
 
@@ -33,9 +34,8 @@ void Scene::init(const fs::path& path) {
         for (int i = 0; i < doc["models"].Size(); i++) {
             auto& modelDoc = doc["models"][i];
             // model base dir and name required
-            fs::path dir        = fs::current_path();
             fs::path objpath    = modelDoc["obj_path"].GetString();
-            fs::path mtldir     = modelDoc.HasMember("mtl_dir") ? modelDoc["mtl_dir"].GetString() : objpath.parent_path();
+            fs::path mtldir     = modelDoc.HasMember("mtl_dir") ? modelDoc["mtl_dir"].GetString() : objpath.parent_path(); // .mtl file directory
             std::string objname = objpath.stem().string();
 
             tinyobj::attrib_t attrib;
@@ -58,17 +58,22 @@ void Scene::init(const fs::path& path) {
             }
 
             // default material optional
-            if (modelDoc.HasMember("default_mat")) {
-                auto& matDoc = modelDoc["default_mat"];
+            if (modelDoc.HasMember("default_mtl")) {
+                auto& mtlDoc = modelDoc["default_mtl"];
                 tinyobj::material_t material;
-                material.name       = matDoc.HasMember("name") ? matDoc["name"].GetString() : objname + "_default";
-                material.dissolve   = matDoc.HasMember("opacity") ? matDoc["opacity"].GetFloat() : 1.f;
-                material.diffuse[0] = matDoc.HasMember("albedo") ? matDoc["albedo"][0].GetFloat() : 0.f;
-                material.diffuse[1] = matDoc.HasMember("albedo") ? matDoc["albedo"][1].GetFloat() : 0.f;
-                material.diffuse[2] = matDoc.HasMember("albedo") ? matDoc["albedo"][2].GetFloat() : 0.f;
-                material.metallic   = matDoc.HasMember("metallic") ? matDoc["metallic"].GetFloat() : 0.f;
-                material.roughness  = matDoc.HasMember("roughness") ? matDoc["roughness"].GetFloat() : 0.f;
-                m_materials[i].push_back(loadMaterial(dir, material));
+                material.name        = mtlDoc.HasMember("name") ? mtlDoc["name"].GetString() : objname + "_default";
+                material.emission[0] = mtlDoc.HasMember("emission") ? mtlDoc["emission"][0].GetFloat() : 0.f; // emission
+                material.emission[1] = mtlDoc.HasMember("emission") ? mtlDoc["emission"][1].GetFloat() : 0.f;
+                material.emission[2] = mtlDoc.HasMember("emission") ? mtlDoc["emission"][2].GetFloat() : 0.f;
+                material.diffuse[0]  = mtlDoc.HasMember("albedo") ? mtlDoc["albedo"][0].GetFloat() : 0.f; // albedo
+                material.diffuse[1]  = mtlDoc.HasMember("albedo") ? mtlDoc["albedo"][1].GetFloat() : 0.f;
+                material.diffuse[2]  = mtlDoc.HasMember("albedo") ? mtlDoc["albedo"][2].GetFloat() : 0.f;
+                material.metallic    = mtlDoc.HasMember("metallic") ? mtlDoc["metallic"].GetFloat() : 0.f;   // metallic
+                material.roughness   = mtlDoc.HasMember("roughness") ? mtlDoc["roughness"].GetFloat() : 1.f; // roughness
+                material.dissolve    = mtlDoc.HasMember("opacity") ? mtlDoc["opacity"].GetFloat() : 1.f;     // opacity
+                material.ior         = mtlDoc.HasMember("ior") ? mtlDoc["ior"].GetFloat() : 1.f;             // ior
+                fs::path dmtldir     = mtlDoc.HasMember("mtl_dir") ? mtlDoc["mtl_dir"].GetString() : "";     // default material directory for texture
+                m_materials[i].push_back(loadMaterial(dmtldir, material));
             } else {
                 m_materials[i].push_back(nullptr); // raise exception when matid is -1
             }
@@ -81,7 +86,7 @@ void Scene::init(const fs::path& path) {
     for (int i = 0; i < m_triangles.size(); i++) {
         for (int j = 0; j < m_triangles[i].size(); j++) {
             int mid = m_triangles[i][j]->getMaterialID() != -1 ? m_triangles[i][j]->getMaterialID() : m_materials[i].size() - 1;
-            if (m_materials[i][mid] == nullptr) { throw std::runtime_error("Scene::initialize: Invalid material ID"); }
+            if (m_materials[i][mid] == nullptr) { throw std::runtime_error(std::format("Scene::initialize: Invalid material ID {} for triangle {} under group {}", mid, j, i)); }
 
             m_triangles[i][j]->setID(tid);
             m_triangles[i][j]->setMaterial(m_materials[i][mid]);
@@ -108,7 +113,7 @@ void Scene::init(const fs::path& path) {
         std::unordered_map<std::string, Vec3<float>> name2Colors;
         for (int i = 0; i < doc["lights"].Size(); i++) {
             auto& lightDoc    = doc["lights"][i];
-            std::string name  = lightDoc.HasMember("mat_name") ? lightDoc["mat_name"].GetString() : "light" + std::to_string(i);
+            std::string name  = lightDoc.HasMember("mtl_name") ? lightDoc["mtl_name"].GetString() : std::format("light{}", i);
             Vec3<float> color = lightDoc.HasMember("color") ? getVec3(lightDoc["color"]) : Vec3<float>{0.f, 0.f, 0.f};
             name2Colors[name] = color;
         }
@@ -123,7 +128,10 @@ void Scene::init(const fs::path& path) {
         for (int i = 0; i < m_triangles.size(); i++) {
             for (auto triangle : m_triangles[i]) {
                 auto mtl = triangle->getMaterial();
-                if (mtl->isEmissive()) { m_light->add(triangle); }
+                if (mtl->isEmissive()) {
+                    std::cout << mtl->getName() << ' ' << mtl->getEmission() << '\n';
+                    m_light->add(triangle);
+                }
             }
         }
     }
@@ -133,7 +141,7 @@ void Scene::init(const fs::path& path) {
     for (int i = 0; i < m_triangles.size(); i++) {
         triangles.insert(triangles.end(), m_triangles[i].begin(), m_triangles[i].end());
     }
-    m_bvh = BVH::constructBVH(triangles, 0, triangles.size() - 1, 20);
+    m_bvh = BVH::constructBVH(triangles, 0, triangles.size(), 20);
 
     // 7. Print scene info
     // std::cout << " Camera:\n"
@@ -151,15 +159,21 @@ void Scene::init(const fs::path& path) {
     // for (int i = 0; i < m_triangles.size(); i++) {
     //     for (auto triangle : m_triangles[i]) {
     //         auto mtl = triangle->getMaterial();
-    //         std::cout << "  " << triangle->getID() << " " << triangle->getMaterialID() << " " << mtl->getName() << " " << mtl->getAlbedo(Vec2<float>{0.f, 0.f}) << '\n';
+    //         std::cout << "  " << triangle->getID() << " " << triangle->getMaterialID() << " " << mtl->getName() << " " << mtl->getTypeStr() << '\n';
     //     }
     // }
     // for (int i = 0; i < m_materials.size(); i++) {
     //     for (auto mtl : m_materials[i]) {
     //         if (mtl == nullptr) { continue; } // avoid nullptr pointer(could be default material)
-    //         std::cout << "name: " << mtl->getName() << " type: " << mtl->getTypeStr() << '\n';
+    //         std::cout << "name: " << mtl->getName() << " type: " << mtl->getTypeStr() << " albedo: " << mtl->getAlbedo(Vec2<float>{0.f, 0.f}) << " ior: " << mtl->getIOR() << " roughness: " << mtl->getRoughness(Vec2<float>{0.f, 0.f}) << " metallic: " << mtl->getMetallic(Vec2<float>{0.f, 0.f}) << '\n';
     //     }
     // }
+
+    // std::cout << "Light\n";
+    // for (auto psum : m_light->getPsums()) {
+    //     std::cout << psum << ' ';
+    // }
+    // std::cout << m_light->getSum() << '\n';
 }
 
 void Scene::destroy() {
@@ -211,11 +225,21 @@ std::shared_ptr<Triangle> Scene::loadTriangle(int tid, int mid, const tinyobj::a
 std::shared_ptr<Material> Scene::loadMaterial(const fs::path& mtldir, const tinyobj::material_t& material) {
     std::shared_ptr<Material> mtl = std::make_shared<Material>(material.name);
 
+    // Determine material type with following rules:
+    // - roughness difference is the key factor to distinguish between diffuse, glossy, and specular materials
+    // - metallic distinguishes between conductive, semiconductive, and dielectric materials
+    //   - for conductive materials, only reflection happens
+    //   - while semiconductive and dielectric materials support both reflection and transmission, using opacity to indicate transparency and ior to indicate the real part of the index of refraction
+    MaterialType surface = material.roughness > 0.9 ? MaterialType::MATERIAL_SURFACE_DIFFUSE : (material.roughness < 0.1 ? MaterialType::MATERIAL_SURFACE_SPECULAR : MaterialType::MATERIAL_SURFACE_GLOSSY);
+    MaterialType physics = material.metallic > 0.9 ? MaterialType::MATERIAL_PHYSICS_CONDUCTIVE : (material.metallic < 0.1 ? MaterialType::MATERIAL_PHYSICS_DIELECTRIC : MaterialType::MATERIAL_PHYSICS_SEMICONDUCTIVE);
+    mtl->setType(static_cast<MaterialType>(surface | physics));
+
     mtl->setEmission(material.emission);
     mtl->setAlbedo(material.diffuse);
-    mtl->setIOR(material.ior);
     mtl->setRoughness(material.roughness);
     mtl->setMetallic(material.metallic);
+    mtl->setOpacity(material.dissolve);
+    mtl->setIOR(material.ior);
 
     return mtl;
 }
