@@ -1,0 +1,214 @@
+#include "Tracer.hpp"
+#include "Material.hpp"
+#include "Scene.hpp"
+#include "Triangle.hpp"
+
+#include <cassert>
+#include <chrono>
+#include <fstream>
+#include <functional>
+#include <omp.h>
+#include <rapidjson/document.h>
+
+namespace spt {
+namespace fs = std::filesystem;
+
+Tracer::Tracer(int d, int rrd, int s, float p)
+    : m_depth(d), m_rrdepth(rrd), m_spp(s), m_rrp(p) {}
+
+void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
+    const auto beg = std::chrono::steady_clock::now();
+
+    auto camera = scene.getCamera();
+    auto bvh    = scene.getBVH();
+    auto light  = scene.getLight();
+
+    int height = camera->getHeight();
+    int width  = camera->getWidth();
+    auto img   = std::make_shared<Image<unsigned char>>(width, height, 3);
+
+#pragma omp parallel for num_threads(32)
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            // 1. render the pixel color by path tracing
+            Vec3<float> color(0.f, 0.f, 0.f);
+            for (int k = 0; k < m_spp; k++) {
+                Ray ray = camera->emit(row, col);
+                color += trace(bvh, light, ray, 0);
+            }
+            color /= m_spp;
+
+            // 2. postprocess the color and set the image element
+            color   = postprocess(color, 255.f);
+            int idx = (row * width + col) * 3;
+            img->setElement(row, col, 0, color.x);
+            img->setElement(row, col, 1, color.y);
+            img->setElement(row, col, 2, color.z);
+
+            // 3. show progress
+            float percent                    = 100.f * (row * width + col) / (height * width - 1);
+            auto cur                         = std::chrono::steady_clock::now();
+            std::chrono::duration<float> dur = cur - beg;
+            progress(percent, dur.count());
+        }
+    }
+
+    Image<unsigned char>::write(img, imgpath);
+    return;
+}
+
+Vec3<float> Tracer::trace(const std::shared_ptr<BVH>& bvh, const std::shared_ptr<Light>& light, const Ray& rayi, int depth) {
+    // 0. Initialize color to return
+    Vec3<float> color(0.f, 0.f, 0.f);
+    Vec3<float> color_e(0.f, 0.f, 0.f), color_d(0.f, 0.f, 0.f), color_ind(0.f, 0.f, 0.f);
+
+    // 1. Avoid infinite recursion
+    if (depth >= m_depth) {
+        return color;
+    }
+
+    // 2. Apply russianian roulette
+    float rpp      = depth >= m_rrdepth ? rand(1.f) : 0.f;
+    float rrweight = rpp <= m_rrp ? 1.f / m_rrp : 1.f;
+
+    // 3. Hit test
+    HitRecord rec;
+    if (!bvh->hit(rayi, DIS_EPS, INFINITY, rec)) {
+        return color;
+    }
+    if (rec.id < 0) {
+        throw std::runtime_error("Tracer::trace: hit object ID is invalid");
+    }
+
+    // 4. Hit info and input/output direction
+    auto mtl       = rec.material;
+    Vec3<float> n  = rec.normal;
+    Vec3<float> p  = rec.point;
+    Vec2<float> uv = rec.texcoord;
+    Vec3<float> wi = -rayi.getDirection(); // view direction(wi) P -> Eye
+    Vec3<float> wo(0.f, 0.f, 0.f);         // light direction(wo) P -> ight
+    Vec3<float> bsdf(0.f, 0.f, 0.f);       // material bsdf value at hit point P
+    float cos = 0.f;                       // cosine of the angle between normal and light direction(wo)
+    if (dot(n, wi) < 0) {
+        throw std::runtime_error("Tracer::trace: normal direction is facing away");
+    }
+
+    // 5. Get emissive light color
+    if (mtl->isEmissive()) {
+        color_e = mtl->getEmission();
+    }
+
+    // 6. Calculate direct light color
+    if (rpp < m_rrp && !mtl->isEmissive() && !mtl->isDelta()) { // only GLOSSY and DIFFUSE materials support light sampling
+        auto [id, pp] = light->sample();
+        wo            = normalize(pp - p);
+        bsdf          = mtl->bsdf(wi, n, wo, uv);
+        cos           = fabs(dot(n, wo)); // for both reflection and transmission
+        Ray rayo(p, wo);
+        HitRecord nrec;
+
+        if (bvh->hit(rayo, DIS_EPS, INFINITY, nrec) && nrec.id == id) {
+            float pdf_light = light->pdf(wo, nrec.normal, nrec.distance);
+            float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
+            float weight    = mix(pdf_light, pdf_mtl);
+            if (pdf_light > 0.f) { // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+                color_d = nrec.material->getEmission() * bsdf * cos * weight / pdf_light;
+            }
+        }
+    }
+
+    // 7. Calculate indirect light color
+    if (rpp < m_rrp && !mtl->isEmissive()) {
+        wo   = mtl->scatter(wi, n, uv); // sample material
+        bsdf = mtl->bsdf(wi, n, wo, uv);
+        cos  = fabs(dot(n, wo));
+        Ray rayo(p, wo);
+        HitRecord nrec;
+
+        // !NOTE: Monte Carlo in this framework is designed for continuous BSDFs integration(e.g., diffuse).
+        // !      For perfect specular reflection or transmission (delta distributions), the direction is deterministic.
+        // ! Consequently:
+        // !  - The PDF is effectively infinite (Dirac delta), so we do NOT divide by PDF.
+        // !  - The cosine term (N·L) is inherently handled by the delta function’s
+        // !    integration property and should NOT be explicitly multiplied.
+        // ! Instead, we directly evaluate the reflected/transmitted radiance scaled by
+        // ! the Fresnel factor (and η² for transmission), ensuring energy conservation.
+        if (mtl->isDelta()) {
+            color_ind = trace(bvh, light, rayo, depth + 1) * bsdf;
+        } else {
+            float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
+            float pdf_light = 0.0f;
+            float weight    = 1.0F;
+
+            if (bvh->hit(rayo, DIS_EPS, INFINITY, nrec) && pdf_mtl > 0.f) {
+                if (nrec.material->isEmissive()) { // avoid duplicate direct light calculation when sampling material's ray hit light
+                    pdf_light = light->pdf(wo, nrec.normal, nrec.distance);
+                    weight    = mix(pdf_mtl, pdf_light);
+                    color_ind = nrec.material->getEmission() * bsdf * cos * weight / pdf_mtl; // avoid trace recursion
+                } else {
+                    color_ind = trace(bvh, light, rayo, depth + 1) * bsdf * cos * weight / pdf_mtl;
+                }
+            }
+        }
+    }
+
+    // 8. Combine colors and apply Russianian roulette
+    color = color_e + (color_d + color_ind) * rrweight;
+    return color;
+}
+
+Vec3<float> Tracer::postprocess(const Vec3<float>& hdr, float range) {
+    Vec3<float> ldr = hdr;
+
+    // 1. Tone mapping(ACES Filmic) f(x) = (x * (a * x + b)) / (x * (c * x + d) + e)
+    const float a = 2.51f;
+    const float b = 0.03f;
+    const float c = 2.43f;
+    const float d = 0.59f;
+    const float e = 0.14f;
+
+    ldr.x = (hdr.x * (a * hdr.x + b)) / (hdr.x * (c * hdr.x + d) + e);
+    ldr.y = (hdr.y * (a * hdr.y + b)) / (hdr.y * (c * hdr.y + d) + e);
+    ldr.z = (hdr.z * (a * hdr.z + b)) / (hdr.z * (c * hdr.z + d) + e);
+
+    // 2. Gamma correction
+    const float gamma = 1.0f / 2.2f;
+    ldr               = pow<float>(ldr, gamma);
+
+    // 3. Scale and clamp the ldr color to the range [0, range]
+    ldr *= range;
+    ldr = clamp<float>(ldr, 0.f, range);
+
+    return ldr;
+}
+
+float Tracer::mix(float pdf1, float pdf2) {
+    // pdf1 = pdf1 * pdf1;
+    // pdf2 = pdf2 * pdf2;
+
+    return pdf1 / (PDF_EPS + pdf1 + pdf2);
+}
+
+void Tracer::progress(float percent, float second) {
+    const int barWidth = 50;
+    std::cout << "[";
+    int pos = static_cast<int>(barWidth * percent / 100.0f);
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos)
+            std::cout << "=";
+        else if (i == pos)
+            std::cout << ">";
+        else
+            std::cout << " ";
+    }
+    std::cout << "] " << std::setw(5) << std::fixed << std::setprecision(2) << percent;
+    std::cout << "% " << std::setw(7) << second << 's';
+    if (percent >= 100.0f) {
+        std::cout << "\n";
+    } else {
+        std::cout << '\r';
+        std::cout.flush();
+    }
+}
+
+} // namespace spt
