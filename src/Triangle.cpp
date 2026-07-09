@@ -6,9 +6,18 @@
 namespace spt {
 
 Vec3<float> Triangle::getRandomPoint() const {
-    Vec3<float> e1 = m_vertex[2] - m_vertex[0], e2 = m_vertex[1] - m_vertex[0];
-    float a = sqrtf(rand(1.f)), b = sqrtf(rand(1.f));
-    return e1 * a + e2 * a * b + m_vertex[0];
+    Vec3<float> e1 = m_vertex[2] - m_vertex[0];
+    Vec3<float> e2 = m_vertex[1] - m_vertex[0];
+
+    float r1 = rand(1.f);
+    float r2 = rand(1.f);
+
+    float u = 1 - sqrtf(r1);
+    float v = r2 * sqrtf(r1);
+
+    // p = (1 - u - v) * p0 + u * p1 + v * p2 = p0 + u * e1 + v * e2
+    // u >= 0, v >= 0, u + v <= 1
+    return e1 * u + e2 * v + m_vertex[0];
 }
 
 bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
