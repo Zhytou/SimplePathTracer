@@ -59,7 +59,7 @@ class Image {
         }
 
         int index     = row * m_width * m_channels + col * m_channels + channel;
-        m_data[index] = element;
+        m_data[index] = static_cast<T>(element);
     }
 
     // Read an image object from file
