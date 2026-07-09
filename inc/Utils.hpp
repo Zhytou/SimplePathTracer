@@ -11,7 +11,11 @@
 #include <vector>
 
 namespace spt {
-constexpr float EPS = 1e-5f;
+constexpr float EPS = 1e-6f;
+
+constexpr float DIS_EPS = 1e-2f;
+
+constexpr float PDF_EPS = 1e-6f;
 
 constexpr float PI = 3.14159265358979323846f;
 
@@ -199,11 +203,16 @@ static Vec3<T> pow(const Vec3<T>& v, const K& k) {
 }
 
 template <typename T>
+static Vec3<T> clamp(const Vec3<T>& v, const T& t1, const T& t2) {
+    return Vec3<T>(std::min(std::max(v.x, t1), t2), std::min(std::max(v.y, t1), t2), std::min(std::max(v.z, t1), t2));
+}
+
+template <typename T>
 T rand(T max, T min = 0) {
     static_assert(std::is_arithmetic<T>::value, "T must be numeric type");
 
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
 
     if constexpr (std::is_integral<T>::value) {
         std::uniform_int_distribution<T> dis(min, max);
