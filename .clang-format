@@ -1,0 +1,75 @@
+BasedOnStyle: LLVM
+
+# ========== 缩进核心（解决多出来一大段空格的关键）
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+# 换行续行统一4格，禁止额外多缩进
+ContinuationIndentWidth: 4
+# 结构体/构造初始化列表内部缩进强制4
+ConstructorInitializerIndentWidth: 4
+# 禁止换行函数名/初始化列表额外缩进
+IndentWrappedFunctionNames: false
+
+AccessModifierOffset: -1
+ColumnLimit: 0
+
+# 大括号规则不变
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: MultiLine
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+  SplitEmptyStatement: false
+
+# 单行短语句
+AllowShortFunctionsOnSameLine: All
+AllowShortIfStatementsOnSameLine: true
+AllowShortLoopsOnSameLine: false
+AllowShortCaseLabelsOnSameLine: false
+AllowShortLambdasOnASingleLine: All
+AllowShortBlocksOnASingleLine: Always
+
+# 对齐规则
+AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveMacros: true
+AlignOperands: true
+# 数组内结构体左对齐，不拉伸缩进
+AlignArrayOfStructures: None
+
+PointerAlignment: Left
+SortIncludes: true
+IncludeBlocks: Preserve
+NamespaceIndentation: None
+IndentCaseLabels: true
+BreakBeforeBinaryOperators: None
+
+# ========== 彻底关闭打包，禁止把多个Attachment挤同一行
+BinPackParameters: false
+BinPackArguments: false
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+
+LambdaBodyIndentation: Signature
+
+ReflowComments: false
+BreakBeforeInheritanceComma: false
+BreakBeforeTemplateParameters: No
+CompactInitList: false
+
+# ========== 换行惩罚：降低等号右侧换行代价，不强行超长缩进
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyBreakComma: 1
+PenaltyBreakTemplateDeclaration: 1
+PenaltyExcessCharacter: 10000
