@@ -1,39 +1,23 @@
 cmake_minimum_required(VERSION 3.15)
 project(SimplePathTracer)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug) 
 
-find_package(ZLIB REQUIRED)
+include_directories(${CMAKE_SOURCE_DIR}/inc)
+include_directories(${CMAKE_SOURCE_DIR}/3rd/tinyobjloader)
+include_directories(${CMAKE_SOURCE_DIR}/3rd/stb_image)
+include_directories(${CMAKE_SOURCE_DIR}/3rd/rapidjson/include)
 
-add_subdirectory(third-parties/tinyxml2)
-add_subdirectory(third-parties/tinyexr)
-
-add_library(
-    spt SHARED 
-    src/AABB.cpp
-    src/BVH.cpp
-    src/Camera.cpp
-    src/Material.cpp
-    src/Texture.cpp
-    src/Trace.cpp
-    src/Triangle.cpp
+add_library(3rd_lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rd.cpp
 )
-target_include_directories(
-    spt PUBLIC 
-    include
-    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyobjloader
-    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyxml2
-    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyexr
-    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyexr/deps/miniz
-    ${CMAKE_HOME_DIRECTORY}/third-parties/stb
-)
+set(3RD_LIBRARY 3rd_lib)
 
-add_executable(extractor src/extractor.cpp)
-target_include_directories(
-    extractor PUBLIC
-    ${CMAKE_HOME_DIRECTORY}/third-parties/tinyobjloader
+file(GLOB SRC_FILES CONFIGURE_DEPENDS
+    "src/*.cpp"
 )
+list(REMOVE_ITEM SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/3rd.cpp")
+add_executable(tracer ${SRC_FILES})
 
-add_executable(main src/main.cpp)
-target_link_libraries(main spt tinyxml2 miniz)
+target_link_libraries(tracer ${3RD_LIBRARY})
