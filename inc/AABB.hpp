@@ -33,8 +33,8 @@ class AABB {
     }
 
    protected:
-    Vec3<float> m_xyz1 = Vec3<float>{INFINITY, INFINITY, INFINITY};
-    Vec3<float> m_xyz2 = Vec3<float>{-INFINITY, -INFINITY, -INFINITY};
+    Vec3<float> m_xyz1 = Vec3<float>{INFINITY};
+    Vec3<float> m_xyz2 = Vec3<float>{-INFINITY};
 };
 } // namespace spt
 

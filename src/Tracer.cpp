@@ -31,7 +31,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     for (int row = 0; row < height; row++) {
         for (int col = 0; col < width; col++) {
             // 1. render the pixel color by path tracing
-            Vec3<float> color(0.f, 0.f, 0.f);
+            Vec3<float> color(0.f);
             for (int k = 0; k < m_spp; k++) {
                 Ray ray = camera->emit(row, col);
                 color += trace(bvh, light, ray, 0);
@@ -59,8 +59,8 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
 
 Vec3<float> Tracer::trace(const std::shared_ptr<BVH>& bvh, const std::shared_ptr<Light>& light, const Ray& rayi, int depth) {
     // 0. Initialize color to return
-    Vec3<float> color(0.f, 0.f, 0.f);
-    Vec3<float> color_e(0.f, 0.f, 0.f), color_d(0.f, 0.f, 0.f), color_ind(0.f, 0.f, 0.f);
+    Vec3<float> color(0.f);
+    Vec3<float> color_e(0.f), color_d(0.f), color_ind(0.f);
 
     // 1. Avoid infinite recursion
     if (depth >= m_depth) {
@@ -86,8 +86,8 @@ Vec3<float> Tracer::trace(const std::shared_ptr<BVH>& bvh, const std::shared_ptr
     Vec3<float> p  = rec.point;
     Vec2<float> uv = rec.texcoord;
     Vec3<float> wi = -rayi.getDirection(); // view direction(wi) P -> Eye
-    Vec3<float> wo(0.f, 0.f, 0.f);         // light direction(wo) P -> ight
-    Vec3<float> bsdf(0.f, 0.f, 0.f);       // material bsdf value at hit point P
+    Vec3<float> wo(0.f);                   // light direction(wo) P -> ight
+    Vec3<float> bsdf(0.f);                 // material bsdf value at hit point P
     float cos = 0.f;                       // cosine of the angle between normal and light direction(wo)
     if (dot(n, wi) < 0) {
         throw std::runtime_error("Tracer::trace: normal direction is facing away");

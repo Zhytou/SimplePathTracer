@@ -11,9 +11,9 @@ namespace spt {
 struct HitRecord {
     int id                             = -1;
     float distance                     = INFINITY;
-    Vec3<float> point                  = Vec3<float>{0.f, 0.f, 0.f};
-    Vec2<float> texcoord               = Vec2<float>{0.f, 0.f};
-    Vec3<float> normal                 = Vec3<float>{0.f, 0.f, 0.f};
+    Vec3<float> point                  = Vec3<float>{0.f};
+    Vec2<float> texcoord               = Vec2<float>{0.f};
+    Vec3<float> normal                 = Vec3<float>{0.f};
     std::shared_ptr<Material> material = nullptr;
 };
 

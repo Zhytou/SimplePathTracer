@@ -16,7 +16,7 @@ std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Triangle>>& t
 
     // 2. Find the longest axis to split the triangles by
     auto delta = bvh->m_aabb.getDelta();
-    int axis   = delta.x >= delta.max() ? 0 : (delta.y >= delta.max() ? 1 : 2);
+    int axis   = delta.x >= max(delta) ? 0 : (delta.y >= max(delta) ? 1 : 2);
     sortObjects(triangles, beg, end, axis);
 
     // 3. Iterate to find best split

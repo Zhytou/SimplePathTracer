@@ -10,7 +10,7 @@ void Camera::update() {
     m_axises[1] = cross(m_axises[0], forward);     // Y
     m_axises[2] = forward;                         // Z
 
-    m_focus = (m_target - m_eye).length();
+    m_focus = length(m_target - m_eye);
     m_pixel = (2.f * ::tanf(m_fovy * 0.5f * PI / 180.f) * m_focus) / m_height;
 }
 

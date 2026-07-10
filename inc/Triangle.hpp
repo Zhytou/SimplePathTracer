@@ -18,7 +18,7 @@ class Triangle : public Hittable {
     Vec3<float> getNormal() const { return m_normal; }
     std::shared_ptr<Material> getMaterial() const { return m_material; }
     int getMaterialID() const { return m_matid; }
-    float getArea() const { return cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0]).length() / 2; }
+    float getArea() const { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
     Vec3<float> getRandomPoint() const;
     void setVertex(const std::array<Vec3<float>, 3>& v) { m_vertex = v; }
     void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
