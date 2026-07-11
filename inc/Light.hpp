@@ -1,37 +1,72 @@
 #ifndef SPT_LIGHT_HPP
 #define SPT_LIGHT_HPP
 
+#include <cmath>
 #include <map>
 #include <memory>
 #include <vector>
 
-#include "BVH.hpp"
-#include "Triangle.hpp"
+#include "Renderable.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 
 class Light {
    public:
-    Light()  = default;
-    ~Light() = default;
+    Light(const Vec3<float>& color) : m_color(color) {}
+    virtual ~Light() {}
 
-    const std::vector<std::shared_ptr<Triangle>>& getTriangles() const { return m_triangles; }
-    const std::vector<float>& getPsums() const { return m_psums; }
-    float getSum() const { return m_sum; }
+    virtual bool isDelta() const = 0;
+    virtual int getID() const    = 0;
+    Vec3<float> getColor() const { return m_color; }
 
-    // Set a light triangle
-    void add(std::shared_ptr<Triangle> triangle);
-
-    // Sample a point on the light triangle
-    std::pair<int, Vec3<float>> sample() const;
-
-    // Probability density function of the light triangle
-    float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis);
+    virtual Vec3<float> sample(const Vec3<float>& p) const                          = 0;
+    virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const = 0;
 
    private:
-    std::vector<std::shared_ptr<Triangle>> m_triangles;
-    std::vector<float> m_psums; // partial sums of triangle areas
-    float m_sum = 0.f;          // total sum of triangle areas
+    Vec3<float> m_color = Vec3<float>(0.f);
+};
+
+class AreaLight : public Light {
+   public:
+    AreaLight(const Vec3<float>& color, std::shared_ptr<Renderable> object) : Light(color), m_object(object) {}
+    ~AreaLight() {}
+
+    virtual bool isDelta() const override { return false; }
+    virtual int getID() const override { return m_object ? m_object->getID() : -1; }
+    virtual Vec3<float> sample(const Vec3<float>& p) const override;
+    virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const override;
+
+   private:
+    std::shared_ptr<Renderable> m_object;
+};
+
+class PointLight : public Light {
+   public:
+    PointLight(const Vec3<float>& color, const Vec3<float>& position) : Light(color), m_position(position) {}
+    ~PointLight() {}
+
+    virtual bool isDelta() const override { return true; }
+    virtual int getID() const override { return -1; }
+    virtual Vec3<float> sample(const Vec3<float>& p) const override { return normalize(m_position - p); }
+    virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const override { return INFINITY; }
+
+   private:
+    Vec3<float> m_position;
+};
+
+class DirectionalLight : public Light {
+   public:
+    DirectionalLight(const Vec3<float>& color, const Vec3<float>& direction) : Light(color), m_direction(normalize(direction)) {}
+    ~DirectionalLight() {}
+
+    virtual bool isDelta() const override { return true; }
+    virtual int getID() const override { return -1; }
+    virtual Vec3<float> sample(const Vec3<float>& p) const override { return -m_direction; }
+    virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const override { return INFINITY; }
+
+   private:
+    Vec3<float> m_direction;
 };
 
 } // namespace spt
