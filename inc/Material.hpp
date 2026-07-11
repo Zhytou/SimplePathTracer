@@ -1,98 +1,90 @@
-#ifndef SRE_MATERIAL_HPP
-#define SRE_MATERIAL_HPP
+#ifndef SPT_MATERIAL_HPP
+#define SPT_MATERIAL_HPP
 
+#include <format>
+#include <memory>
 #include <string>
+#include <tiny_obj_loader.h>
+#include <unordered_map>
 
-#include "Texture.hpp"
-
-#define EPSILON 1e-6f
-
-namespace tinyobj {
-  struct material_t;
-}
+#include "Image.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 
-enum BSDFType {
-  // type of scatter
-  BSDF_REFLECTION = 1,
-  BSDF_TRANSIMISSION = 1 << 1,
+enum MaterialType {
+    MATERIAL_NONE = 0,
 
-  // type of surface
-  BSDF_DIFFUSE = 1 << 2,
-  BSDF_GLOSSY = 1 << 3,
-  BSDF_SPECULAR = 1 << 4,
+    MATERIAL_PHYSICS_CONDUCTIVE     = 0b0001,
+    MATERIAL_PHYSICS_SEMICONDUCTIVE = 0b0010,
+    MATERIAL_PHYSICS_DIELECTRIC     = 0b0100, // could be transparent, indicate with opacity
 
-  // type of illumination model
-  BSDF_MICROFACET = 1 << 5,
-  BSDF_PHONG = 1 << 6,
-  BSDF_BLINN_PHONG = 1 << 7,
+    MATERIAL_SURFACE_DIFFUSE  = 0b0001 << 4,
+    MATERIAL_SURFACE_GLOSSY   = 0b0010 << 4,
+    MATERIAL_SURFACE_SPECULAR = 0b0100 << 4,
 };
+
+constexpr int PHYSICS_MASK = 0b1111;
+
+constexpr int SURFACE_MASK = 0b11110000;
 
 class Material {
-  std::string name;
-  
-  // light property
-  bool emissive;
-  Vec3<float> emission;
+   public:
+    Material(const std::string& name) : name(name) {}
 
-  // microfacet property
-  // m-r workflow
-  float metallic;   // Pm (0 = dielectric, 1 = metal)
-  float roughness;  // Pr (0 = perfectly smooth, 1 = fully rough)
-  // s-g workflow
-  float glossiness; // sheen
-  
-  // phong/phong-blinn property
-  float shininess; // Ns
+    bool isDelta() const { return m_type & MATERIAL_SURFACE_SPECULAR; }
+    bool isEmissive() const { return min(m_emission) > 0.f; }
+    bool isTransmissive() const { return (m_type & (MATERIAL_PHYSICS_SEMICONDUCTIVE | MATERIAL_PHYSICS_DIELECTRIC)) && m_opacity < 1.0f && m_ior > 1.f; }
+    std::string getName() const { return name; }
+    std::string getTypeStr() const { return std::format("[physics_{} surface_{}]", m_type & MATERIAL_PHYSICS_CONDUCTIVE ? "conductive" : (m_type & MATERIAL_PHYSICS_SEMICONDUCTIVE ? "semiconductive" : "dielectric"), m_type & MATERIAL_SURFACE_DIFFUSE ? "diffuse" : (m_type & MATERIAL_SURFACE_GLOSSY ? "glossy" : "specular")); }
+    Vec3<float> getEmission() const { return m_emission; }
+    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo; }
+    float getMetallic(const Vec2<float>& uv) const { return m_metallic; }
+    float getRoughness(const Vec2<float>& uv) const { return m_roughness; }
+    float getOpacity() const { return m_opacity; }
+    float getIOR() const { return m_ior; }
+    void setType(MaterialType type) { m_type = type; }
+    void setEmission(Vec3<float> e) { m_emission = e; }
+    void setAlbedo(Vec3<float> a) { m_albedo = a; }
+    void setIOR(float ior) { m_ior = ior; }
+    void setOpacity(float o) { m_opacity = o; }
+    void setRoughness(float r) { m_roughness = r; }
+    void setMetallic(float m) { m_metallic = m; }
 
-  // shared property
-  Texture* albedo;
-  Vec3<float> diffuse; // diffuse color for phong or basecolor for microfacet Kd
-  Vec3<float> specular; // specular color for phong or specular for microfacet s-g workflow Ks
-  float ior; // index of refraction Ni
+    Vec3<float> Fresnel_Zero(const Vec2<float>& UV) const;
+    Vec3<float> Fresnel_Schlick(float NdotV, const Vec3<float>& F0) const;
+    float GGX_D(float NdotH, const Vec2<float>& UV) const;
+    float Smith_G(float NdotV, float NdotL, const Vec2<float>& UV) const;
 
-  uint type;
-  static uint scatMask; // bsdf scatter type mask
-  static uint surfMask; // bsdf surface type mask
-  static uint illuMask; // bsdf illumimation model mask
+    Vec3<float> bsdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec2<float>& uv) const;
+    Vec3<float> brdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv) const;
+    Vec3<float> brdf_tir(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv) const;
+    Vec3<float> btdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv, float eta) const;
 
-  static float GGX_D(float NdotH, float roughness);
-  static Vec3<float> Fresnel_Schlick(float cosTheta, const Vec3<float>& F0);
-  static float Smith_G(float NdotV, float NdotL, float roughness);
+    Vec3<float> scatter(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
+    Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
+    Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
 
-  Vec3<float> brdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV) const;
-  Vec3<float> btdf(const Vec3<float> &V, const Vec3<float> &N, const Vec3<float> &L, const Vec3<float>& H, const Vec2<float>& UV, float eta) const;
+    Vec3<float> sample(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv, const std::string& mode) const;
+    float pdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec2<float>& uv) const;
 
-  Vec3<float> reflect(const Vec3<float> &V, const Vec3<float> &N, const Vec2<float>& UV) const;
-  Vec3<float> transmit(const Vec3<float> &V, const Vec3<float> &N) const;
+   private:
+    std::string name;
+    MaterialType m_type = MATERIAL_NONE;
+    Vec3<float> m_emission{0.f, 0.f, 0.f}; // emission color Ke
+    Vec3<float> m_albedo{0.f, 0.f, 0.f};   // base color Kd
+    float m_roughness = 0.f;               // roughness Pr
+    float m_metallic  = 0.f;               // metalness Pm
 
-  Vec3<float> sample(const Vec3<float> &V, const Vec3<float> &N, const std::string& mode) const;
+    std::shared_ptr<Image<unsigned char>> m_emission_map  = nullptr;
+    std::shared_ptr<Image<unsigned char>> m_albedo_map    = nullptr;
+    std::shared_ptr<Image<unsigned char>> m_metallic_map  = nullptr;
+    std::shared_ptr<Image<unsigned char>> m_roughness_map = nullptr;
 
-  public:
-  Material() = default;
-  ~Material() = default;
-  Material(const tinyobj::material_t& mtl, const std::string& dir, uint illuType);
-
-  std::string getName() const;
-  uint getType() const;
-  Vec3<float> getBaseColor(Vec2<float> uv) const;
-  Vec3<float> getEmission() const;
-  Vec3<float> getFresnel0(const Vec3<float>& baseColor) const;
-  bool isDelta() const;
-  bool isEmissive() const;
-  bool isTransparent() const;
-  void setEmission(Vec3<float> e);
-  
-  // evaluate BSDF
-  Vec3<float> bsdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
-
-  // compute pdf
-  float pdf(const Vec3<float> &wi, const Vec3<float> &n, const Vec3<float> &wo, const Vec2<float>& uv) const;
-
-  // sample direction
-  Vec3<float> scatter(const Vec3<float> &wi, const Vec3<float> &n, const Vec2<float>& uv) const;
+    float m_ior     = 1.f; // index of refraction Ni
+    float m_opacity = 1.f; // opacity D
 };
-}  // namespace spt
+
+} // namespace spt
 
 #endif
