@@ -204,16 +204,16 @@ std::ostream& operator<<(std::ostream& os, const Vec<T, N>& v) {
 
 template <typename T, size_t N>
 T length(const Vec<T, N>& v) {
-    double d = 0.0;
+    T d = 0;
     for (int i = 0; i < N; i++) { d += v.data[i] * v.data[i]; }
-    return ::sqrt(d);
+    return std::sqrt(d);
 }
 
 template <typename T, size_t N>
 Vec<T, N> normalize(const Vec<T, N>& v) {
     Vec<T, N> vn = v; // normalized vector
     T d          = length(v);
-    if (d > 0.f) {
+    if (d > 0) {
         for (int i = 0; i < N; i++) { vn.data[i] = vn.data[i] / d; }
     }
     return vn;
@@ -246,7 +246,7 @@ T distance(const Vec<T, N>& v1, const Vec<T, N>& v2) {
 template <typename T, typename K, size_t N>
 Vec<T, N> pow(const Vec<T, N>& v, const K& k) {
     Vec<T, N> vp; // powered vector
-    for (int i = 0; i < N; i++) { vp.data[i] = ::pow(v.data[i], k); }
+    for (int i = 0; i < N; i++) { vp.data[i] = std::pow(v.data[i], k); }
     return vp;
 }
 
