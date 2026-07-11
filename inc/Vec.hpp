@@ -194,11 +194,14 @@ Vec<T, N> operator/(const Vec<T, N>& v1, const Vec<T, N>& v2) {
 
 template <typename T, size_t N>
 std::ostream& operator<<(std::ostream& os, const Vec<T, N>& v) {
-    os << "Vec" << N << "(";
+    std::stringstream ss;
+    ss << "Vec" << N << "(";
     for (int i = 0; i < N; i++) {
-        os << v.data[i] << ", ";
+        ss << v.data[i];
+        if (i < N - 1) { ss << ", "; }
     }
-    os << v.data[N - 1] << ")";
+    ss << ")";
+    os << ss.str();
     return os;
 }
 
