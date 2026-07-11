@@ -12,8 +12,8 @@ Vec3<float> Triangle::getRandomPoint() const {
     float r1 = rand(1.f);
     float r2 = rand(1.f);
 
-    float u = 1 - sqrtf(r1);
-    float v = r2 * sqrtf(r1);
+    float u = 1 - std::sqrt(r1);
+    float v = r2 * std::sqrt(r1);
 
     // p = (1 - u - v) * p0 + u * p1 + v * p2 = p0 + u * e1 + v * e2
     // u >= 0, v >= 0, u + v <= 1
@@ -61,7 +61,7 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
     float det        = dot(e1, pvec);
 
     // 2. Check if the ray is parallel to the triangle plane
-    if (fabs(det) < EPS) {
+    if (std::abs(det) < EPS) {
         return false;
     }
     float invdet = 1.0f / det;
@@ -97,11 +97,11 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
     if (texcoord.v < 0) { texcoord.v += 1.0f; }
 
     // 8. Set hit record
-    rec.id       = this->getID();
+    rec.id       = m_id;
     rec.distance = t;
     rec.point    = ray.getPointAt(t);
     rec.texcoord = texcoord;
-    rec.normal   = dot(m_normal, direction) > 0.f ? -m_normal : m_normal; // flip normal if ray direction is facing away
+    rec.normal   = m_normal;
     rec.material = m_material;
 
     return true;

@@ -29,7 +29,7 @@ class Hittable {
     virtual AABB wrap() const                                                      = 0;
 
    protected:
-    int m_id;
+    int m_id = -1;
 };
 
 } // namespace spt
