@@ -32,12 +32,12 @@ Some requirements and hints of this course project are listed below:
 
 ### Veach-MIS
 
-![veach-mis.png](veach-mis.png)
+![veach-mis.png](png/veach-mis.png)
 
 ### Cornell-Box with Dragon
 
-![cornell-box.png](cornell-box.png)
+![cornell-box.png](png/cornell-box.png)
 
 ### Staircase
 
-![staircase.png](staircase.png)
+![staircase.png](png/staircase.png)
