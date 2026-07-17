@@ -2,10 +2,10 @@
 
 namespace spt {
 
-std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end, int cnt) {
+std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Renderable>>& objects, const AABB& aabb, int beg, int end, int cnt) {
     int num     = end - beg;
     auto bvh    = std::make_shared<BVH>(num, false);
-    bvh->m_aabb = mergeAABBs(objects, beg, end);
+    bvh->m_aabb = aabb;
 
     // 1. Construct leaf node if the number of objects in the current bvh is less than or equal to cnt
     if (num <= cnt) {
@@ -21,16 +21,18 @@ std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Renderable>>&
 
     // 3. Iterate to find best split
     std::pair<int, float> split = {-1, INFINITY};
+    std::pair<AABB, AABB> aabbs;
     for (int idx = beg + 1; idx < end; idx += cnt) {
         int lcnt = idx - beg;
         int rcnt = num - lcnt;
 
-        auto left  = mergeAABBs(objects, beg, idx);
-        auto right = mergeAABBs(objects, idx, end);
-        float cost = computeSAH(bvh->m_aabb, left, right, lcnt, rcnt);
+        auto laabb = mergeAABBs(objects, beg, idx);
+        auto raabb = mergeAABBs(objects, idx, end);
+        float cost = computeSAH(bvh->m_aabb, laabb, raabb, lcnt, rcnt);
 
         if (cost < split.second) {
             split = {idx, cost};
+            aabbs = {laabb, raabb};
         }
     }
 
@@ -43,8 +45,8 @@ std::shared_ptr<BVH> BVH::constructBVH(std::vector<std::shared_ptr<Renderable>>&
 
     // construct sub bvh
     bvh->m_children.assign(2, nullptr);
-    bvh->m_children[0] = constructBVH(objects, beg, split.first, cnt);
-    bvh->m_children[1] = constructBVH(objects, split.first, end, cnt);
+    bvh->m_children[0] = constructBVH(objects, aabbs.first, beg, split.first, cnt);
+    bvh->m_children[1] = constructBVH(objects, aabbs.second, split.first, end, cnt);
 
     return bvh;
 }

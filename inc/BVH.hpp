@@ -17,7 +17,7 @@ class BVH : public Hittable {
    public:
     BVH(int count, bool leaf) : Hittable(-1), m_count(count), m_leaf(leaf) {}
 
-    static std::shared_ptr<BVH> constructBVH(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end, int cnt);
+    static std::shared_ptr<BVH> constructBVH(std::vector<std::shared_ptr<Renderable>>& objects, const AABB& aabb, int beg, int end, int cnt);
     static void sortObjects(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end, int axis);
     static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int cnt1, int cnt2);
     static AABB mergeAABBs(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end);
