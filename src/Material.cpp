@@ -23,13 +23,10 @@ Vec3<float> Material::scatter(const Vec3<float>& V, const Vec3<float>& N, const 
     Vec3<float> L(0.f, 0.f, 0.f);
 
     if (isTransmissive()) { // transmit if material supports transmission and probability requirement is met
-        float prob = rand(1.f);
+        float prob = rand(0.0f, 1.0f);
+        float ref  = ratio(V, N, UV);
 
-        float NdotV    = dot(N, V);
-        Vec3<float> F0 = Fresnel_Zero(UV);
-        float F        = max(Fresnel_Schlick(NdotV, F0));
-
-        if (prob > F) {
+        if (prob > ref) {
             L = transmit(V, N, UV);
         }
     }
@@ -53,10 +50,10 @@ Vec3<float> Material::reflect(const Vec3<float>& V, const Vec3<float>& N, const 
         // glossy reflection
         case MATERIAL_SURFACE_GLOSSY: {
             // GGX and COSINE combined importance sampling
-            float NdotV    = dot(N, V);
-            Vec3<float> F0 = Fresnel_Zero(UV);
-            float F        = max(Fresnel_Schlick(NdotV, F0));
-            if (rand(1.f) > F) {
+            float prob = rand(0.0f, 1.0f);
+            float ref  = ratio(V, N, UV);
+
+            if (prob > ref) {
                 L = sample(V, N, UV, "COSINE");
             } else {
                 Vec3<float> H = sample(V, N, UV, "GGX");
@@ -171,8 +168,18 @@ float Material::pdf(const Vec3<float>& V, const Vec3<float>& N, const Vec3<float
     return PDF;
 }
 
+float Material::ratio(const Vec3<float>& V, const Vec3<float>& N, const Vec2<float>& UV) const {
+    float NdotV    = dot(N, V);
+    Vec3<float> F0 = Fresnel_Zero(UV);
+    Vec3<float> F  = Fresnel_Schlick(NdotV, F0);
+
+    return max(F);
+    // return std::clamp(0.2126f * F.x + 0.7152f * F.y + 0.0722f * F.z, 0.0f, 1.0f);
+}
+
 Vec3<float> Material::sample(const Vec3<float>& V, const Vec3<float>& N, const Vec2<float>& UV, const std::string& mode) const {
-    float a = rand(1.f), b = rand(1.f);
+    float a = rand(0.0f, 1.f);
+    float b = rand(0.0f, 1.f);
 
     // local sampling direction
     Vec3<float> localDir(0.f, 0.f, 0.f);
@@ -198,7 +205,7 @@ Vec3<float> Material::sample(const Vec3<float>& V, const Vec3<float>& N, const V
     }
 
     // orthogonal basis
-    Vec3<float> UP = (::fabsf(N.z) < 0.999f) ? Vec3<float>(0.f, 0.f, 1.f) : Vec3<float>(1.f, 0.f, 0.f);
+    Vec3<float> UP = (std::fabs(N.z) < 0.999f) ? Vec3<float>(0.f, 0.f, 1.f) : Vec3<float>(0.f, 1.f, 0.f);
     Vec3<float> E1 = normalize(cross(UP, N));
     Vec3<float> E2 = normalize(cross(N, E1));
     // convert to world coordinates
@@ -293,7 +300,7 @@ Vec3<float> Material::brdf(const Vec3<float>& V, const Vec3<float>& N, const Vec
     float D        = GGX_D(NdotH, UV);
     float G        = Smith_G(NdotV, NdotL, UV);
     Vec3<float> F0 = Fresnel_Zero(UV);
-    Vec3<float> F  = Fresnel_Schlick(NdotV, F0);
+    Vec3<float> F  = Fresnel_Schlick(VdotH, F0);
     Vec3<float> NF = Vec3<float>(1.f) - F;
 
     switch (m_type & SURFACE_MASK) {

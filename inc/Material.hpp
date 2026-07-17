@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "Image.hpp"
+#include "Sampler.hpp"
 #include "Utils.hpp"
 
 namespace spt {
@@ -30,17 +31,17 @@ constexpr int SURFACE_MASK = 0b11110000;
 
 class Material {
    public:
-    Material(const std::string& name) : name(name) {}
+    Material(const std::string& name) : m_name(name) { m_sampler = std::make_shared<Sampler>(WrapMode::SAMPLER_WRAP_REPEAT, FilterMode::SAMPLER_FILTER_NEAREST); }
 
     bool isDelta() const { return m_type & MATERIAL_SURFACE_SPECULAR; }
     bool isEmissive() const { return min(m_emission) > 0.f; }
     bool isTransmissive() const { return (m_type & (MATERIAL_PHYSICS_SEMICONDUCTIVE | MATERIAL_PHYSICS_DIELECTRIC)) && m_opacity < 1.0f && m_ior > 1.f; }
-    std::string getName() const { return name; }
+    std::string getName() const { return m_name; }
     std::string getTypeStr() const { return std::format("[physics_{} surface_{}]", m_type & MATERIAL_PHYSICS_CONDUCTIVE ? "conductive" : (m_type & MATERIAL_PHYSICS_SEMICONDUCTIVE ? "semiconductive" : "dielectric"), m_type & MATERIAL_SURFACE_DIFFUSE ? "diffuse" : (m_type & MATERIAL_SURFACE_GLOSSY ? "glossy" : "specular")); }
     Vec3<float> getEmission() const { return m_emission; }
-    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo; }
-    float getMetallic(const Vec2<float>& uv) const { return m_metallic; }
-    float getRoughness(const Vec2<float>& uv) const { return m_roughness; }
+    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo_map && m_sampler ? m_sampler->sample<float, 3>(m_albedo_map, uv) : m_albedo; }
+    float getMetallic(const Vec2<float>& uv) const { return m_metallic_map && m_sampler ? m_sampler->sample<float, 1>(m_metallic_map, uv)[0] : m_metallic; }
+    float getRoughness(const Vec2<float>& uv) const { return m_roughness_map && m_sampler ? m_sampler->sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
     float getOpacity() const { return m_opacity; }
     float getIOR() const { return m_ior; }
     void setType(MaterialType type) { m_type = type; }
@@ -50,6 +51,9 @@ class Material {
     void setOpacity(float o) { m_opacity = o; }
     void setRoughness(float r) { m_roughness = r; }
     void setMetallic(float m) { m_metallic = m; }
+    void setAlbedoMap(std::shared_ptr<Image<float>> map) { m_albedo_map = map; }
+    void setMetallicMap(std::shared_ptr<Image<float>> map) { m_metallic_map = map; }
+    void setRoughnessMap(std::shared_ptr<Image<float>> map) { m_roughness_map = map; }
 
     Vec3<float> Fresnel_Zero(const Vec2<float>& UV) const;
     Vec3<float> Fresnel_Schlick(float NdotV, const Vec3<float>& F0) const;
@@ -66,20 +70,21 @@ class Material {
     Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
 
     Vec3<float> sample(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv, const std::string& mode) const;
+    float ratio(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
     float pdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec2<float>& uv) const;
 
    private:
-    std::string name;
+    std::string m_name;
     MaterialType m_type = MATERIAL_NONE;
     Vec3<float> m_emission{0.f, 0.f, 0.f}; // emission color Ke
     Vec3<float> m_albedo{0.f, 0.f, 0.f};   // base color Kd
     float m_roughness = 0.f;               // roughness Pr
     float m_metallic  = 0.f;               // metalness Pm
 
-    std::shared_ptr<Image<unsigned char>> m_emission_map  = nullptr;
-    std::shared_ptr<Image<unsigned char>> m_albedo_map    = nullptr;
-    std::shared_ptr<Image<unsigned char>> m_metallic_map  = nullptr;
-    std::shared_ptr<Image<unsigned char>> m_roughness_map = nullptr;
+    std::shared_ptr<Image<float>> m_albedo_map    = nullptr;
+    std::shared_ptr<Image<float>> m_metallic_map  = nullptr;
+    std::shared_ptr<Image<float>> m_roughness_map = nullptr;
+    std::shared_ptr<Sampler> m_sampler            = nullptr;
 
     float m_ior     = 1.f; // index of refraction Ni
     float m_opacity = 1.f; // opacity D
