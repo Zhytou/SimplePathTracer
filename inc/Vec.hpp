@@ -2,7 +2,7 @@
 #define SPT_VEC_HPP
 
 #include <cassert>
-#include <cstring>
+#include <cmath>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -13,11 +13,17 @@ template <typename T, size_t N>
 struct VecBase {
     T data[N];
 
-    VecBase() { ::memset(data, 0, sizeof(T) * N); }
-    VecBase(const T arr[N]) { ::memcpy(data, arr, sizeof(T) * N); }
-    VecBase(const VecBase<T, N>& other) { ::memcpy(data, other.data, sizeof(T) * N); }
+    VecBase(T t = static_cast<T>(0)) {
+        for (int i = 0; i < N; i++) { data[i] = t; }
+    }
+    VecBase(const T arr[N]) {
+        for (int i = 0; i < N; i++) { data[i] = arr[i]; }
+    }
+    VecBase(const VecBase<T, N>& other) {
+        for (int i = 0; i < N; i++) { data[i] = other.data[i]; }
+    }
     VecBase& operator=(const VecBase<T, N>& other) {
-        ::memcpy(data, other.data, sizeof(T) * N);
+        for (int i = 0; i < N; i++) { data[i] = other.data[i]; }
         return *this;
     }
 };
@@ -34,20 +40,24 @@ struct VecBase<T, 2> {
         };
     };
 
-    VecBase() { ::memset(data, 0, sizeof(T) * 2); }
-    VecBase(const T arr[2]) { ::memcpy(data, arr, sizeof(T) * 2); }
-    VecBase(const VecBase<T, 2>& other) { ::memcpy(data, other.data, sizeof(T) * 2); }
-    VecBase& operator=(const VecBase<T, 2>& other) {
-        ::memcpy(data, other.data, sizeof(T) * 2);
-        return *this;
+    VecBase(T t = static_cast<T>(0)) {
+        for (int i = 0; i < 2; i++) { data[i] = t; }
     }
-    VecBase(T t) {
-        x = t;
-        y = t;
+    VecBase(const T arr[2]) {
+        for (int i = 0; i < 2; i++) { data[i] = arr[i]; }
     }
     VecBase(T t1, T t2) {
         x = t1;
         y = t2;
+    }
+    VecBase(const VecBase<T, 2>& other) {
+        x = other.x;
+        y = other.y;
+    }
+    VecBase& operator=(const VecBase<T, 2>& other) {
+        x = other.x;
+        y = other.y;
+        return *this;
     }
 };
 
@@ -63,22 +73,27 @@ struct VecBase<T, 3> {
         };
     };
 
-    VecBase() { ::memset(data, 0, sizeof(T) * 3); }
-    VecBase(const T arr[3]) { ::memcpy(data, arr, sizeof(T) * 3); }
-    VecBase(const VecBase<T, 3>& other) { ::memcpy(data, other.data, sizeof(T) * 3); }
-    VecBase& operator=(const VecBase<T, 3>& other) {
-        ::memcpy(data, other.data, sizeof(T) * 3);
-        return *this;
+    VecBase(T t = static_cast<T>(0)) {
+        for (int i = 0; i < 3; i++) { data[i] = t; }
     }
-    VecBase(T t) {
-        x = t;
-        y = t;
-        z = t;
+    VecBase(const T arr[3]) {
+        for (int i = 0; i < 3; i++) { data[i] = arr[i]; }
     }
     VecBase(T t1, T t2, T t3) {
         x = t1;
         y = t2;
         z = t3;
+    }
+    VecBase(const VecBase<T, 3>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+    }
+    VecBase& operator=(const VecBase<T, 3>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+        return *this;
     }
 };
 
@@ -88,6 +103,16 @@ struct Vec : public VecBase<T, N> {
     using VecBase<T, N>::VecBase;
     // Bring dependent names into the scope of the subclass. Avoid compilation error due to the two-phase lookup rules for templates
     using VecBase<T, N>::data;
+
+    T& operator[](size_t i) {
+        if (i >= N) { throw std::out_of_range("Vec::operator[]: index out of range"); }
+        return data[i];
+    }
+
+    const T& operator[](size_t i) const {
+        if (i >= N) { throw std::out_of_range("Vec::operator[]: index out of range"); }
+        return data[i];
+    }
 
     Vec<T, N>& operator-=(const Vec<T, N>& other) {
         for (int i = 0; i < N; i++) { data[i] -= other.data[i]; }
