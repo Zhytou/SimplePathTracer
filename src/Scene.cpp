@@ -34,17 +34,20 @@ void Scene::init(const fs::path& path) {
     };
     auto getMat = [](rapidjson::Value& doc, const std::string& name) -> tinyobj::material_t {
         tinyobj::material_t material;
-        material.name        = doc.HasMember("name") ? doc["name"].GetString() : name + "_default";
-        material.emission[0] = doc.HasMember("emission") ? doc["emission"][0].GetFloat() : 0.f; // emission
-        material.emission[1] = doc.HasMember("emission") ? doc["emission"][1].GetFloat() : 0.f;
-        material.emission[2] = doc.HasMember("emission") ? doc["emission"][2].GetFloat() : 0.f;
-        material.diffuse[0]  = doc.HasMember("albedo") ? doc["albedo"][0].GetFloat() : 0.f; // albedo
-        material.diffuse[1]  = doc.HasMember("albedo") ? doc["albedo"][1].GetFloat() : 0.f;
-        material.diffuse[2]  = doc.HasMember("albedo") ? doc["albedo"][2].GetFloat() : 0.f;
-        material.metallic    = doc.HasMember("metallic") ? doc["metallic"].GetFloat() : 0.f;   // metallic
-        material.roughness   = doc.HasMember("roughness") ? doc["roughness"].GetFloat() : 1.f; // roughness
-        material.dissolve    = doc.HasMember("opacity") ? doc["opacity"].GetFloat() : 1.f;     // opacity
-        material.ior         = doc.HasMember("ior") ? doc["ior"].GetFloat() : 1.f;             // ior
+        material.name              = doc.HasMember("name") ? doc["name"].GetString() : name + "_default";
+        material.emission[0]       = doc.HasMember("emission") ? doc["emission"][0].GetFloat() : 0.f; // emission
+        material.emission[1]       = doc.HasMember("emission") ? doc["emission"][1].GetFloat() : 0.f;
+        material.emission[2]       = doc.HasMember("emission") ? doc["emission"][2].GetFloat() : 0.f;
+        material.diffuse[0]        = doc.HasMember("albedo") ? doc["albedo"][0].GetFloat() : 0.f; // albedo
+        material.diffuse[1]        = doc.HasMember("albedo") ? doc["albedo"][1].GetFloat() : 0.f;
+        material.diffuse[2]        = doc.HasMember("albedo") ? doc["albedo"][2].GetFloat() : 0.f;
+        material.metallic          = doc.HasMember("metallic") ? doc["metallic"].GetFloat() : 0.f;   // metallic
+        material.roughness         = doc.HasMember("roughness") ? doc["roughness"].GetFloat() : 1.f; // roughness
+        material.dissolve          = doc.HasMember("opacity") ? doc["opacity"].GetFloat() : 1.f;     // opacity
+        material.ior               = doc.HasMember("ior") ? doc["ior"].GetFloat() : 1.f;             // ior
+        material.diffuse_texname   = doc.HasMember("diffuse_texname") ? doc["diffuse_texname"].GetString() : "";
+        material.metallic_texname  = doc.HasMember("metallic_texname") ? doc["metallic_texname"].GetString() : "";
+        material.roughness_texname = doc.HasMember("roughness_texname") ? doc["roughness_texname"].GetString() : "";
         return material;
     };
 
@@ -353,6 +356,9 @@ std::shared_ptr<Material> Scene::loadMaterial(const fs::path& mtldir, const tiny
     mtl->setMetallic(material.metallic);
     mtl->setOpacity(material.dissolve);
     mtl->setIOR(material.ior);
+    if (!material.diffuse_texname.empty()) { mtl->setAlbedoMap(Image<float>::read(mtldir / material.diffuse_texname, 0, true)); }
+    if (!material.metallic_texname.empty()) { mtl->setMetallicMap(Image<float>::read(mtldir / material.metallic_texname, 0, true)); }
+    if (!material.roughness_texname.empty()) { mtl->setRoughnessMap(Image<float>::read(mtldir / material.roughness_texname, 0, true)); }
     m_materials[material.name] = mtl;
 
     return mtl;
