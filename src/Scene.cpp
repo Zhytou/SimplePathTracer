@@ -3,6 +3,7 @@
 #include <array>
 #include <format>
 #include <fstream>
+#include <ranges>
 #include <rapidjson/document.h>
 #include <tiny_obj_loader.h>
 #include <typeinfo>
@@ -181,13 +182,17 @@ void Scene::init(const fs::path& path) {
     }
 
     // 6. Set bounding volume hierarchy
-    m_bvh = BVH::constructBVH(m_objects, 0, m_objects.size(), 8);
+    auto aabb = BVH::mergeAABBs(m_objects, 0, m_objects.size());
+    m_bvh     = BVH::constructBVH(m_objects, aabb, 0, m_objects.size(), 50);
 
     // 7. Print scene info
     {
-        std::cout << "\n======================================================================\n";
-        std::cout << "                         SCENE HIERARCHY INFO                         \n";
-        std::cout << "======================================================================\n";
+        std::cout << "\n=============================================================================================================\n";
+        std::cout << "                                                 SCENE HIERARCHY INFO                                          \n";
+        std::cout << "===============================================================================================================\n";
+
+        constexpr int n = 10;
+        constexpr int k = 5;
 
         // 7.1 Print camera configuration
         std::cout << " [ CAMERA CONFIGURATION ]\n";
@@ -196,24 +201,41 @@ void Scene::init(const fs::path& path) {
                   << "   - Up:     " << m_camera->getUp() << '\n'
                   << "   - Fovy:   " << m_camera->getFovy() << '\n'
                   << "   - Focus: " << m_camera->getFocus() << '\n'
-                  << "----------------------------------------------------------------------\n";
+                  << "-------------------------------------------------------------------------------------------------------------------------\n";
 
         // 7.2 Print objects list
         std::cout << " [ OBJECTS ]\n";
         std::cout << "   " << std::left << std::setw(6) << "ID"
                   << std::setw(25) << "Type"
                   << std::setw(20) << "Assigned Material" << '\n';
-        std::cout << "   " << std::string(55, '-') << '\n';
+        std::cout << std::string(123, '-') << '\n';
 
-        for (const auto& obj : m_objects) {
-            auto mtl  = obj->getMaterial();
-            auto name = typeid(*obj).name();
-
-            std::cout << "   " << std::left << std::setw(6) << obj->getID()
-                      << std::setw(25) << name
-                      << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+        if (m_objects.size() < n) {
+            for (const auto& obj : m_objects) {
+                auto mtl  = obj->getMaterial();
+                auto name = typeid(*obj).name();
+                std::cout << "   " << std::left << std::setw(6) << obj->getID()
+                          << std::setw(25) << name
+                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+            }
+        } else {
+            for (const auto& obj : m_objects | std::views::take(k)) {
+                auto mtl  = obj->getMaterial();
+                auto name = typeid(*obj).name();
+                std::cout << "   " << std::left << std::setw(6) << obj->getID()
+                          << std::setw(25) << name
+                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+            }
+            std::cout << "   ......\n";
+            for (const auto& obj : m_objects | std::views::drop(m_objects.size() - k)) {
+                auto mtl  = obj->getMaterial();
+                auto name = typeid(*obj).name();
+                std::cout << "   " << std::left << std::setw(6) << obj->getID()
+                          << std::setw(25) << name
+                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+            }
         }
-        std::cout << "----------------------------------------------------------------------\n";
+        std::cout << "-------------------------------------------------------------------------------------------------------------------------\n";
 
         // 7.3 Print materials summary
         std::cout << " [ MATERIALS SUMMARY ]\n";
@@ -224,7 +246,7 @@ void Scene::init(const fs::path& path) {
                   << std::setw(10) << "Metallic"
                   << std::setw(10) << "Opacity"
                   << std::setw(8) << "IOR" << '\n';
-        std::cout << "   " << std::string(67, '-') << '\n';
+        std::cout << std::string(123, '-') << '\n';
 
         for (auto [name, mtlw] : m_materials) {
             if (mtlw.expired()) { continue; }
@@ -246,14 +268,24 @@ void Scene::init(const fs::path& path) {
                       << std::setw(10) << opacity
                       << std::setw(8) << ior << '\n';
         }
-        std::cout << "----------------------------------------------------------------------\n";
+        std::cout << "-------------------------------------------------------------------------------------------------------------------------\n";
 
         // 7.4 Print light sources list
         std::cout << " [ LIGHT SOURCES ]\n";
-        for (const auto& light : m_lights) {
-            std::cout << "   - Light ID: " << light->getID() << '\n';
+        if (m_lights.size() < n) {
+            for (const auto& light : m_lights) {
+                std::cout << "   - Light ID: " << light->getID() << '\n';
+            }
+        } else {
+            for (const auto& light : m_lights | std::views::take(k)) {
+                std::cout << "   - Light ID: " << light->getID() << '\n';
+            }
+            std::cout << "   ......\n";
+            for (const auto& light : m_lights | std::views::drop(m_lights.size() - k)) {
+                std::cout << "   - Light ID: " << light->getID() << '\n';
+            }
         }
-        std::cout << "======================================================================\n";
+        std::cout << "============================================================================================================================\n";
     }
 }
 
