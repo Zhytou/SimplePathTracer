@@ -1,0 +1,45 @@
+{
+    "camera": {
+        "eye": [6.91, 1.65, 2.55],
+        "target": [2.33, 1.65, 0.34],
+        "up": [0, 1, 0],
+        "width": 1280,
+        "height": 720,
+        "fovy": 42.9
+    },
+    "light": {
+        "area": [
+            {
+                "mtl_name": "ceilingLight",
+                "color": [0.5, 0.5, 0.5]
+            },
+            {
+                "mtl_name": "starisLight",
+                "color": [0.5, 0.5, 0.5]
+            },
+            {
+                "mtl_name": "leftTopLight",
+                "color": [0.3, 0.3, 0.3]
+            },
+            {
+                "mtl_name": "leftLight",
+                "color": [2.74, 2.15, 0.92]
+            },
+            {
+                "mtl_name": "backLight",
+                "color": [1.60, 1.25, 0.55]
+            },
+            {
+                "mtl_name": "bottomLight",
+                "color": [1.3, 1.3, 1.3]
+            }
+        ]
+    },
+    "model": [
+        {
+            "name": "staircase",
+            "obj_path": "../ast/obj/staircase/staircase.obj",
+            "mtl_dir": "../ast/mtl/staircase"
+        }
+    ]
+}

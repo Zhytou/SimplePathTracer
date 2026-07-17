@@ -1,0 +1,25 @@
+{
+    "camera": {
+        "eye": [278, 273, -800],
+        "target": [278, 273, -799],
+        "up": [0, 1, 0],
+        "width": 512,
+        "height": 512,
+        "fovy": 39.3
+    },
+    "light": {
+        "area": [
+            {
+                "mtl_name": "Light",
+                "color": [34, 24, 8]
+            }
+        ]
+    },
+    "model": [
+        {
+            "name": "dragon",
+            "obj_path": "../ast/obj/dragon/dragon.obj",
+            "mtl_dir": "../ast/mtl/dragon"
+        }
+    ]
+}

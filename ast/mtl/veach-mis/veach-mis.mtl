@@ -1,0 +1,32 @@
+newmtl material0
+Kd 0.5 0.5 0.5
+Pr 1
+
+newmtl material1
+Kd 0.7 0.7 0.7
+Pr 1.0
+Pm 0.8
+
+newmtl material2
+Kd 0.7 0.7 0.7
+Pr 1.0
+Pm 0.8
+
+newmtl material3
+Kd 0.7 0.7 0.7
+Pr 1.0
+Pm 0.8
+
+newmtl material4
+Kd 0.7 0.7 0.7
+Pr 1.0
+Pm 0.8
+
+newmtl light1
+Kd 0.0 0.0 0.0
+
+newmtl light2
+Kd 0.0 0.0 0.0
+
+newmtl light3
+Kd 0.0 0.0 0.0
