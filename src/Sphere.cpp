@@ -3,8 +3,8 @@
 namespace spt {
 
 Vec3<float> Sphere::getRandomPoint() const {
-    float phi   = rand(PI) - PI * 0.5f;
-    float theta = rand(2 * PI);
+    float phi   = rand(0.0f, PI) - PI * 0.5f;
+    float theta = rand(0.0f, 2 * PI);
 
     float x = ::cos(phi) * ::cos(theta);
     float y = ::cos(phi) * ::sin(theta);

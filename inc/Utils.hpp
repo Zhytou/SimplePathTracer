@@ -21,7 +21,7 @@ constexpr float PDF_EPS = 1e-6f;
 constexpr float PI = 3.14159265358979323846f;
 
 template <typename T>
-T rand(T max, T min = 0) {
+T rand(T min, T max) {
     static_assert(std::is_arithmetic<T>::value, "T must be numeric type");
 
     thread_local std::random_device rd;
@@ -34,11 +34,6 @@ T rand(T max, T min = 0) {
         std::uniform_real_distribution<T> dis(min, max);
         return dis(gen);
     }
-}
-
-template <typename T>
-T clamp(T value, T min, T max) {
-    return std::max(std::min(value, max), min);
 }
 
 static std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
