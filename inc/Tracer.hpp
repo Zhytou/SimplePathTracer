@@ -20,30 +20,47 @@ class Tracer {
     Tracer(int d = 10, int rrd = 3, int s = 3, float p = 0.8);
     ~Tracer() = default;
 
-    // Render a scene and save the result as an image
-    // @param scene The scene to render
-    // @param imgpath The path to save the image
+    /**
+     * @brief  Render a scene and save the result as an image
+     * @param scene The scene to render
+     * @param imgpath The path to save the image
+     */
     void render(const Scene& scene, const std::filesystem::path& imgpath = "result.png");
-    // Trace a ray through the scene and return the color at the intersection point
-    // @param bvh The BVH of the scene
-    // @param light The light source
-    // @param ray The ray to trace
-    // @param depth The current depth of the path trace
-    // @return The color at the intersection point
-    Vec3<float> trace(const std::shared_ptr<BVH>& bvh, const std::shared_ptr<Light>& light, const Ray& ray, int depth);
-    // Postprocess the high dynamic range color to low dynamic range color
-    // @param hdr The hdr color [0, inf)
-    // @param range The range of the ldr color [0, range) default 255
-    // @return The ldr color [0, range]
+    /**
+     * @brief  Cast a ray through the scene and return the result
+     * @param scene The scene to render
+     * @param ray The ray to cast
+     * @return The result of casting the ray
+     */
+    Vec3<float> cast(const Scene& scene, const Ray& ray);
+    /**
+     * @brief  Trace a ray through the scene and return the color at the intersection point
+     * @param scene The scene to render
+     * @param ray The ray to trace
+     * @param rec The hit record of the ray
+     * @param depth The current depth of the path trace
+     * @return The color at the intersection point
+     */
+    Vec3<float> trace(const Scene& scene, const Ray& ray, const HitRecord& rec, int depth);
+    /**
+     * @brief  Postprocess the high dynamic range color to low dynamic range color
+     * @param hdr The hdr color [0, inf)
+     * @param range The range of the ldr color [0, range) default 255
+     * @return The ldr color [0, range]
+     */
     static Vec3<float> postprocess(const Vec3<float>& hdr, float range = 255.f);
-    // Mix two PDFs and return the weight of the mixed PDF
-    // @param pdf1 The first PDF
-    // @param pdf2 The second PDF
-    // @return The weight of the mixed PDF
+    /**
+     * @brief  Mix two PDFs and return the weight of the mixed PDF
+     * @param pdf1 The first PDF
+     * @param pdf2 The second PDF
+     * @return The weight of the mixed PDF
+     */
     static float mix(float pdf1, float pdf2);
-    // Show the progress of rendering
-    // @param percent The percentage of rendering
-    // @param second The time cost of rendering
+    /**
+     * @brief  Show the progress of rendering
+     * @param percent The percentage of rendering
+     * @param second The time cost of rendering
+     */
     static void progress(float percent, float second);
 
    private:
