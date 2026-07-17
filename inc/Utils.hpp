@@ -14,7 +14,7 @@ namespace spt {
 
 constexpr float EPS = 1e-6f;
 
-constexpr float DIS_EPS = 1e-2f;
+constexpr float DIS_EPS = 1e-4f;
 
 constexpr float PDF_EPS = 1e-6f;
 
@@ -34,6 +34,11 @@ T rand(T max, T min = 0) {
         std::uniform_real_distribution<T> dis(min, max);
         return dis(gen);
     }
+}
+
+template <typename T>
+T clamp(T value, T min, T max) {
+    return std::max(std::min(value, max), min);
 }
 
 static std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
