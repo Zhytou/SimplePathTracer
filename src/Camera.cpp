@@ -14,9 +14,13 @@ void Camera::update() {
     m_pixel = (2.f * ::tanf(m_fovy * 0.5f * PI / 180.f) * m_focus) / m_height;
 }
 
-Ray PerspectiveCamera::emit(int row, int col) {
-    float x = (col + 0.5f - m_width / 2.f) * m_pixel;
-    float y = -(row + 0.5f - m_height / 2.f) * m_pixel;
+Ray PerspectiveCamera::emit(int row, int col, int k, int n) const {
+    int sp_col = k % n;   // subpixel column
+    int sp_row = k / n;   // subpixel row
+    float sp   = 1.f / n; // subpixel size
+
+    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel;
+    float y = -(row + sp_row * sp - 0.5f - m_height / 2.f) * m_pixel;
     float z = m_focus;
 
     Vec3<float> pos = m_eye;
@@ -25,9 +29,13 @@ Ray PerspectiveCamera::emit(int row, int col) {
     return Ray(pos, dir);
 }
 
-Ray OrthographicCamera::emit(int row, int col) {
-    float x = (col + 0.5f - m_width / 2.f) * m_pixel;
-    float y = -(row + 0.5f - m_height / 2.f) * m_pixel;
+Ray OrthographicCamera::emit(int row, int col, int k, int n) const {
+    int sp_col = k % n;   // subpixel column
+    int sp_row = k / n;   // subpixel row
+    float sp   = 1.f / n; // subpixel size
+
+    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel;
+    float y = -(row + sp_row * sp - 0.5f - m_height / 2.f) * m_pixel;
     float z = m_focus;
 
     Vec3<float> pos = m_eye + m_axises[0] * x + m_axises[1] * y;

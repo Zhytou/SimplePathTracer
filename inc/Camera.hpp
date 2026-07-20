@@ -14,7 +14,16 @@ class Camera {
     Camera()          = default;
     virtual ~Camera() = default;
 
-    virtual Ray emit(int row, int col) = 0;
+    /**
+     * @brief emit a ray from the camera to the pixel at (row, col) with subpixel sampling
+     * 
+     * @param row the row index of the pixel
+     * @param col the column index of the pixel
+     * @param k the current subpixel index, ranging from [0, n * n - 1], used to locate the current sub-region within the n x n grid.
+     * @param n the subpixel sampling grid dimension factor, representing that the pixel is divided into an n x n grid.
+     * @return Ray the ray from the camera to the pixel
+     */
+    virtual Ray emit(int row, int col, int k, int n) const = 0;
     void update();
 
     int getWidth() const { return m_width; }
@@ -60,9 +69,9 @@ class Camera {
 
     int m_width;
     int m_height;
-    float m_fovy;
-    float m_focus;
-    float m_pixel;
+    float m_fovy;  // field of view in vertical direction
+    float m_focus; // focus length
+    float m_pixel; // pixel size
 };
 
 class PerspectiveCamera : public Camera {
@@ -70,7 +79,7 @@ class PerspectiveCamera : public Camera {
     PerspectiveCamera()  = default;
     ~PerspectiveCamera() = default;
 
-    virtual Ray emit(int row, int col) override;
+    virtual Ray emit(int row, int col, int k, int n) const override;
 };
 
 class OrthographicCamera : public Camera {
@@ -78,7 +87,7 @@ class OrthographicCamera : public Camera {
     OrthographicCamera()  = default;
     ~OrthographicCamera() = default;
 
-    virtual Ray emit(int row, int col) override;
+    virtual Ray emit(int row, int col, int k, int n) const override;
 };
 
 } // namespace spt
