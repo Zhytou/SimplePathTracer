@@ -19,10 +19,11 @@ Tracer::Tracer(int d, int rrd, int s, float p)
 void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     const auto beg = std::chrono::steady_clock::now();
 
-    auto camera = scene.getCamera();
-    int height  = camera->getHeight();
-    int width   = camera->getWidth();
-    auto img    = std::make_shared<Image<unsigned char>>(width, height, 3);
+    auto camera      = scene.getCamera();
+    const int height = camera->getHeight();
+    const int width  = camera->getWidth();
+    const int n      = sqrt(m_spp); // subpixel sampling factor(n * n grid)
+    auto img         = std::make_shared<Image<unsigned char>>(width, height, 3);
 
 #pragma omp parallel for num_threads(32)
     for (int row = 0; row < height; row++) {
@@ -30,7 +31,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
             // 1. render the pixel color by path tracing
             Vec3<float> color(0.f);
             for (int k = 0; k < m_spp; k++) {
-                Ray ray = camera->emit(row, col);
+                Ray ray = camera->emit(row, col, k, n);
                 color += cast(scene, ray);
             }
             color /= m_spp;
@@ -64,8 +65,7 @@ Vec3<float> Tracer::cast(const Scene& scene, const Ray& ray) {
 
 Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& reci, int depth) {
     // 0. Initialize scene to render and color to return
-    auto bvh    = scene.getBVH();
-    auto lights = scene.getLights();
+    auto bvh = scene.getBVH();
     Vec3<float> color(0.f);
     Vec3<float> color_e(0.f), color_d(0.f), color_ind(0.f);
 
@@ -97,26 +97,31 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
 
     // 6. Calculate direct light color
     if (rpp < m_rrp && !mtl->isEmissive() && !mtl->isDelta()) { // only GLOSSY and DIFFUSE materials support light sampling
-        // 6.1. Sample light
-        auto light = lights[rand(0ul, lights.size() - 1)];
-        wo         = light->sample(p);
-        bsdf       = mtl->bsdf(wi, n, wo, uv);
-        cos        = std::fabs(dot(n, wo)); // for both reflection and transmission
+        for (auto delta : {true, false}) {
+            // 6.1. Sample both delta light and non-delta light
+            auto light = scene.sampleLight(delta);
+            if (light == nullptr) { continue; }
+            float prob = scene.calLightProb(light);
 
-        // 6.2. Do hit test
-        Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
-        Ray rayo(pp, wo);
-        HitRecord reco;
-        bool hit = bvh->hit(rayo, DIS_EPS, INFINITY, reco);
+            wo   = light->sample(p);
+            bsdf = mtl->bsdf(wi, n, wo, uv);
+            cos  = std::fabs(dot(n, wo)); // for both reflection and transmission
 
-        // 6.3 Calculate direct light color
-        if (light->isDelta()) {
-            color_d = hit ? Vec3<float>{0.f} : light->getColor() * bsdf; // delta light only contribute when no object block the light
-        } else {
-            float pdf_light = light->pdf(wo, reco.normal, reco.distance);
-            float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
-            float weight    = mix(pdf_light, pdf_mtl);
-            color_d         = hit && reco.material->isEmissive() && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+            // 6.2. Do hit test
+            Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
+            Ray rayo(pp, wo);
+            HitRecord reco;
+            bool hit = bvh->hit(rayo, DIS_EPS, INFINITY, reco);
+
+            // 6.3 Calculate direct light color
+            if (delta) {
+                color_d += !hit ? light->getColor() * bsdf / prob : Vec3<float>{0.f}; // delta light only contribute when no object block the light
+            } else {
+                float pdf_light = light->pdf(wo, reco.normal, reco.distance) * prob;
+                float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
+                float weight    = mix(pdf_light, pdf_mtl);
+                color_d += hit && reco.material->isEmissive() && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+            }
         }
     }
 
@@ -150,14 +155,11 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
 
             if (pdf_mtl > 0.f) {
                 if (hit && reco.material->isEmissive()) { // avoid duplicate direct light calculation when sampling material's ray hit area light
-                    for (auto light : lights) {
-                        if (light->getID() == reco.id) {
-                            pdf_light = light->pdf(wo, reco.normal, reco.distance);
-                            break;
-                        }
-                    }
-                    weight    = mix(pdf_mtl, pdf_light);
-                    color_ind = reco.material->getEmission() * bsdf * cos * weight / pdf_mtl; // avoid trace recursion
+                    auto light = scene.findLight(reco.id);
+                    float prob = scene.calLightProb(light);
+                    pdf_light  = light->pdf(wo, reco.normal, reco.distance) * prob;
+                    weight     = mix(pdf_mtl, pdf_light);
+                    color_ind  = reco.material->getEmission() * bsdf * cos * weight / pdf_mtl; // avoid trace recursion
                 } else {
                     color_ind = trace(scene, rayo, reco, depth + 1) * bsdf * cos / pdf_mtl;
                 }

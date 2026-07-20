@@ -141,6 +141,7 @@ void Scene::init(const fs::path& path) {
 
     // 5. Set light
     if (doc.HasMember("light")) {
+        int lid = 0;
         // 5.1 Load area light
         if (doc["light"].HasMember("area")) {
             // 5.1.1 Get area light emission
@@ -158,11 +159,13 @@ void Scene::init(const fs::path& path) {
                 mtl.lock()->setEmission(emissions[name]);
             }
 
-            // 5.1.3 Add area light object to scene light
+            // 5.1.3 Add area light object to scene light and set cumulative distribution function for non-delta lights
             for (auto object : m_objects) {
                 auto mtl = object->getMaterial();
                 if (mtl->isEmissive()) {
-                    m_lights.push_back(std::make_shared<AreaLight>(mtl->getEmission(), object));
+                    m_ids[object->getID()] = lid;
+                    m_lights.push_back(std::make_shared<AreaLight>(lid++, mtl->getEmission(), object));
+                    m_cdf.push_back(object->getArea());
                 }
             }
         }
@@ -172,7 +175,7 @@ void Scene::init(const fs::path& path) {
             auto& plDoc          = doc["light"]["point"][i];
             Vec3<float> position = plDoc.HasMember("position") ? getVec3(plDoc["position"]) : Vec3<float>(0.f);
             Vec3<float> color    = plDoc.HasMember("color") ? getVec3(plDoc["color"]) : Vec3<float>(0.f);
-            m_lights.push_back(std::make_shared<PointLight>(color, position));
+            m_lights.push_back(std::make_shared<PointLight>(lid++, color, position));
         }
 
         // 5.3 Load directional light
@@ -180,7 +183,7 @@ void Scene::init(const fs::path& path) {
             auto& dlDoc           = doc["light"]["directional"][i];
             Vec3<float> direction = dlDoc.HasMember("direction") ? getVec3(dlDoc["direction"]) : Vec3<float>(0.f);
             Vec3<float> color     = dlDoc.HasMember("color") ? getVec3(dlDoc["color"]) : Vec3<float>(0.f);
-            m_lights.push_back(std::make_shared<DirectionalLight>(color, direction));
+            m_lights.push_back(std::make_shared<DirectionalLight>(lid++, color, direction));
         }
     }
 
@@ -209,7 +212,7 @@ void Scene::init(const fs::path& path) {
         // 7.2 Print objects list
         std::cout << " [ OBJECTS ]\n";
         std::cout << "   " << std::left << std::setw(6) << "ID"
-                  << std::setw(25) << "Type"
+                  << std::setw(25) << "Class Name"
                   << std::setw(20) << "Assigned Material" << '\n';
         std::cout << std::string(123, '-') << '\n';
 
@@ -243,7 +246,7 @@ void Scene::init(const fs::path& path) {
         // 7.3 Print materials summary
         std::cout << " [ MATERIALS SUMMARY ]\n";
         std::cout << "   " << std::left << std::setw(15) << "Name"
-                  << std::setw(40) << "Type"
+                  << std::setw(40) << "Material Type"
                   << std::setw(30) << "Albedo (R, G, B)"
                   << std::setw(12) << "Roughness"
                   << std::setw(10) << "Metallic"
@@ -275,17 +278,31 @@ void Scene::init(const fs::path& path) {
 
         // 7.4 Print light sources list
         std::cout << " [ LIGHT SOURCES ]\n";
+        std::cout << "   " << std::left << std::setw(6) << "ID"
+                  << std::setw(25) << "Class Name"
+                  << std::setw(20) << "Object ID"
+                  << std::setw(30) << "Color" << '\n';
+        std::cout << std::string(123, '-') << '\n';
         if (m_lights.size() < n) {
             for (const auto& light : m_lights) {
-                std::cout << "   - Light ID: " << light->getID() << '\n';
+                std::cout << "   " << std::left << std::setw(6) << light->getID()
+                          << std::setw(25) << typeid(*light).name()
+                          << std::setw(20) << light->getObjectID()
+                          << std::setw(30) << light->getColor() << '\n';
             }
         } else {
             for (const auto& light : m_lights | std::views::take(k)) {
-                std::cout << "   - Light ID: " << light->getID() << '\n';
+                std::cout << "   " << std::left << std::setw(6) << light->getID()
+                          << std::setw(25) << typeid(*light).name()
+                          << std::setw(20) << light->getObjectID()
+                          << std::setw(30) << light->getColor() << '\n';
             }
             std::cout << "   ......\n";
             for (const auto& light : m_lights | std::views::drop(m_lights.size() - k)) {
-                std::cout << "   - Light ID: " << light->getID() << '\n';
+                std::cout << "   " << std::left << std::setw(6) << light->getID()
+                          << std::setw(25) << typeid(*light).name()
+                          << std::setw(20) << light->getObjectID()
+                          << std::setw(30) << light->getColor() << '\n';
             }
         }
         std::cout << "============================================================================================================================\n";
@@ -362,6 +379,21 @@ std::shared_ptr<Material> Scene::loadMaterial(const fs::path& mtldir, const tiny
     m_materials[material.name] = mtl;
 
     return mtl;
+}
+
+std::shared_ptr<Light> Scene::sampleLight(bool delta) const {
+    if (m_lights.empty() || (delta && m_cdf.size() == m_lights.size()) || (!delta && m_cdf.empty())) { return nullptr; }
+
+    if (delta) {
+        int i = rand(m_cdf.size(), m_lights.size() - 1); // uniform sampling
+        std::cout << "Sample delta light " << i << " " << m_lights[i]->getID() << std::endl;
+        return m_lights[i];
+    } else {
+        float x  = rand(0.f, m_cdf.back());
+        auto itr = std::lower_bound(m_cdf.begin(), m_cdf.end(), x); // importance sampling based on area
+        int i    = std::distance(m_cdf.begin(), itr);
+        return m_lights[i];
+    }
 }
 
 }; // namespace spt
