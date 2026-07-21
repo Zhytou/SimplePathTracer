@@ -19,7 +19,7 @@ Ray PerspectiveCamera::emit(int row, int col, int k, int n) const {
     int sp_row = k / n;   // subpixel row
     float sp   = 1.f / n; // subpixel size
 
-    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel;
+    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel; // never use fixed subpixel samples, otherwise may cause aliasing and black pixels in the output image
     float y = -(row + sp_row * sp - 0.5f - m_height / 2.f) * m_pixel;
     float z = m_focus;
 
