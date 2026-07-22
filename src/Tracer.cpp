@@ -1,4 +1,5 @@
 #include "Tracer.hpp"
+#include "BoxLogger.hpp"
 #include "Material.hpp"
 #include "Scene.hpp"
 #include "Triangle.hpp"
@@ -13,8 +14,14 @@
 namespace spt {
 namespace fs = std::filesystem;
 
-Tracer::Tracer(int d, int rrd, int s, float p)
-    : m_depth(d), m_rrdepth(rrd), m_spp(s), m_rrp(p) {}
+Tracer::Tracer(int d, int rrd, int spp, float rrp, float lum)
+    : m_depth(d), m_rrdepth(rrd), m_spp(spp), m_rrp(rrp), m_lum(lum) {
+
+    BOX_LOG("TRACER CONFIGURATION", 125)
+        << "- " << std::left << std::setw(33) << "Maximum Depth:" << std::setw(7) << m_depth << " - " << std::setw(33) << "Samples Per Pixel:" << std::setw(7) << m_spp << '\n'
+        << "- " << std::left << std::setw(33) << "Russian Roulette Minimum Depth:" << std::setw(7) << m_rrdepth << " - " << std::setw(33) << "Russian Roulette Probability:" << std::setw(7) << std::fixed << std::setprecision(1) << m_rrp << '\n'
+        << "- " << std::left << std::setw(33) << "Luminance Limit:" << std::setw(7) << std::fixed << std::setprecision(1) << m_lum;
+}
 
 void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     const auto beg = std::chrono::steady_clock::now();
@@ -36,7 +43,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
             }
             color /= m_spp;
 
-            // 2. postprocess the color and set the image element
+            // 2. postprocess the output radiance[0, +inf] into color[0, 255] and set the image element
             color   = postprocess(color, 255.f);
             int idx = (row * width + col) * 3;
             img->setElement(row, col, 0, color.x);
@@ -75,8 +82,8 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
     }
 
     // 2. Apply russianian roulette
-    float rpp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f;
-    float rrweight = rpp <= m_rrp ? 1.f / m_rrp : 1.f;
+    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f;
+    float rrweight = rrp >= m_rrp ? 1.f / m_rrp : 1.f;
 
     // 3. Get input hit info
     auto mtl       = reci.material;
@@ -96,9 +103,9 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
     }
 
     // 6. Calculate direct light color
-    if (rpp < m_rrp && !mtl->isEmissive() && !mtl->isDelta()) { // only GLOSSY and DIFFUSE materials support light sampling
+    if (!mtl->isEmissive() && !mtl->isDelta()) { // only GLOSSY and DIFFUSE materials support light sampling
         for (auto delta : {true, false}) {
-            // 6.1. Sample both delta light and non-delta light
+            // 6.1 Sample both delta light and non-delta light
             auto light = scene.sampleLight(delta);
             if (light == nullptr) { continue; }
             float prob = scene.calLightProb(light);
@@ -107,7 +114,7 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
             bsdf = mtl->bsdf(wi, n, wo, uv);
             cos  = std::fabs(dot(n, wo)); // for both reflection and transmission
 
-            // 6.2. Do hit test
+            // 6.2 Do hit test
             Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
             Ray rayo(pp, wo);
             HitRecord reco;
@@ -115,24 +122,24 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
 
             // 6.3 Calculate direct light color
             if (delta) {
-                color_d += !hit ? light->getColor() * bsdf / prob : Vec3<float>{0.f}; // delta light only contribute when no object block the light
+                color_d += !hit ? light->getColor() * bsdf * cos / prob : Vec3<float>{0.f}; // delta light only contribute when no object block the light
             } else {
                 float pdf_light = light->pdf(wo, reco.normal, reco.distance) * prob;
                 float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
                 float weight    = mix(pdf_light, pdf_mtl);
-                color_d += hit && reco.material->isEmissive() && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+                color_d += hit && light->getObjectID() == reco.id && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
             }
         }
     }
 
     // 7. Calculate indirect light color
-    if (rpp < m_rrp && !mtl->isEmissive()) {
-        // 7.1. Sample material
+    if (rrp < m_rrp && !mtl->isEmissive()) {
+        // 7.1 Sample material
         wo   = mtl->scatter(wi, n, uv);
         bsdf = mtl->bsdf(wi, n, wo, uv);
         cos  = std::fabs(dot(n, wo));
 
-        // 7.2. Do hit test
+        // 7.2 Do hit test
         Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
         Ray rayo(pp, wo);
         HitRecord reco;
@@ -146,29 +153,22 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
         // !    integration property and should NOT be explicitly multiplied.
         // ! Instead, we directly evaluate the reflected/transmitted radiance scaled by
         // ! the Fresnel factor (and η² for transmission), ensuring energy conservation.
+        // 7.3 Calculate indirect light color
         if (mtl->isDelta()) {
-            color_ind = hit ? trace(scene, rayo, reco, depth + 1) * bsdf : Vec3<float>{0.f}; // delta material only reflects or refract when specific output directions hit an object
+            color_ind = hit ? trace(scene, rayo, reco, depth + 1) * bsdf : Vec3<float>{0.f};
         } else {
-            float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
-            float pdf_light = 0.0f;
-            float weight    = 1.0F;
+            float pdf_mtl = mtl->pdf(wi, n, wo, uv);
+            color_ind     = hit && !reco.material->isEmissive() && pdf_mtl > 0.f ? trace(scene, rayo, reco, depth + 1) * bsdf * cos / pdf_mtl : Vec3<float>{0.f}; // avoid duplicate direct light calculation when sampling material's ray hit area light
 
-            if (pdf_mtl > 0.f) {
-                if (hit && reco.material->isEmissive()) { // avoid duplicate direct light calculation when sampling material's ray hit area light
-                    auto light = scene.findLight(reco.id);
-                    float prob = scene.calLightProb(light);
-                    pdf_light  = light->pdf(wo, reco.normal, reco.distance) * prob;
-                    weight     = mix(pdf_mtl, pdf_light);
-                    color_ind  = reco.material->getEmission() * bsdf * cos * weight / pdf_mtl; // avoid trace recursion
-                } else {
-                    color_ind = trace(scene, rayo, reco, depth + 1) * bsdf * cos / pdf_mtl;
-                }
+            // 7.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
+            if (dot(color_ind, Vec3<float>{0.2126f, 0.7152f, 0.0722f}) > m_lum) { // luminance threshold
+                color_ind = Vec3<float>{0.f};
             }
         }
     }
 
     // 8. Combine colors and apply Russianian roulette
-    color = color_e + (color_d + color_ind) * rrweight;
+    color = color_e + color_d + color_ind * rrweight;
     return color;
 }
 

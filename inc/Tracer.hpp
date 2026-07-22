@@ -17,8 +17,8 @@
 namespace spt {
 class Tracer {
    public:
-    Tracer(int d = 10, int rrd = 3, int s = 3, float p = 0.8);
-    ~Tracer() = default;
+    Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY);
+    ~Tracer() {}
 
     /**
      * @brief  Render a scene and save the result as an image
@@ -64,10 +64,11 @@ class Tracer {
     static void progress(float percent, float second);
 
    private:
-    int m_depth   = 10;   // max depth of path trace
-    int m_rrdepth = 4;    // depth of russian roulette
-    int m_spp     = 32;   // samples per pixel
-    float m_rrp   = 0.8f; // probability of russian roulette
+    int m_depth   = 10;       // max depth of path trace
+    int m_rrdepth = 4;        // depth of russian roulette
+    int m_spp     = 32;       // samples per pixel
+    float m_rrp   = 0.8f;     // probability of russian roulette
+    float m_lum   = INFINITY; // luminance threshold for indirect light clamping, closed by default
 };
 
 } // namespace spt
