@@ -1,4 +1,5 @@
 #include "Scene.hpp"
+#include "BoxLogger.hpp"
 
 #include <array>
 #include <format>
@@ -193,119 +194,103 @@ void Scene::init(const fs::path& path) {
 
     // 7. Print scene info
     {
-        std::cout << "\n=============================================================================================================\n";
-        std::cout << "                                                 SCENE HIERARCHY INFO                                          \n";
-        std::cout << "===============================================================================================================\n";
-
         constexpr int n = 10;
         constexpr int k = 5;
 
-        // 7.1 Print camera configuration
-        std::cout << " [ CAMERA CONFIGURATION ]\n";
-        std::cout << "   - Eye:    " << m_camera->getEye() << '\n'
-                  << "   - Target: " << m_camera->getTarget() << '\n'
-                  << "   - Up:     " << m_camera->getUp() << '\n'
-                  << "   - Fovy:   " << m_camera->getFovy() << '\n'
-                  << "   - Focus: " << m_camera->getFocus() << '\n'
-                  << "-------------------------------------------------------------------------------------------------------------------------\n";
-
-        // 7.2 Print objects list
-        std::cout << " [ OBJECTS ]\n";
-        std::cout << "   " << std::left << std::setw(6) << "ID"
-                  << std::setw(25) << "Class Name"
-                  << std::setw(20) << "Assigned Material" << '\n';
-        std::cout << std::string(123, '-') << '\n';
-
-        if (m_objects.size() < n) {
-            for (const auto& obj : m_objects) {
-                auto mtl  = obj->getMaterial();
-                auto name = typeid(*obj).name();
-                std::cout << "   " << std::left << std::setw(6) << obj->getID()
-                          << std::setw(25) << name
-                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
-            }
-        } else {
-            for (const auto& obj : m_objects | std::views::take(k)) {
-                auto mtl  = obj->getMaterial();
-                auto name = typeid(*obj).name();
-                std::cout << "   " << std::left << std::setw(6) << obj->getID()
-                          << std::setw(25) << name
-                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
-            }
-            std::cout << "   ......\n";
-            for (const auto& obj : m_objects | std::views::drop(m_objects.size() - k)) {
-                auto mtl  = obj->getMaterial();
-                auto name = typeid(*obj).name();
-                std::cout << "   " << std::left << std::setw(6) << obj->getID()
-                          << std::setw(25) << name
-                          << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
-            }
-        }
-        std::cout << "-------------------------------------------------------------------------------------------------------------------------\n";
-
-        // 7.3 Print materials summary
-        std::cout << " [ MATERIALS SUMMARY ]\n";
-        std::cout << "   " << std::left << std::setw(15) << "Name"
-                  << std::setw(40) << "Material Type"
-                  << std::setw(30) << "Albedo (R, G, B)"
-                  << std::setw(12) << "Roughness"
-                  << std::setw(10) << "Metallic"
-                  << std::setw(10) << "Opacity"
-                  << std::setw(8) << "IOR" << '\n';
-        std::cout << std::string(123, '-') << '\n';
-
-        for (auto [name, mtlw] : m_materials) {
-            if (mtlw.expired()) { continue; }
-
-            auto mtl = mtlw.lock();
+        // 7.0 Lambda functors and temperol variables
+        std::stringstream ss;
+        auto printObjInfo = [&ss](std::shared_ptr<Renderable> obj) {
+            if (!obj) { return; }
+            auto mtl  = obj->getMaterial();
+            auto name = typeid(*obj).name();
+            ss << std::left
+               << std::setw(6) << obj->getID()
+               << std::setw(25) << name
+               << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+        };
+        auto printMtlInfo = [&ss](std::shared_ptr<Material> mtl) {
+            if (!mtl) { return; }
             Vec2<float> uv(0.5f);
+            auto name          = mtl->getName();
             auto type          = mtl->getTypeStr();
             Vec3<float> albedo = mtl->getAlbedo(uv);
             float roughness    = mtl->getRoughness(uv);
             float metallic     = mtl->getMetallic(uv);
             float opacity      = mtl->getOpacity();
             float ior          = mtl->getIOR();
+            if (name.size() >= 15) {
+                name = name.substr(0, 10) + "...";
+            }
+            ss << std::left << std::fixed << std::setprecision(2)
+               << std::setw(15) << name
+               << std::setw(40) << type
+               << std::setw(30) << albedo
+               << std::setw(12) << roughness
+               << std::setw(10) << metallic
+               << std::setw(10) << opacity
+               << std::setw(6) << ior << '\n';
+        };
+        auto printLightInfo = [&ss](std::shared_ptr<Light> light) {
+            if (!light) { return; }
+            ss << std::left
+               << std::setw(6) << light->getID()
+               << std::setw(25) << typeid(*light).name()
+               << std::setw(20) << light->getObjectID()
+               << std::setw(30) << light->getColor() << '\n';
+        };
 
-            std::cout << "   " << std::left << std::setw(15) << mtl->getName()
-                      << std::setw(40) << type
-                      << std::setw(30) << albedo
-                      << std::setw(12) << std::fixed << std::setprecision(4) << roughness
-                      << std::setw(10) << metallic
-                      << std::setw(10) << opacity
-                      << std::setw(8) << ior << '\n';
+        // 7.1 Print camera configuration
+        BOX_LOG("CAMERA SETTINGS", 125)
+            << std::left << std::setw(15) << " - Eye:    " << std::setw(25) << m_camera->getEye() << std::setw(15) << " - Target: " << std::setw(25) << m_camera->getTarget() << std::setw(15) << " - Up:     " << std::setw(25) << m_camera->getUp() << '\n'
+            << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n';
+
+        // 7.2 Print objects list
+        if (m_objects.size() < n) {
+            for (const auto& obj : m_objects) { printObjInfo(obj); }
+        } else {
+            for (const auto& obj : m_objects | std::views::take(k)) { printObjInfo(obj); }
+            ss << "   ......\n";
+            for (const auto& obj : m_objects | std::views::drop(m_objects.size() - k)) { printObjInfo(obj); }
         }
-        std::cout << "-------------------------------------------------------------------------------------------------------------------------\n";
+
+        BOX_LOG("RENDERABLE OBJECTS", 125)
+            << std::left
+            << std::setw(6) << "ID"
+            << std::setw(25) << "Class Name"
+            << std::setw(20) << "Assigned Material" << '\n'
+            << std::string(123, '-') << '\n'
+            << ss.rdbuf(); //
+
+        // 7.3 Print materials summary
+        for (auto [name, mtlw] : m_materials) {
+            if (mtlw.expired()) { continue; }
+            printMtlInfo(mtlw.lock());
+        }
+        BOX_LOG("RENDERABLE MATERIALS", 125)
+            << std::left
+            << std::setw(15) << "Name"
+            << std::setw(40) << "Material Type"
+            << std::setw(30) << "Albedo (R, G, B)"
+            << std::setw(12) << "Roughness"
+            << std::setw(10) << "Metallic"
+            << std::setw(10) << "Opacity"
+            << std::setw(6) << "IOR" << '\n'
+            << ss.rdbuf(); //
 
         // 7.4 Print light sources list
-        std::cout << " [ LIGHT SOURCES ]\n";
-        std::cout << "   " << std::left << std::setw(6) << "ID"
-                  << std::setw(25) << "Class Name"
-                  << std::setw(20) << "Object ID"
-                  << std::setw(30) << "Color" << '\n';
-        std::cout << std::string(123, '-') << '\n';
         if (m_lights.size() < n) {
-            for (const auto& light : m_lights) {
-                std::cout << "   " << std::left << std::setw(6) << light->getID()
-                          << std::setw(25) << typeid(*light).name()
-                          << std::setw(20) << light->getObjectID()
-                          << std::setw(30) << light->getColor() << '\n';
-            }
+            for (const auto& light : m_lights) { printLightInfo(light); }
         } else {
-            for (const auto& light : m_lights | std::views::take(k)) {
-                std::cout << "   " << std::left << std::setw(6) << light->getID()
-                          << std::setw(25) << typeid(*light).name()
-                          << std::setw(20) << light->getObjectID()
-                          << std::setw(30) << light->getColor() << '\n';
-            }
-            std::cout << "   ......\n";
-            for (const auto& light : m_lights | std::views::drop(m_lights.size() - k)) {
-                std::cout << "   " << std::left << std::setw(6) << light->getID()
-                          << std::setw(25) << typeid(*light).name()
-                          << std::setw(20) << light->getObjectID()
-                          << std::setw(30) << light->getColor() << '\n';
-            }
+            for (const auto& light : m_lights | std::views::take(k)) { printLightInfo(light); }
+            ss << "   ......\n";
+            for (const auto& light : m_lights | std::views::drop(m_lights.size() - k)) { printLightInfo(light); }
         }
-        std::cout << "============================================================================================================================\n";
+        BOX_LOG("LIGHT SOURCES", 125)
+            << std::left << std::setw(6) << "ID"
+            << std::setw(25) << "Class Name"
+            << std::setw(20) << "Object ID"
+            << std::setw(30) << "Color" << '\n'
+            << ss.rdbuf();
     }
 }
 
