@@ -20,8 +20,9 @@ namespace spt {
 
 class Scene {
    public:
-    Scene()  = default;
-    ~Scene() = default;
+    Scene() {}
+    Scene(const std::filesystem::path& path) { init(path); }
+    ~Scene() { destroy(); }
 
     void init(const std::filesystem::path& path);
     void destroy();
