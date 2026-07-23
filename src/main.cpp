@@ -1,24 +1,32 @@
+#include <format>
 #include <iostream>
-#include <sstream>
 
-#include "Trace.hpp"
+#include "Scene.hpp"
+#include "Tracer.hpp"
 
 using namespace spt;
 
-int depth = 4;
+int depth   = 4;
 int rrdepth = 2;
-int spp = 4;
+int spp     = 144;
+float rrp   = 0.8f;
+float lum   = 10.f;
+int cnt     = 10; // bvh leaf node count
 
-std::string dir = "../example/staircase/";
-std::string config = "staircase.xml";
+std::filesystem::path config = "../ast/json/glossy-sphere.json";
 
 int main() {
-  std::stringstream name;
-  name << config.substr(0, config.size()-4) << '_' << "spp" << spp << ".png";
+    std::string name = std::format("{}_{}_{}_spp{}.png", config.stem().string(), depth, rrdepth, spp);
 
-  Tracer tracer(depth, rrdepth, spp);
-  tracer.load(dir, config, 40);
-  tracer.render(name.str());
+    try {
+        Tracer tracer(depth, rrdepth, spp, rrp, lum);
+        Scene scene(config, cnt);
+        tracer.render(scene, name);
+        std::cout << name << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
-  return 0;
+    return 0;
 }
