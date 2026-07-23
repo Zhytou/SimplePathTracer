@@ -8,12 +8,12 @@ using namespace spt;
 
 int depth   = 4;
 int rrdepth = 2;
-int spp     = 144;
+int spp     = 16;
 float rrp   = 0.8f;
-float lum   = 10.f;
-int cnt     = 10; // bvh leaf node count
+float lum   = 5.f;
+int cnt     = 100; // bvh leaf node count
 
-std::filesystem::path config = "../ast/json/glossy-sphere.json";
+std::filesystem::path config = "../ast/json/dragon.json";
 
 int main() {
     std::string name = std::format("{}_{}_{}_spp{}.png", config.stem().string(), depth, rrdepth, spp);
