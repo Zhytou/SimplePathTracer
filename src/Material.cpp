@@ -49,17 +49,10 @@ Vec3<float> Material::reflect(const Vec3<float>& V, const Vec3<float>& N, const 
         } break;
         // glossy reflection
         case MATERIAL_SURFACE_GLOSSY: {
-            // GGX and COSINE combined importance sampling
-            float prob = rand(0.0f, 1.0f);
-            float ref  = ratio(V, N, UV);
-
-            if (prob > ref) {
-                L = sample(V, N, UV, "COSINE");
-            } else {
-                Vec3<float> H = sample(V, N, UV, "GGX");
-                float HdotV   = dot(H, V);
-                L             = normalize(H * 2 * HdotV - V);
-            }
+            // GGX importance sampling
+            Vec3<float> H = sample(V, N, UV, "GGX");
+            float HdotV   = dot(H, V);
+            L             = normalize(H * 2 * HdotV - V);
         } break;
         // diffuse reflection
         case MATERIAL_SURFACE_DIFFUSE: {
@@ -124,25 +117,20 @@ Vec3<float> Material::transmit(const Vec3<float>& V, const Vec3<float>& N, const
 }
 
 float Material::pdf(const Vec3<float>& V, const Vec3<float>& N, const Vec3<float>& L, const Vec2<float>& UV) const {
-    float PDF = 0.f;
+    float pdf = 0.f;
 
     switch (m_type & SURFACE_MASK) {
         // perfect specular reflection or transimission
         case MATERIAL_SURFACE_SPECULAR: {
-            PDF = INFINITY; // delta distribution
+            pdf = INFINITY; // delta distribution
         } break;
         // glossy reflection or transimission
         case MATERIAL_SURFACE_GLOSSY: {
-            // pdf of GGX and COSINE combined importance sampling
-            // TODO: add pdf calculation for glossy reflection
             Vec3<float> H = normalize(V + L);
-            float HdotV   = dot(H, V);
-            float HdotN   = dot(H, N);
-            float NdotL   = dot(N, L);
-            float F0      = max(Fresnel_Zero(UV));
+            float HdotV   = std::max(dot(H, V), 0.f);
+            float HdotN   = std::max(dot(H, N), 0.f);
             float D       = GGX_D(HdotN, UV);
-            float denom   = 4 * HdotV + EPS; // avoid division by zero
-            PDF           = F0 * D * HdotN / denom + (1 - F0) * NdotL / PI;
+            pdf           = D * HdotN / (4 * HdotV + EPS); // avoid division by zero
 
             // TODO: add pdf calculation for glossy transimission
             // Vec3<float> H = normalize(V * eta + L);
@@ -157,15 +145,15 @@ float Material::pdf(const Vec3<float>& V, const Vec3<float>& N, const Vec3<float
         } break;
         // diffuse reflection
         case MATERIAL_SURFACE_DIFFUSE: {
-            float NdotL = dot(N, L);
-            PDF         = NdotL / PI;
+            float NdotL = std::max(dot(N, L), 0.f);
+            pdf         = NdotL / PI;
         } break;
         default: {
-            PDF = 0.f;
+            pdf = 0.f;
         }
     }
 
-    return PDF;
+    return pdf;
 }
 
 float Material::ratio(const Vec3<float>& V, const Vec3<float>& N, const Vec2<float>& UV) const {
@@ -301,15 +289,14 @@ Vec3<float> Material::brdf(const Vec3<float>& V, const Vec3<float>& N, const Vec
     float G        = Smith_G(NdotV, NdotL, UV);
     Vec3<float> F0 = Fresnel_Zero(UV);
     Vec3<float> F  = Fresnel_Schlick(VdotH, F0);
-    Vec3<float> NF = Vec3<float>(1.f) - F;
 
     switch (m_type & SURFACE_MASK) {
         case MATERIAL_SURFACE_DIFFUSE: {
-            return NF * (1 - metallic) * color / PI;
+            return (1 - metallic) * color / PI;
         }
         case MATERIAL_SURFACE_GLOSSY: {
             float denom = std::max(4.0f * NdotV * NdotL, EPS);
-            return NF * (1 - metallic) * color / PI + F * D * G / denom;
+            return (1 - metallic) * color / PI + F * D * G / denom;
         }
         case MATERIAL_SURFACE_SPECULAR: {
             // H should be same as N for perfect reflection
