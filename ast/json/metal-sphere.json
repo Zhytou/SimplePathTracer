@@ -15,23 +15,26 @@
             }
         ]
     },
+    "geometry": {
+        "sphere": [
+            {
+                "name": "sphere",
+                "center": [180, 185, 165],
+                "radius": 80,
+                "default_mtl": {
+                    "albedo": [0.725, 0.71, 0.68],
+                    "opacity": 1.0,
+                    "metallic": 1.0,
+                    "roughness": 0.0
+                }
+            }
+        ]
+    },
     "model": [
         {
             "name": "cuboid",
             "obj_path": "../ast/obj/cuboid.obj",
-            "default_mtl": 
-            {
-                "albedo": [0.8, 0.8, 0.8],
-                "opacity": 1.0,
-                "metallic": 1.0,
-                "roughness": 0.0
-            }
-        },
-        {
-            "name": "short-cuboid",
-            "obj_path": "../ast/obj/short-cuboid.obj",
-            "default_mtl": 
-            {
+            "default_mtl": {
                 "albedo": [0.725, 0.71, 0.68],
                 "opacity": 1.0,
                 "metallic": 0.0,
