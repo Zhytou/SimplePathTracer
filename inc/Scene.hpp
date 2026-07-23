@@ -21,10 +21,10 @@ namespace spt {
 class Scene {
    public:
     Scene() {}
-    Scene(const std::filesystem::path& path) { init(path); }
+    Scene(const std::filesystem::path& path, int cnt = 50) { init(path, cnt); }
     ~Scene() { destroy(); }
 
-    void init(const std::filesystem::path& path);
+    void init(const std::filesystem::path& path, int cnt = 50);
     void destroy();
 
     std::shared_ptr<Triangle> loadTriangle(int tid, int mid, const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape);

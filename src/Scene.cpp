@@ -13,7 +13,7 @@ namespace spt {
 
 namespace fs = std::filesystem;
 
-void Scene::init(const fs::path& path) {
+void Scene::init(const fs::path& path, int leafcnt) {
     // 0. Read config file
     std::ifstream file(path);
     if (!file.is_open()) { throw std::runtime_error(std::format("Scene::init: Invalid config file path {}", path.string())); }
@@ -190,7 +190,7 @@ void Scene::init(const fs::path& path) {
 
     // 6. Set bounding volume hierarchy
     auto aabb = BVH::mergeAABBs(m_objects, 0, m_objects.size());
-    m_bvh     = BVH::constructBVH(m_objects, aabb, 0, m_objects.size(), 50);
+    m_bvh     = BVH::constructBVH(m_objects, aabb, 0, m_objects.size(), leafcnt);
 
     // 7. Print scene info
     {
