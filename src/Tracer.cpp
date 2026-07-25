@@ -1,64 +1,102 @@
 #include "Tracer.hpp"
 #include "BoxLogger.hpp"
 #include "Material.hpp"
+#include "Queue.hpp"
 #include "Scene.hpp"
 #include "Triangle.hpp"
 
+#include <atomic>
 #include <cassert>
 #include <chrono>
 #include <fstream>
 #include <functional>
-#include <omp.h>
+#include <mutex>
 #include <rapidjson/document.h>
+#include <thread>
 
 namespace spt {
 namespace fs = std::filesystem;
 
-Tracer::Tracer(int d, int rrd, int spp, float rrp, float lum)
-    : m_depth(d), m_rrdepth(rrd), m_spp(spp), m_rrp(rrp), m_lum(lum) {
+Tracer::Tracer(int d, int rrd, int spp, float rrp, float lum, int ts, int thd)
+    : m_depth(d), m_rrdepth(rrd), m_spp(spp), m_rrp(rrp), m_lum(lum), m_thd(std::min((uint)thd, std::thread::hardware_concurrency() + 1)), m_ts(ts) {
 
     BOX_LOG("TRACER CONFIGURATION", 125)
         << "- " << std::left << std::setw(33) << "Maximum Depth:" << std::setw(7) << m_depth << " - " << std::setw(33) << "Samples Per Pixel:" << std::setw(7) << m_spp << '\n'
         << "- " << std::left << std::setw(33) << "Russian Roulette Minimum Depth:" << std::setw(7) << m_rrdepth << " - " << std::setw(33) << "Russian Roulette Probability:" << std::setw(7) << std::fixed << std::setprecision(1) << m_rrp << '\n'
-        << "- " << std::left << std::setw(33) << "Luminance Limit:" << std::setw(7) << std::fixed << std::setprecision(1) << m_lum;
+        << "- " << std::left << std::setw(33) << "Luminance Limit:" << std::setw(7) << std::fixed << std::setprecision(1) << m_lum << " - " << std::setw(33) << "Tile Size:" << std::setw(7) << m_ts << '\n'
+        << "- " << std::left << std::setw(33) << "Number of Threads:" << std::setw(7) << m_thd << '\n';
 }
 
 void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
-    const auto beg = std::chrono::steady_clock::now();
-
+    // 0. Prepare render resources
     auto camera      = scene.getCamera();
     const int height = camera->getHeight();
     const int width  = camera->getWidth();
     const int n      = sqrt(m_spp); // subpixel sampling factor(n * n grid)
     auto img         = std::make_shared<Image<unsigned char>>(width, height, 3);
 
-#pragma omp parallel for num_threads(32)
-    for (int row = 0; row < height; row++) {
-        for (int col = 0; col < width; col++) {
-            // 1. render the pixel color by path tracing
-            Vec3<float> color(0.f);
-            for (int k = 0; k < m_spp; k++) {
-                Ray ray = camera->emit(row, col, k, n);
-                color += cast(scene, ray);
-            }
-            color /= m_spp;
-
-            // 2. postprocess the output radiance[0, +inf] into color[0, 255] and set the image element
-            color   = postprocess(color, 255.f);
-            int idx = (row * width + col) * 3;
-            img->setElement(row, col, 0, color.x);
-            img->setElement(row, col, 1, color.y);
-            img->setElement(row, col, 2, color.z);
-
-            // 3. show progress
-            float percent                    = 100.f * (row * width + col) / (height * width - 1);
-            auto cur                         = std::chrono::steady_clock::now();
-            std::chrono::duration<float> dur = cur - beg;
-            progress(percent, dur.count());
+    // 1. Split frame into mutiple tiles
+    struct Tile {
+        int r0 = 0, c0 = 0;
+        int r1 = 0, c1 = 0;
+    };
+    Queue<Tile> tiles;
+    for (int row = 0; row < height; row += m_ts) {
+        for (int col = 0; col < width; col += m_ts) {
+            tiles.push({row, col, std::min(height, row + m_ts), std::min(width, col + m_ts)});
         }
     }
 
+    // 2. Initialize timing/progress counter and synchronization
+    const auto beg       = std::chrono::steady_clock::now();
+    int tot              = tiles.size(); // total number of tiles
+    std::atomic<int> cnt = 0;            // completed tile counter
+    std::mutex mtx;
+
+    // 3. Define tile worker routine
+    auto rendertile = [&]() {
+        Tile tile;
+        while (tiles.pop(tile)) {
+            for (int row = tile.r0; row < tile.r1; row++) {
+                for (int col = tile.c0; col < tile.c1; col++) {
+                    // 3.1 render the pixel color by path tracing
+                    Vec3<float> color(0.f);
+                    for (int k = 0; k < m_spp; k++) {
+                        Ray ray = camera->emit(row, col, k, n);
+                        color += cast(scene, ray);
+                    }
+                    color /= m_spp;
+
+                    // 3.2 postprocess the output radiance[0, +inf] into color[0, 255] and set the image element
+                    color   = postprocess(color, 255.f);
+                    int idx = (row * width + col) * 3;
+                    img->setElement(row, col, 0, color.x);
+                    img->setElement(row, col, 1, color.y);
+                    img->setElement(row, col, 2, color.z);
+                }
+            }
+
+            // 3.3 show progress
+            float per                        = 100.f * cnt++ / tot;              // percentage of accomplished tiles
+            auto cur                         = std::chrono::steady_clock::now(); // current time
+            std::chrono::duration<float> dur = cur - beg;
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                progress(per, dur.count());
+            }
+        }
+    };
+
+    // 4. Spawn worker threads and wait for completion
+    std::vector<std::thread> thds;
+    for (int i = 0; i < m_thd; i++) {
+        thds.emplace_back(rendertile);
+    }
+    for (auto& thd : thds) {
+        thd.join();
+    }
     Image<unsigned char>::write(img, imgpath);
+
     return;
 }
 
@@ -81,9 +119,9 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
         return color;
     }
 
-    // 2. Apply russianian roulette
-    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f;
-    float rrweight = rrp >= m_rrp ? 1.f / m_rrp : 1.f;
+    // 2. Apply russian roulette
+    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
+    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
 
     // 3. Get input hit info
     auto mtl       = reci.material;
@@ -127,7 +165,7 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
                 float pdf_light = light->pdf(wo, reco.normal, reco.distance) * prob;
                 float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
                 float weight    = mix(pdf_light, pdf_mtl);
-                color_d += hit && light->getObjectID() == reco.id && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+                color_d += hit && reco.material->isEmissive() && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
             }
         }
     }

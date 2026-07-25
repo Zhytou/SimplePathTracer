@@ -17,7 +17,7 @@
 namespace spt {
 class Tracer {
    public:
-    Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY);
+    Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32);
     ~Tracer() {}
 
     /**
@@ -69,6 +69,8 @@ class Tracer {
     int m_spp     = 32;       // samples per pixel
     float m_rrp   = 0.8f;     // probability of russian roulette
     float m_lum   = INFINITY; // luminance threshold for indirect light clamping, closed by default
+    int m_thd     = 32;       //number of threads used for rendering
+    int m_ts      = 32;       // size of tile for parallel rendering
 };
 
 } // namespace spt
