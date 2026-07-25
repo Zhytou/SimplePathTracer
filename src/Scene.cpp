@@ -347,7 +347,7 @@ std::shared_ptr<Material> Scene::loadMaterial(const fs::path& mtldir, const tiny
     // - metallic distinguishes between conductive, semiconductive, and dielectric materials
     //   - for conductive materials, only reflection happens
     //   - while semiconductive and dielectric materials support both reflection and transmission, using opacity to indicate transparency and ior to indicate the real part of the index of refraction
-    MaterialType surface = material.roughness > 0.9 ? MaterialType::MATERIAL_SURFACE_DIFFUSE : (material.roughness < 0.1 ? MaterialType::MATERIAL_SURFACE_SPECULAR : MaterialType::MATERIAL_SURFACE_GLOSSY);
+    MaterialType surface = material.roughness > 0.5 ? MaterialType::MATERIAL_SURFACE_DIFFUSE : (material.roughness < 0.01 ? MaterialType::MATERIAL_SURFACE_SPECULAR : MaterialType::MATERIAL_SURFACE_GLOSSY);
     MaterialType physics = material.metallic > 0.9 ? MaterialType::MATERIAL_PHYSICS_CONDUCTIVE : (material.metallic < 0.1 ? MaterialType::MATERIAL_PHYSICS_DIELECTRIC : MaterialType::MATERIAL_PHYSICS_SEMICONDUCTIVE);
 
     std::shared_ptr<Material> mtl = std::make_shared<Material>(material.name);
