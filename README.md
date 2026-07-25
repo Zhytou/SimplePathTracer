@@ -53,7 +53,7 @@ mkdir build
 cd build
 cmake ../
 
-# 渲染康奈尔盒模型
-make main
-./main
+# 运行路径追踪渲染程序
+make tracer
+./tracer
 ```
