@@ -161,8 +161,7 @@ float Material::ratio(const Vec3<float>& V, const Vec3<float>& N, const Vec2<flo
     Vec3<float> F0 = Fresnel_Zero(UV);
     Vec3<float> F  = Fresnel_Schlick(NdotV, F0);
 
-    return max(F);
-    // return std::clamp(0.2126f * F.x + 0.7152f * F.y + 0.0722f * F.z, 0.0f, 1.0f);
+    return std::clamp(0.2126f * F.x + 0.7152f * F.y + 0.0722f * F.z, 0.0f, 1.0f);
 }
 
 Vec3<float> Material::sample(const Vec3<float>& V, const Vec3<float>& N, const Vec2<float>& UV, const std::string& mode) const {
@@ -381,19 +380,16 @@ Vec3<float> Material::btdf(const Vec3<float>& V, const Vec3<float>& N, const Vec
 }
 
 Vec3<float> Material::Fresnel_Zero(const Vec2<float>& UV) const {
-    Vec3<float> F0(0.f);
+    Vec3<float> F0(0.04f); // default reflectance at normal incidence
 
     Vec3<float> albedo = getAlbedo(UV);
     float metallic     = getMetallic(UV);
     float ior          = getIOR();
 
-    if (m_type & (MATERIAL_PHYSICS_SEMICONDUCTIVE | MATERIAL_PHYSICS_DIELECTRIC) && ior > 1.f) { // dielectric or semiconductor support both reflection and transmission
-        F0 = Vec3<float>(ior);
-        F0 = pow((F0 - Vec3<float>(1.f)) / (F0 + Vec3<float>(1.f)), 2.f);
-    } else { // conductor supports only reflection
-        F0 = Vec3<float>(0.04f);
-        F0 = F0 * (1 - metallic) + albedo * metallic; // mix based on metallic. For metals, baseColor = F0 (reflectance at normal incidence); For non-metals, F0 ≈ 0.04.
+    if (isTransmissive()) {
+        F0 = pow(Vec3<float>(ior - 1.f) / Vec3<float>(ior + 1.f), 2.f);
     }
+    F0 = F0 * (1 - metallic) + albedo * metallic; // mix based on metallic. For metals, baseColor = F0 (reflectance at normal incidence); For non-metals, F0 ≈ 0.04.
 
     return F0;
 }
