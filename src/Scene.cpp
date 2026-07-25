@@ -166,7 +166,7 @@ void Scene::init(const fs::path& path, int leafcnt) {
                 if (mtl->isEmissive()) {
                     m_ids[object->getID()] = lid;
                     m_lights.push_back(std::make_shared<AreaLight>(lid++, mtl->getEmission(), object));
-                    m_cdf.push_back(object->getArea());
+                    m_cdf.push_back((m_cdf.empty() ? 0.f : m_cdf.back()) + object->getArea());
                 }
             }
         }
@@ -371,7 +371,6 @@ std::shared_ptr<Light> Scene::sampleLight(bool delta) const {
 
     if (delta) {
         int i = rand(m_cdf.size(), m_lights.size() - 1); // uniform sampling
-        std::cout << "Sample delta light " << i << " " << m_lights[i]->getID() << std::endl;
         return m_lights[i];
     } else {
         float x  = rand(0.f, m_cdf.back());
