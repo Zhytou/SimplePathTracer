@@ -2,17 +2,6 @@
 
 namespace spt {
 
-Vec3<float> Sphere::getRandomPoint() const {
-    float phi   = rand(0.0f, PI) - PI * 0.5f;
-    float theta = rand(0.0f, 2 * PI);
-
-    float x = ::cos(phi) * ::cos(theta);
-    float y = ::cos(phi) * ::sin(theta);
-    float z = ::sin(phi);
-
-    return m_center + Vec3<float>(x, y, z) * m_radius;
-}
-
 Vec2<float> Sphere::getTexCoord(const Vec3<float>& point) const {
     Vec3<float> dir = normalize(point - m_center);
     float phi       = std::acos(dir.y);
@@ -86,12 +75,10 @@ bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
 
     float t       = t1 >= tmin && t1 <= tmax ? t1 : t2;
     Vec3<float> p = ray.getPointAt(t);
-    rec.id        = m_id;
     rec.distance  = t;
     rec.point     = p;
     rec.texcoord  = getTexCoord(p);
     rec.normal    = normalize(p - m_center);
-    rec.material  = m_material;
 
     return true;
 }
@@ -100,6 +87,17 @@ AABB Sphere::wrap() const {
     Vec3<float> xyz1(m_center.x - m_radius, m_center.y - m_radius, m_center.z - m_radius);
     Vec3<float> xyz2(m_center.x + m_radius, m_center.y + m_radius, m_center.z + m_radius);
     return AABB(xyz1, xyz2);
+}
+
+Vec3<float> Sphere::sample() const {
+    float phi   = rand(0.0f, PI) - PI * 0.5f;
+    float theta = rand(0.0f, 2 * PI);
+
+    float x = ::cos(phi) * ::cos(theta);
+    float y = ::cos(phi) * ::sin(theta);
+    float z = ::sin(phi);
+
+    return m_center + Vec3<float>(x, y, z) * m_radius;
 }
 
 } // namespace spt

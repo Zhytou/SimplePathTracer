@@ -5,7 +5,7 @@
 
 namespace spt {
 
-Vec3<float> Triangle::getRandomPoint() const {
+Vec3<float> Triangle::sample() const {
     Vec3<float> e1 = m_vertex[2] - m_vertex[0];
     Vec3<float> e2 = m_vertex[1] - m_vertex[0];
 
@@ -97,12 +97,10 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
     if (texcoord.v < 0) { texcoord.v += 1.0f; }
 
     // 8. Set hit record
-    rec.id       = m_id;
     rec.distance = t;
     rec.point    = ray.getPointAt(t);
     rec.texcoord = texcoord;
     rec.normal   = m_normal;
-    rec.material = m_material;
 
     return true;
 }
