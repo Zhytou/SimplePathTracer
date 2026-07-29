@@ -1,8 +1,17 @@
 #include "AABB.hpp"
+#include "Primitive.hpp"
 
 #include <iostream>
 
 namespace spt {
+
+AABB AABB::create(const std::vector<std::shared_ptr<Primitive>>& primitives) {
+    AABB aabb;
+    for (const auto& prm : primitives) {
+        aabb.merge(prm->wrap());
+    }
+    return aabb;
+}
 
 bool AABB::intersect(const Ray& ray, float tmin, float tmax) const {
     Vec3<float> origin    = ray.getOrigin();

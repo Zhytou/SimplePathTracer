@@ -11,6 +11,8 @@
 
 namespace spt {
 
+class Primitive;
+
 /**
  * @brief Axis-Aligned Bounding Box
  */
@@ -18,6 +20,7 @@ struct AABB {
    public:
     AABB(const Vec3<float>& xyz1 = Vec3<float>{INFINITY}, const Vec3<float>& xyz2 = Vec3<float>{-INFINITY}) : m_xyz1(xyz1), m_xyz2(xyz2) {}
 
+    static AABB create(const std::vector<std::shared_ptr<Primitive>>& primitives);
     bool intersect(const Ray& ray, float tmin, float tmax) const;
     AABB& merge(const AABB& other);
 
