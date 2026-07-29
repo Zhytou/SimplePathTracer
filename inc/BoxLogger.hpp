@@ -13,31 +13,32 @@ namespace spt {
 class BoxLogger : public std::ostringstream {
    public:
     explicit BoxLogger(const char* title, int width = 88) : m_title(title), m_width(width), m_target(&std::cout) {}
-    ~BoxLogger() { flushToTarget(); }
+    ~BoxLogger() { flush(); }
 
     BoxLogger(const BoxLogger&)            = delete;
     BoxLogger& operator=(const BoxLogger&) = delete;
     BoxLogger(BoxLogger&&)                 = default;
     BoxLogger& operator=(BoxLogger&&)      = default;
 
-    BoxLogger& setTargetStream(std::ostream& os) {
+    const std::string& getTitle() const { return m_title; }
+    int getWidth() const { return m_width; }
+    void setWidth(int width) { m_width = width; }
+    BoxLogger& setTarget(std::ostream& os) {
         m_target = &os;
         return *this;
     }
 
-    BoxLogger& addDebugInfo(const char* tag, const char* file, int line) {
-        std::string fileNameStr(file);
-        size_t lastSlash = fileNameStr.find_last_of("/\\");
-        if (lastSlash != std::string::npos) {
-            fileNameStr = fileNameStr.substr(lastSlash + 1);
+    BoxLogger& info(const char* tag, const char* file, int line) {
+        std::string file_name(file);
+        size_t last_slash = file_name.find_last_of("/\\");
+        if (last_slash != std::string::npos) {
+            file_name = file_name.substr(last_slash + 1);
         }
 
-        *this << "[" << tag << " " << fileNameStr << ":" << line << "] ";
+        *this << "[" << tag << " " << file_name << ":" << line << "] ";
         return *this;
     }
-
-   private:
-    void flushToTarget() {
+    void flush() {
         if (m_target == nullptr || m_width <= 0 || str().empty()) { return; }
 
         // 1. Get the content string and output stream
@@ -77,6 +78,7 @@ class BoxLogger : public std::ostringstream {
         os.flush();
     }
 
+   private:
     std::string m_title;              // box title for top border
     int m_width;                      // content width(exclude border | and \n)
     std::ostream* m_target = nullptr; // output stream(e.g. std::cout or file handler created by caller)
@@ -84,10 +86,10 @@ class BoxLogger : public std::ostringstream {
 
 #define BOX_LOG(title, width) spt::BoxLogger(title, width)
 
-#define BOX_LOG_TRACE(title, width) BOX_LOG(title, width).addDebugInfo("TRACE", __FILE__, __LINE__)
-#define BOX_LOG_INFO(title, width)  BOX_LOG(title, width).addDebugInfo("INFO", __FILE__, __LINE__)
-#define BOX_LOG_WARN(title, width)  BOX_LOG(title, width).addDebugInfo("WARN", __FILE__, __LINE__)
-#define BOX_LOG_ERROR(title, width) BOX_LOG(title, width).addDebugInfo("ERROR", __FILE__, __LINE__)
+#define BOX_LOG_TRACE(title, width) BOX_LOG(title, width).info("TRACE", __FILE__, __LINE__)
+#define BOX_LOG_INFO(title, width)  BOX_LOG(title, width).info("INFO", __FILE__, __LINE__)
+#define BOX_LOG_WARN(title, width)  BOX_LOG(title, width).info("WARN", __FILE__, __LINE__)
+#define BOX_LOG_ERROR(title, width) BOX_LOG(title, width).info("ERROR", __FILE__, __LINE__)
 
 } // namespace spt
 
