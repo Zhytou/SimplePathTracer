@@ -2,17 +2,6 @@
 
 namespace spt {
 
-Vec2<float> Sphere::getTexCoord(const Vec3<float>& point) const {
-    Vec3<float> dir = normalize(point - m_center);
-    float phi       = std::acos(dir.y);
-    float theta     = std::atan2(dir.z, dir.x) + PI;
-
-    float u = theta / (2 * PI);
-    float v = phi / PI;
-
-    return Vec2<float>(u, v);
-}
-
 bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
     // ===================================================================================
     // [Mathematical Derivation: Ray-Sphere Intersection Algorithm]
@@ -74,10 +63,10 @@ bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
     }
 
     float t       = t1 >= tmin && t1 <= tmax ? t1 : t2;
-    Vec3<float> p = ray.getPointAt(t);
+    Vec3<float> p = ray.eval(t);
     rec.distance  = t;
     rec.point     = p;
-    rec.texcoord  = getTexCoord(p);
+    rec.texcoord  = parameterize(p);
     rec.normal    = normalize(p - m_center);
 
     return true;
@@ -98,6 +87,17 @@ Vec3<float> Sphere::sample() const {
     float z = ::sin(phi);
 
     return m_center + Vec3<float>(x, y, z) * m_radius;
+}
+
+Vec2<float> Sphere::parameterize(const Vec3<float>& point) const {
+    Vec3<float> dir = normalize(point - m_center);
+    float phi       = std::acos(dir.y);
+    float theta     = std::atan2(dir.z, dir.x) + PI;
+
+    float u = theta / (2 * PI);
+    float v = phi / PI;
+
+    return Vec2<float>(u, v);
 }
 
 } // namespace spt

@@ -98,7 +98,7 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
 
     // 8. Set hit record
     rec.distance = t;
-    rec.point    = ray.getPointAt(t);
+    rec.point    = ray.eval(t);
     rec.texcoord = texcoord;
     rec.normal   = m_normal;
 
@@ -114,6 +114,31 @@ AABB Triangle::wrap() const {
     xyz2.y = std::max(m_vertex[0].y, std::max(m_vertex[1].y, m_vertex[2].y));
     xyz2.z = std::max(m_vertex[0].z, std::max(m_vertex[1].z, m_vertex[2].z));
     return AABB(xyz1, xyz2);
+}
+
+Vec2<float> Triangle::parameterize(const Vec3<float>& point) const {
+    Vec3<float> p  = point;
+    Vec3<float> v0 = m_vertex[0];
+    Vec3<float> v1 = m_vertex[1];
+    Vec3<float> v2 = m_vertex[2];
+
+    Vec3<float> e0 = v1 - v0;
+    Vec3<float> e1 = v2 - v0;
+    Vec3<float> n  = cross(e0, e1);
+    float area     = length(n) / 2;
+    if (area < EPS) {
+        return m_texcoord[0];
+    }
+
+    Vec3<float> pv0 = v0 - p;
+    Vec3<float> pv1 = v1 - p;
+    Vec3<float> pv2 = v2 - p;
+
+    float u = dot(cross(pv2, pv0), m_normal) / dot(n, m_normal);
+    float v = dot(cross(pv0, pv1), m_normal) / dot(n, m_normal);
+    float w = 1.0f - u - v;
+
+    return m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
 }
 
 } // namespace spt

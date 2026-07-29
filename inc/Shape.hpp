@@ -15,7 +15,6 @@ class Shape {
     virtual ~Shape() {}
 
     int getID() const { return m_id; }
-    virtual float getArea() const { return 0.f; }
     void setID(int id) { m_id = id; }
 
     /**
@@ -40,6 +39,25 @@ class Shape {
      * @return Vec3<float> Random point on the shape.
      */
     virtual Vec3<float> sample() const = 0;
+    /**
+     * @brief Get the texture coordinates of the corresponding point on the shape.
+     * 
+     * @param p Point on the shape.
+     * @return Vec2<float> Texture coordinates of the point.
+     */
+    virtual Vec2<float> parameterize(const Vec3<float>& p) const = 0;
+    /**
+     * @brief Get the area of the shape.
+     * 
+     * @return float Area of the shape.
+     */
+    virtual float area() const = 0;
+    /**
+     * @brief Get the center of the shape.
+     * 
+     * @return Vec3<float> Center of the shape.
+     */
+    virtual Vec3<float> center() const = 0;
 
    protected:
     int m_id = -1;

@@ -14,7 +14,9 @@ class Triangle : public Shape {
     Triangle(int id) : Shape(id) {}
     ~Triangle() {}
 
-    float getArea() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
+    const std::array<Vec3<float>, 3>& getVertex() const { return m_vertex; }
+    const std::array<Vec2<float>, 3>& getTexCoord() const { return m_texcoord; }
+    const Vec3<float>& getNormal() const { return m_normal; }
     void setVertex(const std::array<Vec3<float>, 3>& v) { m_vertex = v; }
     void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
     void setNormal(const Vec3<float>& n) { m_normal = n; }
@@ -22,6 +24,9 @@ class Triangle : public Shape {
     virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
     virtual AABB wrap() const override;
     Vec3<float> sample() const override;
+    float area() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
+    Vec3<float> center() const override { return (m_vertex[0] + m_vertex[1] + m_vertex[2]) / 3.f; }
+    Vec2<float> parameterize(const Vec3<float>& p) const override;
 
    private:
     std::array<Vec3<float>, 3> m_vertex;
