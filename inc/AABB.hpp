@@ -11,6 +11,9 @@
 
 namespace spt {
 
+/**
+ * @brief Axis-Aligned Bounding Box
+ */
 struct AABB {
    public:
     AABB(const Vec3<float>& xyz1 = Vec3<float>{INFINITY}, const Vec3<float>& xyz2 = Vec3<float>{-INFINITY}) : m_xyz1(xyz1), m_xyz2(xyz2) {}
@@ -28,6 +31,7 @@ struct AABB {
     Vec3<float> m_xyz1 = Vec3<float>{INFINITY};
     Vec3<float> m_xyz2 = Vec3<float>{-INFINITY};
 };
+
 } // namespace spt
 
 #endif
