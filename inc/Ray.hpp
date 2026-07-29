@@ -12,9 +12,10 @@ class Ray {
 
     Vec3<float> getOrigin() const { return m_origin; }
     Vec3<float> getDirection() const { return m_direction; }
-    Vec3<float> getPointAt(const float& t) const { return m_origin + m_direction * t; }
     void setOrigin(const Vec3<float>& org) { m_origin = org; }
     void setDirection(const Vec3<float>& dir) { m_direction = normalize(dir); }
+
+    Vec3<float> eval(const float& t) const { return m_origin + m_direction * t; }
 
    private:
     Vec3<float> m_origin;
