@@ -1,17 +1,21 @@
 #include "DES.hpp"
+#include "Primitive.hpp"
 
 namespace spt {
 
-void DES::init(std::vector<std::shared_ptr<Emitter>> emitters) {
+std::shared_ptr<DES> DES::create(std::vector<std::shared_ptr<Emitter>> emitters) {
+    auto des = std::make_shared<DES>();
     for (auto emitter : emitters) {
         if (emitter->isDelta()) { continue; }
-        m_emitters.push_back(emitter);
-        m_areas.push_back((m_areas.empty() ? 0.f : m_areas.back()) + emitter->getArea());
+        auto area = emitter->getPrimitive()->getShape()->area();
+        des->m_emitters.push_back(emitter);
+        des->m_areas.push_back((des->m_areas.empty() ? 0.f : des->m_areas.back()) + area);
     }
     for (auto emitter : emitters) {
         if (!emitter->isDelta()) { continue; }
-        m_emitters.push_back(emitter);
+        des->m_emitters.push_back(emitter);
     } // make non-delta emitters first and delta emitters last
+    return des;
 }
 
 std::pair<std::shared_ptr<Emitter>, float> DES::sample(bool delta) const {

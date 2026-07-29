@@ -13,10 +13,21 @@ namespace spt {
  */
 class DES {
    public:
-    DES(std::vector<std::shared_ptr<Emitter>> emitters) { init(emitters); }
-    ~DES() {}
-
-    void init(std::vector<std::shared_ptr<Emitter>> emitters);
+    /**
+     * @brief Constructs a Direct Emission Sampler from a collection of scene emitters.
+     * 
+     * @param emitters Vector of emitters (light sources) to be sampled.
+     * @return std::shared_ptr<DES> Shared pointer to the newly created DES instance.
+     */
+    static std::shared_ptr<DES> create(std::vector<std::shared_ptr<Emitter>> emitters);
+    /**
+    * @brief Select an emitter and return its selection probability
+    * 
+    * @param delta If true, sample from delta light sources (e.g., directional/point lights);
+     *              otherwise, sample from area light sources.
+    * @return std::pair<std::shared_ptr<Emitter>, float> A pair containing the selected emitter 
+     *         and its selection probability.
+    */
     std::pair<std::shared_ptr<Emitter>, float> sample(bool delta = false) const;
 
    private:

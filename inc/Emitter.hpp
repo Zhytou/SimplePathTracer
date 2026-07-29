@@ -10,37 +10,35 @@ class Primitive;
 class Emitter {
    public:
     Emitter(int id, const Vec3<float>& color) : m_id(id), m_color(color) {}
+    Emitter(int id, const Vec3<float>& color, std::shared_ptr<Primitive> primitive) : m_id(id), m_color(color), m_primitive(primitive) {}
     virtual ~Emitter() {}
 
     virtual bool isDelta() const { return false; }
     int getID() const { return m_id; }
-    virtual int getPrimitiveID() const { return -1; }
-    virtual float getArea() const { return 0.f; }
     Vec3<float> getColor() const { return m_color; }
+    std::shared_ptr<Primitive> getPrimitive() const { return m_primitive.lock(); }
+    void setID(int id) { m_id = id; }
+    void setColor(const Vec3<float>& color) { m_color = color; }
+    void setPrimitive(std::shared_ptr<Primitive> primitive) { m_primitive = primitive; }
 
     virtual Vec3<float> sample(const Vec3<float>& p) const                          = 0;
     virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const = 0;
+    virtual float area() const { return 0.f; }
 
-   private:
+   protected:
     int m_id = -1;
-
-    Vec3<float> m_color = Vec3<float>(0.f);
+    Vec3<float> m_color{0.f};
+    std::weak_ptr<Primitive> m_primitive;
 };
 
 class AreaEmitter : public Emitter {
    public:
-    AreaEmitter(int id, const Vec3<float>& color, std::weak_ptr<Primitive> primitive) : Emitter(id, color), m_primitive(primitive) {}
+    AreaEmitter(int id, const Vec3<float>& color, std::shared_ptr<Primitive> primitive) : Emitter(id, color, primitive) {}
     ~AreaEmitter() {}
 
     virtual bool isDelta() const override { return false; }
-    virtual int getPrimitiveID() const override;
-    virtual float getArea() const override;
-
     virtual Vec3<float> sample(const Vec3<float>& p) const override;
     virtual float pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const override;
-
-   private:
-    std::weak_ptr<Primitive> m_primitive;
 };
 
 class PointEmitter : public Emitter {
