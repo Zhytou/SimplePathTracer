@@ -315,6 +315,15 @@ Vec<T, N> max(const Vec<T, N>& v1, const Vec<T, N>& v2) {
 }
 
 template <arithmetic T, size_t N>
+size_t argmax(const Vec<T, N>& v) {
+    size_t max_idx = 0;
+    for (int i = 1; i < N; i++) {
+        if (v.data[i] > v.data[max_idx]) { max_idx = i; }
+    }
+    return max_idx;
+}
+
+template <arithmetic T, size_t N>
 T min(const Vec<T, N>& v) {
     T t = v.data[0];
     for (int i = 1; i < N; i++) {
@@ -330,6 +339,15 @@ Vec<T, N> min(const Vec<T, N>& v1, const Vec<T, N>& v2) {
         v.data[i] = std::min(v1.data[i], v2.data[i]);
     }
     return v;
+}
+
+template <arithmetic T, size_t N>
+size_t argmin(const Vec<T, N>& v) {
+    size_t min_idx = 0;
+    for (int i = 1; i < N; i++) {
+        if (v.data[i] < v.data[min_idx]) { min_idx = i; }
+    }
+    return min_idx;
 }
 
 } // namespace spt
