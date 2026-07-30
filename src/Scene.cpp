@@ -205,7 +205,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     {
         constexpr int n     = 10;
         constexpr int k     = 5;
-        constexpr int width = 110; // width for box logging
+        constexpr int width = 115; // width for box logging
 
         // 7.0 Lambda functors and temperol variables
         std::stringstream ss;
@@ -213,11 +213,14 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             if (!prm) { throw std::runtime_error("Primitive is null"); }
             auto mtl = prm->getMaterial();
             auto spe = prm->getShape();
+            auto emt = prm->getEmitter();
 
             ss << std::left
-               << std::setw(6) << prm->getID()
-               << std::setw(25) << typeid(*spe).name()
-               << std::setw(20) << (mtl ? mtl->getName() : "None") << '\n';
+               << std::setw(15) << prm->getID()
+               << std::setw(23) << (spe ? typeid(*spe).name() : "None")
+               << std::setw(23) << (mtl ? mtl->getName() : "None")
+               << std::setw(23) << (emt ? typeid(*emt).name() : "None")
+               << '\n';
         };
         auto printMtlInfo = [&ss](std::shared_ptr<Material> mtl) {
             if (!mtl) { throw std::runtime_error("Material is null"); }
@@ -234,12 +237,12 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             }
             ss << std::left << std::fixed << std::setprecision(2)
                << std::setw(15) << name
-               << std::setw(28) << type
-               << std::setw(28) << albedo
+               << std::setw(25) << type
+               << std::setw(25) << albedo
                << std::setw(12) << roughness
-               << std::setw(10) << metallic
-               << std::setw(10) << opacity
-               << std::setw(6) << ior << '\n';
+               << std::setw(12) << metallic
+               << std::setw(12) << opacity
+               << std::setw(12) << ior << '\n';
         };
 
         // 7.1 Print camera configuration
@@ -257,9 +260,10 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         }
         BOX_LOG("RENDERABLE PRIMITIVES", width)
             << std::left
-            << std::setw(6) << "ID"
-            << std::setw(25) << "Class Name"
-            << std::setw(20) << "Assigned Material" << '\n'
+            << std::setw(15) << "ID"
+            << std::setw(23) << "Shape Name"
+            << std::setw(23) << "Material Name"
+            << std::setw(23) << "Emitter Name" << '\n'
             << std::string(width - 4, '-') << '\n'
             << ss.rdbuf(); //
 
@@ -271,12 +275,12 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         BOX_LOG("RENDERABLE MATERIALS", width)
             << std::left
             << std::setw(15) << "Name"
-            << std::setw(28) << "Material Type"
-            << std::setw(28) << "Albedo (R, G, B)"
+            << std::setw(25) << "Material Type"
+            << std::setw(25) << "Albedo (R, G, B)"
             << std::setw(12) << "Roughness"
-            << std::setw(10) << "Metallic"
-            << std::setw(10) << "Opacity"
-            << std::setw(6) << "IOR" << '\n'
+            << std::setw(12) << "Metallic"
+            << std::setw(12) << "Opacity"
+            << std::setw(12) << "IOR" << '\n'
             << ss.rdbuf(); //
     }
 }
