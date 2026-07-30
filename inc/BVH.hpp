@@ -1,34 +1,61 @@
 #ifndef SPT_BVH_HPP
 #define SPT_BVH_HPP
 
-#include <algorithm>
-#include <cassert>
-#include <iostream>
-#include <memory>
-#include <vector>
-
 #include "AABB.hpp"
-#include "Hittable.hpp"
-#include "Renderable.hpp"
+#include "Primitive.hpp"
 
 namespace spt {
 
-class BVH : public Hittable {
+/**
+ * @brief Bounding Volume Hierarchy (BVH) for fast ray tracing.
+ */
+class BVH {
    public:
-    BVH(int count, bool leaf) : Hittable(-1), m_count(count), m_leaf(leaf) {}
+    /**
+     * @brief Recursively build BVH node using either Binned-SAH or Exact-SAH
+     * 
+     * @param primitives Span of primitives for current node
+     * @param aabb Bounding box enclosing all input primitives
+     * @param max_leaf_size Maximum primitive count inside a leaf node
+     * @param num_bins Bin count for Binned-SAH; <=0 enables Exact-SAH
+     * @return Shared pointer to newly constructed BVH node
+     */
+    static std::shared_ptr<BVH> create(std::span<std::shared_ptr<Primitive>> prms, const AABB& aabb, int max_leaf_size, int num_bins = -1);
 
-    static std::shared_ptr<BVH> constructBVH(std::vector<std::shared_ptr<Renderable>>& objects, const AABB& aabb, int beg, int end, int cnt);
-    static void sortObjects(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end, int axis);
-    static float computeSAH(const AABB& parent, const AABB& left, const AABB& right, int cnt1, int cnt2);
-    static AABB mergeAABBs(std::vector<std::shared_ptr<Renderable>>& objects, int beg, int end);
+    /**
+     * @brief Evaluate SAH cost of a split
+     * 
+     * @param parent Parent bounding box
+     * @param left Left bounding box
+     * @param right Right bounding box
+     * @param lcount Number of primitives in left child
+     * @param rcount Number of primitives in right child
+     * @return SAH cost of the split
+     */
+    static float evaluate(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount);
 
-    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
-    virtual AABB wrap() const override { return m_aabb; }
+    /**
+     * @brief Test ray intersection against the BVH node under world coordinates.
+     * 
+     * @param ray Ray to check intersection
+     * @param tmin Minimum parameter value for ray intersection
+     * @param tmax Maximum parameter value for ray intersection
+     * @param rec Hit record to store intersection information
+     * @return True if the ray intersects the BVH node, False otherwise
+     */
+    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const;
+    /**
+     * @brief Get the bounding box of the BVH node
+     * 
+     * @return Bounding box of the BVH node
+     */
+    virtual AABB wrap() const { return m_aabb; }
 
    private:
-    int m_count;
-    bool m_leaf;
-    std::vector<std::shared_ptr<Hittable>> m_children;
+    bool m_leaf                  = false;
+    std::shared_ptr<BVH> m_left  = nullptr;
+    std::shared_ptr<BVH> m_right = nullptr;
+    std::vector<std::shared_ptr<Primitive>> m_primitives;
     AABB m_aabb;
 };
 
