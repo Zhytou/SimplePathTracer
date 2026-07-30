@@ -3,11 +3,14 @@
 
 #include <cassert>
 #include <cmath>
+#include <memory>
 #include <ostream>
 #include <random>
 #include <sstream>
 #include <vector>
 
+#include "Mat.hpp"
+#include "Transform.hpp"
 #include "Vec.hpp"
 
 namespace spt {
@@ -39,9 +42,9 @@ T rand(T min, T max) {
 static std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
     std::vector<std::string> tokens;
     std::string token;
-    std::istringstream tokenStream(str);
+    std::istringstream stream(str);
 
-    while (std::getline(tokenStream, token, delimiter)) {
+    while (std::getline(stream, token, delimiter)) {
         tokens.push_back(token);
     }
 
