@@ -3,64 +3,64 @@
 
 #include "BVH.hpp"
 #include "Camera.hpp"
-#include "Hittable.hpp"
-#include "Light.hpp"
+#include "DES.hpp"
+#include "Emitter.hpp"
+#include "HitRecord.hpp"
 #include "Material.hpp"
-#include "Renderable.hpp"
-#include "Sphere.hpp"
-#include "Triangle.hpp"
-
-#include <filesystem>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include "Shape.hpp"
 
 namespace spt {
 
 class Scene {
    public:
     Scene() {}
-    Scene(const std::filesystem::path& path, int cnt = 50) { init(path, cnt); }
-    ~Scene() { destroy(); }
+    Scene(const std::filesystem::path& path, int max_leaf_size) { init(path, max_leaf_size); }
+    ~Scene() { clear(); }
 
-    void init(const std::filesystem::path& path, int cnt = 50);
-    void destroy();
+    /**
+     * @brief Initialize the scene from a json file.
+     * 
+     * @param path Path to the scene file.
+     * @param max_leaf_size Maximum node number for a leaf node in the BVH.
+     */
+    void init(const std::filesystem::path& path, int max_leaf_size);
+    /**
+     * @brief Clear/Reset the scene.
+     */
+    void clear();
 
-    std::shared_ptr<Triangle> loadTriangle(int tid, int mid, const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape);
-    std::shared_ptr<Material> loadMaterial(const std::filesystem::path& mtldir, const tinyobj::material_t& material);
-    std::shared_ptr<Light> sampleLight(bool delta) const;
-    std::shared_ptr<Light> findLight(int objID) const {
-        if (m_ids.count(objID) == 0) { return nullptr; }
-        int lightID = m_ids.at(objID);
-        return m_lights[lightID];
-    }
-    float calLightProb(std::shared_ptr<Light> light) const {
-        if (light == nullptr) { throw std::runtime_error("Scene::calLightProb: light is nullptr"); }
-        if (light->isDelta()) {
-            return 1.0f / (m_lights.size() - m_cdf.size());
-        } else {
-            return light->getObjectArea() / m_cdf.back();
-        }
-    }
+    std::vector<std::shared_ptr<Shape>> loadShapes(const std::filesystem::path& obj_path, const tinyobj::attrib_t& attrib, const std::vector<tinyobj::shape_t>& shapes);
+    std::vector<std::shared_ptr<Material>> loadMaterials(const std::filesystem::path& mtl_dir, const std::vector<tinyobj::material_t>& materials);
 
     std::shared_ptr<BVH> getBVH() const { return m_bvh; }
+    std::shared_ptr<DES> getDES() const { return m_des; }
     std::shared_ptr<Camera> getCamera() const { return m_camera; }
-    const std::vector<std::shared_ptr<Light>>& getLights() const { return m_lights; }
+    std::shared_ptr<Emitter> getEmitter(int id) const {
+        if (id < 0 || id >= m_emitters.size()) { throw std::out_of_range("Scene::getEmitter: Invalid emitter id"); }
+        return m_emitters[id];
+    }
+    std::shared_ptr<Shape> getShape(int id) const {
+        if (id < 0 || id >= m_shapes.size()) { throw std::out_of_range("Scene::getShape: Invalid shape id"); }
+        return m_shapes[id];
+    }
+    std::shared_ptr<Material> getMaterial(int id) const {
+        if (id < 0 || id >= m_materials.size()) { throw std::out_of_range("Scene::getMaterial: Invalid material id"); }
+        return m_materials[id];
+    }
+    std::shared_ptr<Primitive> getPrimitive(int id) const {
+        if (id < 0 || id >= m_primitives.size()) { throw std::out_of_range("Scene::getPrimitive: Invalid primitive id"); }
+        return m_primitives[id];
+    }
 
    private:
-    // object hierarchy
-    std::shared_ptr<BVH> m_bvh;
-    std::vector<std::shared_ptr<Renderable>> m_objects;
-    std::unordered_map<std::string, std::weak_ptr<Material>> m_materials;
+    std::shared_ptr<BVH> m_bvh       = nullptr;
+    std::shared_ptr<DES> m_des       = nullptr;
+    std::shared_ptr<Camera> m_camera = nullptr;
 
-    // camera and light
-    std::shared_ptr<Camera> m_camera;
-    std::vector<std::shared_ptr<Light>> m_lights;
-
-    // non-delta lights sampling concerned info
-    std::vector<float> m_cdf;           // cumulative distribution function for non-delta lights sampling
-    std::unordered_map<int, int> m_ids; // object ID to light ID mappings
+    std::vector<std::shared_ptr<Emitter>> m_emitters;
+    std::vector<std::shared_ptr<Shape>> m_shapes;
+    std::vector<std::shared_ptr<Material>> m_materials;
+    std::vector<std::shared_ptr<Primitive>> m_primitives;
 };
 
 }; // namespace spt
