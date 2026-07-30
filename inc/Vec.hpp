@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <concepts>
+#include <initializer_list>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -17,11 +18,12 @@ template <arithmetic T, size_t N>
 struct VecBase {
     T data[N];
 
-    VecBase(T t = static_cast<T>(0)) {
+    explicit VecBase(T t = static_cast<T>(0)) {
         for (int i = 0; i < N; i++) { data[i] = t; }
     }
-    VecBase(const T arr[N]) {
-        for (int i = 0; i < N; i++) { data[i] = arr[i]; }
+    VecBase(const std::initializer_list<T>& list) {
+        if (list.size() != N) { throw std::runtime_error("VecBase::VecBase: initializer_list size must match N"); }
+        for (int i = 0; const auto& val : list) { data[i++] = val; }
     }
     VecBase(const VecBase<T, N>& other) {
         for (int i = 0; i < N; i++) { data[i] = other.data[i]; }
@@ -44,11 +46,12 @@ struct VecBase<T, 2> {
         };
     };
 
-    VecBase(T t = static_cast<T>(0)) {
+    explicit VecBase(T t = static_cast<T>(0)) {
         for (int i = 0; i < 2; i++) { data[i] = t; }
     }
-    VecBase(const T arr[2]) {
-        for (int i = 0; i < 2; i++) { data[i] = arr[i]; }
+    VecBase(const std::initializer_list<T>& list) {
+        if (list.size() != 2) { throw std::runtime_error("VecBase<T, 2>::VecBase: initializer_list size must match 2"); }
+        for (int i = 0; const auto& val : list) { data[i++] = val; }
     }
     VecBase(T t1, T t2) {
         x = t1;
@@ -77,11 +80,12 @@ struct VecBase<T, 3> {
         };
     };
 
-    VecBase(T t = static_cast<T>(0)) {
+    explicit VecBase(T t = static_cast<T>(0)) {
         for (int i = 0; i < 3; i++) { data[i] = t; }
     }
-    VecBase(const T arr[3]) {
-        for (int i = 0; i < 3; i++) { data[i] = arr[i]; }
+    VecBase(const std::initializer_list<T>& list) {
+        if (list.size() != 3) { throw std::runtime_error("VecBase<T, 3>::VecBase: initializer_list size must match 3"); }
+        for (int i = 0; const auto& val : list) { data[i++] = val; }
     }
     VecBase(T t1, T t2, T t3) {
         x = t1;
@@ -101,6 +105,55 @@ struct VecBase<T, 3> {
     }
 };
 
+template <arithmetic T>
+struct VecBase<T, 4> {
+    union {
+        T data[4];
+        struct {
+            T x, y, z, w;
+        };
+        struct {
+            T r, g, b, a;
+        };
+    };
+
+    explicit VecBase(T t = static_cast<T>(0)) {
+        for (int i = 0; i < 4; i++) { data[i] = t; }
+    }
+    VecBase(const std::initializer_list<T>& list) {
+        if (list.size() != 4) { throw std::runtime_error("VecBase<T, 4>::VecBase: initializer_list size must match 4"); }
+        for (int i = 0; const auto& val : list) { data[i++] = val; }
+    }
+    VecBase(T t1, T t2, T t3, T t4) {
+        x = t1;
+        y = t2;
+        z = t3;
+        w = t4;
+    }
+    VecBase(const VecBase<T, 4>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+        w = other.w;
+    }
+    VecBase& operator=(const VecBase<T, 4>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+        w = other.w;
+        return *this;
+    }
+};
+
+/**
+ * @brief N-dimensional vector class.
+ * 
+ * Follows GLM conventions: treated as a column vector (N x 1) in matrix multiplications 
+ * (e.g., M * v applies transformation matrix M to vector v).
+ * 
+ * @tparam T Component arithmetic type
+ * @tparam N Vector dimension
+ */
 template <arithmetic T, size_t N>
 struct Vec : public VecBase<T, N> {
     // Inherit constructors. The subclass directly reuses all of the base class's constructors and avoid manually writing forwarding constructors: Vec(const T arr[N]) : VecBase(arr) {}
@@ -166,10 +219,7 @@ bool operator==(const Vec<T, N>& v1, const Vec<T, N>& v2) {
 
 template <arithmetic T, size_t N>
 bool operator!=(const Vec<T, N>& v1, const Vec<T, N>& v2) {
-    for (int i = 0; i < N; i++) {
-        if (v1.data[i] == v2.data[i]) { return false; }
-    }
-    return true;
+    return !(v1 == v2);
 }
 
 template <arithmetic T, size_t N>
