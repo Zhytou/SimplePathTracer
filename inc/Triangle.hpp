@@ -12,6 +12,7 @@ namespace spt {
 class Triangle : public Shape {
    public:
     Triangle(int id) : Shape(id) {}
+    Triangle(int id, const std::array<Vec3<float>, 3>& v, const std::array<Vec2<float>, 3>& uv, const Vec3<float>& n) : Shape(id), m_vertex(v), m_texcoord(uv), m_normal(n) {}
     ~Triangle() {}
 
     const std::array<Vec3<float>, 3>& getVertex() const { return m_vertex; }

@@ -8,6 +8,7 @@ namespace spt {
 class Sphere : public Shape {
    public:
     Sphere(int id) : Shape(id) {}
+    Sphere(int id, const Vec3<float>& center, float radius) : Shape(id), m_center(center), m_radius(radius) {}
     ~Sphere() {}
 
     const Vec3<float>& getCenter() const { return m_center; }
