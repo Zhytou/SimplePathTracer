@@ -30,32 +30,32 @@ class Shape {
     /**
      * @brief Get the local-space bounding box of the shape.
      * 
-     * @return AABB Local-space bounding box of the shape.
+     * @return Local-space bounding box of the shape.
      */
     virtual AABB wrap() const = 0;
     /**
      * @brief Sample a random point on the shape.
      * 
-     * @return Vec3<float> Random point on the shape.
+     * @return Random point on the shape.
      */
     virtual Vec3<float> sample() const = 0;
     /**
      * @brief Get the texture coordinates of the corresponding point on the shape.
      * 
      * @param p Point on the shape.
-     * @return Vec2<float> Texture coordinates of the point.
+     * @return Texture coordinates of the point.
      */
     virtual Vec2<float> parameterize(const Vec3<float>& p) const = 0;
     /**
      * @brief Get the area of the shape.
      * 
-     * @return float Area of the shape.
+     * @return Area of the shape.
      */
     virtual float area() const = 0;
     /**
      * @brief Get the center of the shape.
      * 
-     * @return Vec3<float> Center of the shape.
+     * @return Center of the shape.
      */
     virtual Vec3<float> center() const = 0;
 
