@@ -16,9 +16,12 @@ class Primitive;
 /**
  * @brief Axis-Aligned Bounding Box
  */
-struct AABB {
+class AABB {
    public:
     AABB(const Vec3<float>& xyz1 = Vec3<float>{INFINITY}, const Vec3<float>& xyz2 = Vec3<float>{-INFINITY}) : m_xyz1(xyz1), m_xyz2(xyz2) {}
+
+    bool operator==(const AABB& other) const { return m_xyz1 == other.m_xyz1 && m_xyz2 == other.m_xyz2; }
+    bool operator!=(const AABB& other) const { return m_xyz1 != other.m_xyz1 || m_xyz2 != other.m_xyz2; }
 
     static AABB create(const std::vector<std::shared_ptr<Primitive>>& primitives);
     bool intersect(const Ray& ray, float tmin, float tmax) const;
@@ -31,6 +34,7 @@ struct AABB {
         return xyz.x * xyz.y + xyz.x * xyz.z + xyz.y * xyz.z;
     }
 
+   private:
     Vec3<float> m_xyz1 = Vec3<float>{INFINITY};
     Vec3<float> m_xyz2 = Vec3<float>{-INFINITY};
 };
