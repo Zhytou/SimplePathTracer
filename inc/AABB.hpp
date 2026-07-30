@@ -18,7 +18,7 @@ class Primitive;
  */
 class AABB {
    public:
-    AABB(const Vec3<float>& xyz1 = Vec3<float>{INFINITY}, const Vec3<float>& xyz2 = Vec3<float>{-INFINITY}) : m_xyz1(xyz1), m_xyz2(xyz2) {}
+    AABB(const Vec3<float>& xyz1 = Vec3<float>(INFINITY), const Vec3<float>& xyz2 = Vec3<float>(-INFINITY)) : m_xyz1(xyz1), m_xyz2(xyz2) {}
 
     bool operator==(const AABB& other) const { return m_xyz1 == other.m_xyz1 && m_xyz2 == other.m_xyz2; }
     bool operator!=(const AABB& other) const { return m_xyz1 != other.m_xyz1 || m_xyz2 != other.m_xyz2; }
@@ -35,8 +35,8 @@ class AABB {
     }
 
    private:
-    Vec3<float> m_xyz1 = Vec3<float>{INFINITY};
-    Vec3<float> m_xyz2 = Vec3<float>{-INFINITY};
+    Vec3<float> m_xyz1 = Vec3<float>(INFINITY);
+    Vec3<float> m_xyz2 = Vec3<float>(-INFINITY);
 };
 
 } // namespace spt
