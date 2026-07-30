@@ -181,19 +181,25 @@ struct Vec : public VecBase<T, N> {
         return *this;
     }
 
+    Vec<T, N>& operator*=(const Vec<T, N>& v) {
+        for (int i = 0; i < N; i++) { data[i] *= v.data[i]; }
+        return *this;
+    }
+
     template <arithmetic K>
     Vec<T, N>& operator*=(const K& k) {
         for (int i = 0; i < N; i++) { data[i] *= k; }
         return *this;
     }
 
-    Vec<T, N>& operator*=(const Vec<T, N>& v) {
-        for (int i = 0; i < N; i++) { data[i] *= v.data[i]; }
+    Vec<T, N>& operator/=(const Vec<T, N>& v) {
+        for (int i = 0; i < N; i++) { data[i] /= v.data[i]; }
         return *this;
     }
 
-    Vec<T, N>& operator/=(const Vec<T, N>& v) {
-        for (int i = 0; i < N; i++) { data[i] /= v.data[i]; }
+    template <arithmetic K>
+    Vec<T, N>& operator/=(const K& k) {
+        for (int i = 0; i < N; i++) { data[i] /= k; }
         return *this;
     }
 };
