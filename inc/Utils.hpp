@@ -1,14 +1,25 @@
 #ifndef SPT_UTILS_HPP
 #define SPT_UTILS_HPP
 
+#include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <memory>
 #include <ostream>
 #include <random>
+#include <ranges>
+#include <span>
 #include <sstream>
+#include <string>
+#include <typeinfo>
+#include <unordered_map>
 #include <vector>
 
+#define SPT_USE_GLM
 #include "Mat.hpp"
 #include "Transform.hpp"
 #include "Vec.hpp"
@@ -39,7 +50,15 @@ T rand(T min, T max) {
     }
 }
 
-static std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
+constexpr float radians(float deg) {
+    return deg * PI / 180.f;
+}
+
+constexpr float degrees(float rad) {
+    return rad * 180.f / PI;
+}
+
+std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream stream(str);
