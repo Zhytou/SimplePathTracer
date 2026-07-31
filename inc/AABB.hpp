@@ -20,6 +20,11 @@ class AABB {
    public:
     AABB(const Vec3<float>& xyz1 = Vec3<float>(INFINITY), const Vec3<float>& xyz2 = Vec3<float>(-INFINITY)) : m_xyz1(xyz1), m_xyz2(xyz2) {}
 
+    const Vec3<float>& getXYZ1() const { return m_xyz1; }
+    const Vec3<float>& getXYZ2() const { return m_xyz2; }
+    void setXYZ1(const Vec3<float>& xyz1) { m_xyz1 = xyz1; }
+    void setXYZ2(const Vec3<float>& xyz2) { m_xyz2 = xyz2; }
+
     bool operator==(const AABB& other) const { return m_xyz1 == other.m_xyz1 && m_xyz2 == other.m_xyz2; }
     bool operator!=(const AABB& other) const { return m_xyz1 != other.m_xyz1 || m_xyz2 != other.m_xyz2; }
 
