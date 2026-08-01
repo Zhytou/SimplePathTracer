@@ -97,6 +97,7 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
     if (texcoord.v < 0) { texcoord.v += 1.0f; }
 
     // 8. Set hit record
+    rec.id       = -1;
     rec.distance = t;
     rec.point    = ray.eval(t);
     rec.texcoord = texcoord;

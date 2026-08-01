@@ -64,6 +64,7 @@ bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
 
     float t       = t1 >= tmin && t1 <= tmax ? t1 : t2;
     Vec3<float> p = ray.eval(t);
+    rec.id        = -1;
     rec.distance  = t;
     rec.point     = p;
     rec.texcoord  = parameterize(p);
