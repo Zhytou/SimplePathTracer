@@ -92,7 +92,7 @@ class Sampler {
     template <typename T, size_t N>
     inline Vec<T, N> lerp(const Vec<T, N>& a, const Vec<T, N>& b, float t) const {
         Vec<T, N> ab{0.f};
-        for (size_t i = 0; i < N; ++i) {
+        for (int i = 0; i < N; ++i) {
             ab[i] = a[i] + t * (b[i] - a[i]);
         }
         return ab;
