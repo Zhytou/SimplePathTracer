@@ -7,14 +7,6 @@
         "height": 512,
         "fovy": 39.3
     },
-    "light": {
-        "area": [
-            {
-                "mtl_name": "Light",
-                "color": [48, 38, 31]
-            }
-        ]
-    },
     "model": [
         {
             "name": "cuboid",
@@ -56,7 +48,8 @@
         {
             "name": "light",
             "obj_path": "../ast/obj/cornell-box/light.obj",
-            "mtl_dir": "../ast/mtl/cornell-box"
+            "mtl_dir": "../ast/mtl/cornell-box",
+            "emission": [48, 38, 31]
         }
     ]
 }
