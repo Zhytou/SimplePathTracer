@@ -69,15 +69,22 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             float radius            = sphere_doc["radius"].GetFloat();
             auto& mtl_doc           = sphere_doc["default_mtl"];
             fs::path mtl_dir        = mtl_doc.HasMember("mtl_dir") ? mtl_doc["mtl_dir"].GetString() : "";
+            Vec3<float> emission    = sphere_doc.HasMember("emission") ? getVec3(sphere_doc["emission"]) : Vec3<float>(0.f);
+            Mat4x4f transform       = sphere_doc.HasMember("transform") ? cvtTfm(sphere_doc["transform"]) : Mat4x4f::eye();
 
             auto spe = std::make_shared<Sphere>(m_shapes.size(), center, radius);
             auto mtl = std::make_shared<Material>(m_materials.size(), cvtMtl(mtl_doc, sphere_name, mtl_dir));
-            auto tfm = sphere_doc.HasMember("transform") ? cvtTfm(sphere_doc["transform"]) : Mat4x4f::eye();
-            auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl, tfm);
+            auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl, transform);
+            auto emt = emission != Vec3<float>(0.f) ? std::make_shared<AreaEmitter>(m_emitters.size(), emission) : nullptr;
 
             m_shapes.push_back(spe);
             m_materials.push_back(mtl);
             m_primitives.push_back(prm);
+            if (emt) {
+                emt->setPrimitive(prm);
+                prm->setEmitter(emt);
+                m_emitters.push_back(emt);
+            }
         }
     }
 
@@ -110,22 +117,40 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
                 nmaterials.push_back(std::make_shared<Material>(-1, cvtMtl(mtl_doc, obj_name, mtl_dir)));
             }
 
-            // 3.5 Load transform matrix
+            // 3.5 Load area emitter emission
+            Vec3<float> emission = model_doc.HasMember("emission") ? getVec3(model_doc["emission"]) : Vec3<float>(0.f);
+
+            // 3.6 Load transform matrix
             Mat4x4f transform = model_doc.HasMember("transform") ? cvtTfm(model_doc["transform"]) : Mat4x4f::eye();
 
-            // 3.6 Create primitives
-            int pid = m_primitives.size(), sid = 0;
+            // 3.7 Create primitives
+            int sid = -1, mid = -1;
             for (int j = 0; j < shapes.size(); j++) {
                 for (int k = 0; k < shapes[j].mesh.material_ids.size(); k++) {
-                    int mid = shapes[j].mesh.material_ids[k] == -1 ? nmaterials.size() - 1 : shapes[j].mesh.material_ids[k];
-                    if (sid < 0 || sid >= nshapes.size() || mid < 0 || mid >= nmaterials.size()) { throw std::runtime_error(std::format("Scene::init: shape id {} or material id {} is out of range", sid, mid)); }
-                    nshapes[sid]->setID(m_shapes.size());
-                    nmaterials[mid]->setID(m_materials.size());
-                    m_primitives.push_back(std::make_shared<Primitive>(pid++, nshapes[sid++], nmaterials[mid], transform));
+                    sid = sid + 1;
+                    mid = shapes[j].mesh.material_ids[k] == -1 ? nmaterials.size() - 1 : shapes[j].mesh.material_ids[k];
+                    if (sid < 0 || sid >= nshapes.size()) { throw std::runtime_error(std::format("Scene::init: shape id {} is out of range", sid)); }
+                    if (mid == -1 && emission == Vec3<float>(0.f)) { throw std::runtime_error(std::format("Scene::init: primitive {} must have a material or emission set", sid)); }
+
+                    auto spe = nshapes[sid];
+                    auto mtl = mid != -1 ? nmaterials[mid] : nullptr;
+                    auto emt = emission != Vec3<float>(0.f) ? std::make_shared<AreaEmitter>(m_emitters.size(), emission) : nullptr;
+                    auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl, transform);
+
+                    spe->setID(m_shapes.size());
+                    if (mtl) { mtl->setID(m_materials.size()); }
+                    if (emt) {
+                        emt->setPrimitive(prm);
+                        prm->setEmitter(emt);
+                    }
+
+                    if (emt) { m_emitters.push_back(emt); }
+                    if (mtl && mtl->isDelta()) { m_delta_primitives.push_back(prm); }
+                    m_primitives.push_back(prm);
                 }
             }
 
-            // 3.7 Add shapes and materials
+            // 3.8 Add shapes and materials
             m_shapes.insert(m_shapes.end(), nshapes.begin(), nshapes.end());
             m_materials.insert(m_materials.end(), nmaterials.begin(), nmaterials.end());
         }
@@ -145,8 +170,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
     // 5. Load light sources
     if (doc.HasMember("light")) {
-        int lid = 0;
-        // 5.1 Load area light
+        // 5.1 Load area light by material name
         if (doc["light"].HasMember("area")) {
             // 5.1.1 Get area light emission
             std::unordered_map<std::string, Vec3<float>> emissions;
@@ -160,17 +184,17 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
             // 5.1.2 Set corresponding primitive's emission
             for (auto& prm : m_primitives) {
+                if (prm->getEmitter()) { continue; } // skip if already set emitter
                 auto mtl  = prm->getMaterial();
                 auto name = mtl->getName();
-                if (emissions.count(name)) {
-                    primitives[name].push_back(prm);
-                }
+                if (emissions.count(name)) { primitives[name].push_back(prm); }
             }
 
             // 5.1.3 Create area emitters
             for (auto [name, color] : emissions) {
                 for (auto prm : primitives[name]) {
-                    auto emt = std::make_shared<AreaEmitter>(lid++, color, prm);
+                    auto emt = std::make_shared<AreaEmitter>(m_emitters.size(), color);
+                    emt->setPrimitive(prm);
                     prm->setEmitter(emt);
                     m_emitters.push_back(emt);
                 }
@@ -182,7 +206,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             auto& light_doc      = doc["light"]["point"][i];
             Vec3<float> position = light_doc.HasMember("position") ? getVec3(light_doc["position"]) : Vec3<float>(0.f);
             Vec3<float> color    = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
-            m_emitters.push_back(std::make_shared<PointEmitter>(lid++, color, position));
+            m_emitters.push_back(std::make_shared<PointEmitter>(m_emitters.size(), color, position));
         }
 
         // 5.3 Load directional light
@@ -190,7 +214,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             auto& light_doc       = doc["light"]["directional"][i];
             Vec3<float> direction = light_doc.HasMember("direction") ? getVec3(light_doc["direction"]) : Vec3<float>(0.f);
             Vec3<float> color     = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
-            m_emitters.push_back(std::make_shared<DirectionalEmitter>(lid++, color, direction));
+            m_emitters.push_back(std::make_shared<DirectionalEmitter>(m_emitters.size(), color, direction));
         }
     }
 
