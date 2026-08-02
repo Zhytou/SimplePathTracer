@@ -133,9 +133,7 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
         Vec3<float> delta    = center2 - center1;
         int axis             = argmax(delta);
         float best_split_pos = delta[axis] / num_bins * best_split.index + center1[axis];
-        int idx              = std::distance(primitives.begin(), std::partition(primitives.begin(), primitives.end(), [&](std::shared_ptr<Primitive> prm) {
-            return prm->wrap().center()[axis] <= best_split_pos;
-        }));
+        int idx              = std::distance(primitives.begin(), std::partition(primitives.begin(), primitives.end(), [&](std::shared_ptr<Primitive> prm) { return prm->wrap().center()[axis] <= best_split_pos; }));
 
         if (idx == 0 || idx == num_prms) {
             bvh->m_leaf = true;
@@ -159,37 +157,41 @@ float BVH::evaluate(const AABB& parent, const AABB& left, const AABB& right, int
     return 1 + left.area() / parent.area() * lcount + right.area() / parent.area() * rcount;
 }
 
-bool BVH::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+bool BVH::intersect(const Ray& ray, IntersectRecord& rec) const {
+    // 0. Initialize variables
+    bool hit = false;
+
     // 1. Check AABB intersection
-    if (!m_aabb.intersect(ray, tmin, tmax)) { return false; }
+    if (!m_aabb.intersect(ray)) { return false; }
 
     // 2. Check triangle intersection, if leaf node
     if (m_leaf) {
-        bool hit = false;
         for (auto primitive : m_primitives) {
-            HitRecord crec;
-            if (primitive->hit(ray, tmin, tmax, crec)) {
-                hit  = true;
-                tmax = std::min(crec.distance, tmax);
-                rec  = crec;
+            IntersectRecord crec;
+            if (primitive->intersect(ray, crec)) {
+                hit = true;
+                rec = crec;
+
+                ray.setTMax(std::min(crec.distance, ray.getTMax())); // mutable member function
             }
         }
         return hit;
     }
 
     // 3. Check sub bvh intersection, if not leaf node
-    HitRecord lrec, rrec;
-    bool lhit = m_left->hit(ray, tmin, tmax, lrec);
-    bool rhit = m_right->hit(ray, tmin, lhit ? lrec.distance : tmax, rrec);
-    if (rhit) {
-        rec = rrec;
-    } else if (lhit) {
+    IntersectRecord lrec, rrec;
+    if (m_left->intersect(ray, lrec)) {
+        hit = true;
         rec = lrec;
-    } else {
-        return false;
+
+        ray.setTMax(std::min(lrec.distance, ray.getTMax())); // mutable member function
+    }
+    if (m_right->intersect(ray, rrec)) {
+        hit = true;
+        rec = rrec;
     }
 
-    return true;
+    return hit;
 }
 
 } // namespace spt

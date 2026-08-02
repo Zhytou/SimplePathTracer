@@ -29,7 +29,7 @@ class AABB {
     bool operator!=(const AABB& other) const { return m_xyz1 != other.m_xyz1 || m_xyz2 != other.m_xyz2; }
 
     static AABB create(const std::vector<std::shared_ptr<Primitive>>& primitives);
-    bool intersect(const Ray& ray, float tmin, float tmax) const;
+    bool intersect(const Ray& ray) const;
     AABB& merge(const AABB& other);
 
     Vec3<float> center() const { return (m_xyz1 + m_xyz2) / 2.f; }

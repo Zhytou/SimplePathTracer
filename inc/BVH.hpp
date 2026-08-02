@@ -38,12 +38,11 @@ class BVH {
      * @brief Test ray intersection against the BVH node under world coordinates.
      * 
      * @param ray Ray to check intersection
-     * @param tmin Minimum parameter value for ray intersection
-     * @param tmax Maximum parameter value for ray intersection
      * @param rec Hit record to store intersection information
      * @return True if the ray intersects the BVH node, False otherwise
      */
-    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const;
+    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const;
+
     /**
      * @brief Get the bounding box of the BVH node
      * 

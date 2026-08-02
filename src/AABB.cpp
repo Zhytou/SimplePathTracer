@@ -13,10 +13,12 @@ AABB AABB::create(const std::vector<std::shared_ptr<Primitive>>& primitives) {
     return aabb;
 }
 
-bool AABB::intersect(const Ray& ray, float tmin, float tmax) const {
+bool AABB::intersect(const Ray& ray) const {
     Vec3<float> origin    = ray.getOrigin();
     Vec3<float> direction = ray.getDirection();
     Vec3<float> infdir(1.0f / direction.x, 1.0f / direction.y, 1.0f / direction.z);
+    float tmin = ray.getTMin();
+    float tmax = ray.getTMax();
 
     float tx1 = (m_xyz1.x - origin.x) * infdir.x;
     float tx2 = (m_xyz2.x - origin.x) * infdir.x;
