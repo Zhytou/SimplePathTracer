@@ -158,14 +158,30 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
     // 4. Load main camera
     if (doc.HasMember("camera")) {
-        auto& camera_doc = doc["camera"];
-        m_camera         = std::make_shared<PerspectiveCamera>();
-        m_camera->setWidth(camera_doc["width"].GetInt());
-        m_camera->setHeight(camera_doc["height"].GetInt());
-        m_camera->setFovy(camera_doc["fovy"].GetFloat());
-        m_camera->setEye(getVec3(camera_doc["eye"]));
-        m_camera->setTarget(getVec3(camera_doc["target"]));
-        m_camera->setUp(getVec3(camera_doc["up"]));
+        bool is_perspective = doc["camera"].HasMember("perspective");
+        auto& camera_doc    = is_perspective ? doc["camera"]["perspective"] : doc["camera"]["orthographic"];
+        if (is_perspective) {
+            m_camera = std::make_shared<PerspectiveCamera>();
+        } else {
+            m_camera = std::make_shared<OrthographicCamera>();
+        }
+
+        int width  = camera_doc["width"].GetInt();
+        int height = camera_doc["height"].GetInt();
+        float fovy = camera_doc.HasMember("fovy") ? camera_doc["fovy"].GetFloat() : 0.f;
+        float fovx = camera_doc.HasMember("fovx") ? camera_doc["fovx"].GetFloat() : 0.f;
+        auto eye   = getVec3(camera_doc["eye"]);
+        auto tar   = getVec3(camera_doc["target"]);
+        auto up    = getVec3(camera_doc["up"]);
+        if (fovy == 0.f && fovx != 0.f) {
+            fovy = 2 * std::atan(std::tan(fovx * 0.5f * PI / 180.f) * height / width) / PI * 180.f;
+        }
+        m_camera->setWidth(width);
+        m_camera->setHeight(height);
+        m_camera->setFovy(fovy);
+        m_camera->setEye(eye);
+        m_camera->setTarget(tar);
+        m_camera->setUp(up);
     }
 
     // 5. Load light sources
@@ -382,5 +398,4 @@ std::vector<std::shared_ptr<Material>> Scene::loadMaterials(const fs::path& mtl_
 
     return nmaterials;
 }
-
 }; // namespace spt
