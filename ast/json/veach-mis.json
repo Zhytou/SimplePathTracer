@@ -1,11 +1,13 @@
 {
     "camera": {
-        "eye": [28.7, 5.2, 0.1],
-        "target": [0, 2.8, 0],
-        "up": [0, 1, 0],
-        "width": 640,
-        "height": 360,
-        "fovy": 20.1
+        "perspective": {
+            "eye": [28.7, 5.2, 0.1],
+            "target": [0, 2.8, 0],
+            "up": [0, 1, 0],
+            "width": 640,
+            "height": 360,
+            "fovy": 20.1
+        }
     },
     "light": {
         "area": [
