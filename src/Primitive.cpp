@@ -2,10 +2,10 @@
 
 namespace spt {
 
-bool Primitive::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+bool Primitive::intersect(const Ray& ray, IntersectRecord& rec) const {
     // 0. Fall back to default hit test if transform matrix is identity
     if (m_is_identity) {
-        bool hit = m_shape->hit(ray, tmin, tmax, rec);
+        bool hit = m_shape->intersect(ray, rec);
         rec.id   = hit ? getID() : -1;
         return hit;
     }
@@ -19,12 +19,13 @@ bool Primitive::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) cons
     Vec3<float> dir_local  = Vec3<float>(dir_local4.x, dir_local4.y, dir_local4.z);
 
     // 2. Calculate the scale factor between distance in world space and distance in local space
-    float scale                = length(dir_local);
-    Vec3<float> dir_local_norm = dir_local / scale;
+    float tmin  = ray.getTMin();
+    float tmax  = ray.getTMax();
+    float scale = length(dir_local);
 
     // 2. Do hit test in local space
-    Ray ray_local(org_local, dir_local_norm);
-    bool hit = m_shape->hit(ray_local, tmin * scale, tmax * scale, rec);
+    Ray ray_local(org_local, dir_local / scale, tmin * scale, tmax * scale);
+    bool hit = m_shape->intersect(ray_local, rec);
 
     // 3. Convert hit info into world space
     if (hit) {

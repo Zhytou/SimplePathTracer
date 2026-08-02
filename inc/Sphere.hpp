@@ -16,7 +16,7 @@ class Sphere : public Shape {
     void setCenter(const Vec3<float>& center) { m_center = center; }
     void setRadius(float radius) { m_radius = radius; }
 
-    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
+    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const override;
     virtual AABB wrap() const override;
     virtual Vec3<float> sample() const override;
     float area() const override { return 4 * PI * m_radius * m_radius; }

@@ -2,7 +2,7 @@
 #define SPT_SHAPE_HPP
 
 #include "AABB.hpp"
-#include "HitRecord.hpp"
+#include "IntersectRecord.hpp"
 #include "Material.hpp"
 #include "Ray.hpp"
 #include "Utils.hpp"
@@ -21,12 +21,10 @@ class Shape {
      * @brief Test ray intersection against the shape under local coordinates.
      * 
      * @param ray Ray defined in local coordinate space for intersection test.
-     * @param tmin Minimum valid ray distance threshold.
-     * @param tmax Maximum valid ray distance threshold.
-     * @param rec Hit record storing intersection data if hit occurs.
+     * @param rec Record to store intersection data if hit occurs.
      * @return True if intersection exists; false otherwise.
      */
-    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const = 0;
+    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const = 0;
     /**
      * @brief Get the local-space bounding box of the shape.
      * 

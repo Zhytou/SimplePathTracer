@@ -1,13 +1,11 @@
-#ifndef SPT_HITRECORD_HPP
-#define SPT_HITRECORD_HPP
+#ifndef SPT_INTERSECTRECORD_HPP
+#define SPT_INTERSECTRECORD_HPP
 
 #include "Utils.hpp"
 
 namespace spt {
 
-class Primitive;
-
-struct HitRecord {
+struct IntersectRecord {
     int id               = -1; // hit primitive id if != -1
     float distance       = INFINITY;
     Vec3<float> point    = Vec3<float>(0.f);

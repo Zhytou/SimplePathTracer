@@ -20,7 +20,7 @@ Vec3<float> Triangle::sample() const {
     return e1 * u + e2 * v + m_vertex[0];
 }
 
-bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+bool Triangle::intersect(const Ray& ray, IntersectRecord& rec) const {
     // ===================================================================================
     // [Mathematical Derivation: Möller–Trumbore Intersection Algorithm]
     //
@@ -81,7 +81,9 @@ bool Triangle::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const
     }
 
     // 5. Calculate the ray parameter 't' (distance)
-    float t = dot(e2, qvec) * invdet;
+    float t    = dot(e2, qvec) * invdet;
+    float tmin = ray.getTMin();
+    float tmax = ray.getTMax();
     if (t < tmin || t > tmax) {
         return false;
     }

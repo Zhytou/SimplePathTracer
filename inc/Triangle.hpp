@@ -22,7 +22,7 @@ class Triangle : public Shape {
     void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
     void setNormal(const Vec3<float>& n) { m_normal = n; }
 
-    virtual bool hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const override;
+    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const override;
     virtual AABB wrap() const override;
     Vec3<float> sample() const override;
     float area() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }

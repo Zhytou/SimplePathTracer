@@ -2,7 +2,7 @@
 
 namespace spt {
 
-bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
+bool Sphere::intersect(const Ray& ray, IntersectRecord& rec) const {
     // ===================================================================================
     // [Mathematical Derivation: Ray-Sphere Intersection Algorithm]
     //
@@ -58,6 +58,8 @@ bool Sphere::hit(const Ray& ray, float tmin, float tmax, HitRecord& rec) const {
     float sqrt = std::sqrt(discriminant);
     float t1   = (-h - sqrt) / a;
     float t2   = (-h + sqrt) / a;
+    float tmin = ray.getTMin();
+    float tmax = ray.getTMax();
     if ((t1 < tmin || t1 > tmax) && (t2 < tmin || t2 > tmax)) { // both roots are outside the valid range
         return false;
     }
