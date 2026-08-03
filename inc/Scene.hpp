@@ -5,7 +5,6 @@
 #include "Camera.hpp"
 #include "DES.hpp"
 #include "Emitter.hpp"
-#include "HitRecord.hpp"
 #include "Material.hpp"
 #include "Shape.hpp"
 
@@ -29,8 +28,10 @@ class Scene {
      */
     void clear();
 
-    std::vector<std::shared_ptr<Shape>> loadShapes(const std::filesystem::path& obj_path, const tinyobj::attrib_t& attrib, const std::vector<tinyobj::shape_t>& shapes);
-    std::vector<std::shared_ptr<Material>> loadMaterials(const std::filesystem::path& mtl_dir, const std::vector<tinyobj::material_t>& materials);
+    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::filesystem::path& obj_path, const std::filesystem::path& mtl_dir);
+    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::vector<int>& spe_ids, const std::vector<int>& mtl_ids);
+    std::span<std::shared_ptr<Shape>> loadShapes(const std::filesystem::path& obj_path, const tinyobj::attrib_t& attrib, const std::vector<tinyobj::shape_t>& shapes);
+    std::span<std::shared_ptr<Material>> loadMaterials(const std::filesystem::path& mtl_dir, const std::vector<tinyobj::material_t>& materials);
 
     std::shared_ptr<BVH> getBVH() const { return m_bvh; }
     std::shared_ptr<DES> getDES() const { return m_des; }
@@ -61,6 +62,7 @@ class Scene {
     std::vector<std::shared_ptr<Emitter>> m_emitters;
     std::vector<std::shared_ptr<Shape>> m_shapes;
     std::vector<std::shared_ptr<Material>> m_materials;
+    std::vector<std::shared_ptr<Medium>> m_mediums;
     std::vector<std::shared_ptr<Primitive>> m_primitives;
     std::vector<std::shared_ptr<Primitive>> m_delta_primitives;
 };
