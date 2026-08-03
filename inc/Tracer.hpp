@@ -8,9 +8,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "BVH.hpp"
-#include "Camera.hpp"
-#include "Light.hpp"
 #include "Ray.hpp"
 #include "Scene.hpp"
 
@@ -37,11 +34,11 @@ class Tracer {
      * @brief  Trace a ray through the scene and return the color at the intersection point
      * @param scene The scene to render
      * @param ray The ray to trace
-     * @param rec The hit record of the ray
+     * @param rec The intersection record of the ray
      * @param depth The current depth of the path trace
      * @return The color at the intersection point
      */
-    Vec3<float> trace(const Scene& scene, const Ray& ray, const HitRecord& rec, int depth);
+    Vec3<float> trace(const Scene& scene, const Ray& ray, IntersectRecord& rec, int depth);
     /**
      * @brief  Postprocess the high dynamic range color to low dynamic range color
      * @param hdr The hdr color [0, inf)

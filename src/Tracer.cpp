@@ -20,7 +20,7 @@ namespace fs = std::filesystem;
 Tracer::Tracer(int d, int rrd, int spp, float rrp, float lum, int ts, int thd)
     : m_depth(d), m_rrdepth(rrd), m_spp(spp), m_rrp(rrp), m_lum(lum), m_thd(std::min((uint)thd, std::thread::hardware_concurrency() + 1)), m_ts(ts) {
 
-    BOX_LOG("TRACER CONFIGURATION", 125)
+    BOX_LOG("TRACER CONFIGURATION", 115)
         << "- " << std::left << std::setw(33) << "Maximum Depth:" << std::setw(7) << m_depth << " - " << std::setw(33) << "Samples Per Pixel:" << std::setw(7) << m_spp << '\n'
         << "- " << std::left << std::setw(33) << "Russian Roulette Minimum Depth:" << std::setw(7) << m_rrdepth << " - " << std::setw(33) << "Russian Roulette Probability:" << std::setw(7) << std::fixed << std::setprecision(1) << m_rrp << '\n'
         << "- " << std::left << std::setw(33) << "Luminance Limit:" << std::setw(7) << std::fixed << std::setprecision(1) << m_lum << " - " << std::setw(33) << "Tile Size:" << std::setw(7) << m_ts << '\n'
@@ -54,7 +54,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     std::mutex mtx;
 
     // 3. Define tile worker routine
-    auto rendertile = [&]() {
+    auto renderTile = [&]() {
         Tile tile;
         while (tiles.pop(tile)) {
             for (int row = tile.r0; row < tile.r1; row++) {
@@ -77,7 +77,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
             }
 
             // 3.3 show progress
-            float per                        = 100.f * cnt++ / tot;              // percentage of accomplished tiles
+            float per                        = 100.f * ++cnt / tot;              // percentage of accomplished tiles
             auto cur                         = std::chrono::steady_clock::now(); // current time
             std::chrono::duration<float> dur = cur - beg;
             {
@@ -90,7 +90,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     // 4. Spawn worker threads and wait for completion
     std::vector<std::thread> thds;
     for (int i = 0; i < m_thd; i++) {
-        thds.emplace_back(rendertile);
+        thds.emplace_back(renderTile);
     }
     for (auto& thd : thds) {
         thd.join();
@@ -101,16 +101,17 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
 }
 
 Vec3<float> Tracer::cast(const Scene& scene, const Ray& ray) {
-    HitRecord rec;
-    if (scene.getBVH()->hit(ray, DIS_EPS, INFINITY, rec)) {
+    IntersectRecord rec;
+    if (scene.getBVH()->intersect(ray, rec)) {
         return trace(scene, ray, rec, 0);
     }
-    return Vec3<float>{0.f};
+    return Vec3<float>(0.f);
 }
 
-Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& reci, int depth) {
+Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, IntersectRecord& reci, int depth) {
     // 0. Initialize scene to render and color to return
     auto bvh = scene.getBVH();
+    auto des = scene.getDES();
     Vec3<float> color(0.f);
     Vec3<float> color_e(0.f), color_d(0.f), color_ind(0.f);
 
@@ -119,94 +120,95 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, const HitRecord& 
         return color;
     }
 
-    // 2. Apply russian roulette
-    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
-    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
+    // 2. Get input hit info
+    int id        = reci.id;
+    auto prmi     = scene.getPrimitive(id);    // primitive hit by the rayi
+    auto mtli     = prmi->getMaterial();       // material hit by the rayi(could be nullptr if emissive primitive)
+    auto emti     = prmi->getEmitter();        // emitter hit by the rayi
+    auto int_medi = prmi->getInteriorMedium(); // internal medium hit by the rayi
+    auto ext_medi = prmi->getExteriorMedium(); // external medium hit by the rayi
 
-    // 3. Get input hit info
-    auto mtl       = reci.material;
     Vec3<float> n  = reci.normal;
     Vec3<float> p  = reci.point;
     Vec2<float> uv = reci.texcoord;
-    Vec3<float> wi = -rayi.getDirection(); // view direction(wi) P -> Eye
+    float eta      = int_medi && ext_medi ? ext_medi->getIOR() / int_medi->getIOR() : NAN;
 
-    // 4. Initialize output ray and bsdf
-    Vec3<float> wo(0.f);   // light direction(wo) P -> ight
-    Vec3<float> bsdf(0.f); // material bsdf value at hit point P
-    float cos = 0.f;       // cosine of the angle between normal and light direction(wo)
+    // 3. Initialize output ray and bsdf
+    Vec3<float> wi   = -rayi.getDirection(); // view direction(wi) P -> Eye
+    Vec3<float> wo   = Vec3<float>(0.f);     // light direction(wo) P -> ight
+    Vec3<float> bsdf = Vec3<float>(0.f);     // material bsdf value at hit point P
+    float cos        = 0.f;                  // cosine of the angle between normal and light direction(wo)
 
-    // 5. Get emissive light color
-    if (mtl->isEmissive()) {
-        color_e = mtl->getEmission();
+    // 4. Get emissive light color
+    if (emti) {
+        color_e = emti->getColor();
     }
 
-    // 6. Calculate direct light color
-    if (!mtl->isEmissive() && !mtl->isDelta()) { // only GLOSSY and DIFFUSE materials support light sampling
-        for (auto delta : {true, false}) {
-            // 6.1 Sample both delta light and non-delta light
-            auto light = scene.sampleLight(delta);
-            if (light == nullptr) { continue; }
-            float prob = scene.calLightProb(light);
-
-            wo   = light->sample(p);
-            bsdf = mtl->bsdf(wi, n, wo, uv);
-            cos  = std::fabs(dot(n, wo)); // for both reflection and transmission
-
-            // 6.2 Do hit test
-            Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
-            Ray rayo(pp, wo);
-            HitRecord reco;
-            bool hit = bvh->hit(rayo, DIS_EPS, INFINITY, reco);
-
-            // 6.3 Calculate direct light color
-            if (delta) {
-                color_d += !hit ? light->getColor() * bsdf * cos / prob : Vec3<float>{0.f}; // delta light only contribute when no object block the light
-            } else {
-                float pdf_light = light->pdf(wo, reco.normal, reco.distance) * prob;
-                float pdf_mtl   = mtl->pdf(wi, n, wo, uv);
-                float weight    = mix(pdf_light, pdf_mtl);
-                color_d += hit && reco.material->isEmissive() && pdf_light > 0.f ? light->getColor() * bsdf * cos * weight / pdf_light : Vec3<float>{0.f}; // avoid division by zero when output direction(wo) and light normal are parallel or opposite
-            }
-        }
+    // 5. Calculate specular manifold sampling color
+    if (0) {
     }
 
-    // 7. Calculate indirect light color
-    if (rrp < m_rrp && !mtl->isEmissive()) {
+    // 6. Calculate direct light sampling color
+    if (!emti && !mtli->isDelta()) {
+        // 6.1 Sample non-delta light
+        auto [emts, prob] = des->sample(); // emitter sampled from the scene
+
+        wo   = emts->sample(p);
+        bsdf = mtli->bsdf(wi, n, wo, uv, eta);
+        cos  = std::fabs(dot(n, wo)); // for both reflection and transmission
+
+        // 6.2 Do hit test
+        Ray rayo(p, wo, DIS_EPS, INFINITY);
+        IntersectRecord reco;
+        bool hit  = bvh->intersect(rayo, reco);
+        auto prmo = hit ? scene.getPrimitive(reco.id) : nullptr;
+        auto emto = hit ? prmo->getEmitter() : nullptr;
+
+        // 6.3 Calculate probability density function of
+        float pdf_emt = emts->pdf(wo, reco.normal, reco.distance) * prob;
+        float pdf_mtl = mtli->pdf(wi, n, wo, uv, eta);
+        float weight  = mix(pdf_emt, pdf_mtl);
+
+        color_d += hit && emto && pdf_emt > 0.f ? emto->getColor() * bsdf * cos * weight / pdf_emt : Vec3<float>(0.f); // avoid division by zero when output direction(wo) and light normal are parallel or opposite
+    }
+
+    // 7. Apply russian roulette and calculate material sampling color
+    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
+    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
+    if (!emti && rrp < m_rrp) {
         // 7.1 Sample material
-        wo   = mtl->scatter(wi, n, uv);
-        bsdf = mtl->bsdf(wi, n, wo, uv);
+        wo   = mtli->scatter(wi, n, uv, eta);
+        bsdf = mtli->bsdf(wi, n, wo, uv, eta);
         cos  = std::fabs(dot(n, wo));
 
         // 7.2 Do hit test
-        Vec3<float> pp = p + (dot(n, wo) > 0.f ? n : -n) * DIS_EPS;
-        Ray rayo(pp, wo);
-        HitRecord reco;
-        bool hit = bvh->hit(rayo, DIS_EPS, INFINITY, reco);
+        Ray rayo(p, wo, DIS_EPS, INFINITY);
+        IntersectRecord reco;
+        bool hit  = bvh->intersect(rayo, reco);
+        auto prmo = hit ? scene.getPrimitive(reco.id) : nullptr;
+        auto emto = hit ? prmo->getEmitter() : nullptr;
 
-        // !NOTE: Monte Carlo in this framework is designed for continuous BSDFs integration(e.g., diffuse).
-        // !      For perfect specular reflection or transmission (delta distributions), the direction is deterministic.
-        // ! Consequently:
-        // !  - The PDF is effectively infinite (Dirac delta), so we do NOT divide by PDF.
-        // !  - The cosine term (N·L) is inherently handled by the delta function’s
-        // !    integration property and should NOT be explicitly multiplied.
-        // ! Instead, we directly evaluate the reflected/transmitted radiance scaled by
-        // ! the Fresnel factor (and η² for transmission), ensuring energy conservation.
         // 7.3 Calculate indirect light color
-        if (mtl->isDelta()) {
-            color_ind = hit ? trace(scene, rayo, reco, depth + 1) * bsdf : Vec3<float>{0.f};
+        if (mtli->isDelta()) {
+            color_ind = hit ? trace(scene, rayo, reco, depth + 1) * bsdf : Vec3<float>(0.f);
         } else {
-            float pdf_mtl = mtl->pdf(wi, n, wo, uv);
-            color_ind     = hit && !reco.material->isEmissive() && pdf_mtl > 0.f ? trace(scene, rayo, reco, depth + 1) * bsdf * cos / pdf_mtl : Vec3<float>{0.f}; // avoid duplicate direct light calculation when sampling material's ray hit area light
+            float prob    = des->prob(emti);
+            float pdf_mtl = mtli->pdf(wi, n, wo, uv, eta);
+            float pdf_emt = emto ? emto->pdf(wo, reco.normal, reco.distance) * prob : 0.f;
+            float weight  = mix(pdf_mtl, pdf_emt);
 
-            // 7.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
-            if (dot(color_ind, Vec3<float>{0.2126f, 0.7152f, 0.0722f}) > m_lum) { // luminance threshold
-                color_ind = Vec3<float>{0.f};
-            }
+            color_ind = hit && pdf_mtl > 0.f ? trace(scene, rayo, reco, depth + 1) * bsdf * cos * weight / pdf_mtl : Vec3<float>(0.f); // avoid duplicate direct light calculation when sampling material's ray hit area light
+        }
+
+        // 7.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
+        if (!mtli->isDelta() && dot(color_ind, Vec3<float>(0.2126f, 0.7152f, 0.0722f)) > m_lum) { // luminance threshold
+            color_ind = Vec3<float>(0.f);
         }
     }
 
-    // 8. Combine colors and apply Russianian roulette
+    // 8. Calculate final output color
     color = color_e + color_d + color_ind * rrweight;
+
     return color;
 }
 
