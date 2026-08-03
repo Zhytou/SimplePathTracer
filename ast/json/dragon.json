@@ -12,16 +12,16 @@
     "light": {
         "area": [
             {
-                "mtl_name": "Light",
+                "material_name": "Light",
                 "color": [34, 24, 8]
             }
         ]
     },
-    "model": [
+    "primitive": [
         {
             "name": "dragon",
-            "obj_path": "../ast/obj/dragon/dragon.obj",
-            "mtl_dir": "../ast/mtl/dragon"
+            "object_path": "../ast/obj/dragon/dragon.obj",
+            "material_directory": "../ast/mtl/dragon"
         }
     ]
 }

@@ -1,0 +1,51 @@
+{
+    "camera": {
+        "perspective":{
+            "eye": [2.668, 1.078, 6.668],
+            "target": [-0.841, 0.85, -0.051],
+            "up": [0, 1, 0],
+            "width": 768,
+            "height": 384,
+            "fovx": 60
+        }
+    },
+    "material": [
+        {
+            "name": "Diffuse",
+            "albedo": [0.25, 0.7, 0.4],
+            "metallic": 0.0,
+            "roughness": 1.0
+        },
+        {
+            "name": "Floor_Diffuse",
+            "albedo": [0.5, 0.5, 0.5],
+            "metallic": 0.0,
+            "roughness": 1.0
+        }
+    ],
+    "primitive": [
+        {
+            "name": "motto",
+            "object_path": "../ast/obj/motto/motto_2018.obj",
+            "default_material_id": 0
+        },
+        {
+            "name": "floor",
+            "object_path": "../ast/obj/motto/floor.obj",
+            "default_material_id": 1,
+            "transform": {
+                "scale": [6, 6, 6]
+            }
+        },
+        {
+            "name": "light1",
+            "object_path": "../ast/obj/motto/light1.obj",
+            "emission": [20, 80, 30]
+        },
+        {
+            "name": "light2",
+            "object_path": "../ast/obj/motto/light2.obj",
+            "emission": [20, 20, 800]
+        }
+    ]
+}

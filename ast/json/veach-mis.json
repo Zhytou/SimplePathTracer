@@ -12,24 +12,24 @@
     "light": {
         "area": [
             {
-                "mtl_name": "light1",
+                "material_name": "light1",
                 "color": [3000, 3000, 3000]
             },
             {
-                "mtl_name": "light2",
+                "material_name": "light2",
                 "color": [500, 500, 500]
             },
             {
-                "mtl_name": "light3",
+                "material_name": "light3",
                 "color": [100, 100, 100]
             }
         ]
     },
-    "model": [
+    "primitive": [
         {
             "name": "veach-mis",
-            "obj_path": "../ast/obj/veach-mis/veach-mis.obj",
-            "mtl_dir": "../ast/mtl/veach-mis"
+            "object_path": "../ast/obj/veach-mis/veach-mis.obj",
+            "material_directory": "../ast/mtl/veach-mis"
         }
     ]
 }
