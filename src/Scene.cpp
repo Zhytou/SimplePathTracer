@@ -3,6 +3,7 @@
 #include <rapidjson/document.h>
 
 #include "BoxLogger.hpp"
+#include "Image.hpp"
 #include "Sphere.hpp"
 #include "Triangle.hpp"
 
@@ -59,6 +60,9 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             mtl->setAlbedo(albedo);
             mtl->setRoughness(roughness);
             mtl->setMetallic(metallic);
+            if (fs::is_regular_file(albedo_texpath)) { mtl->setAlbedoMap(Image<float>::read(albedo_texpath, 0, true)); }
+            if (fs::is_regular_file(roughness_texpath)) { mtl->setRoughnessMap(Image<float>::read(roughness_texpath, 0, true)); }
+            if (fs::is_regular_file(metallic_texpath)) { mtl->setMetallicMap(Image<float>::read(metallic_texpath, 0, true)); }
             m_materials.push_back(mtl);
         }
     }
@@ -286,11 +290,11 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             float roughness    = mtl->getRoughness(uv);
             float metallic     = mtl->getMetallic(uv);
             float ior          = mtl->getIOR();
-            if (name.size() >= 15) {
-                name = name.substr(0, 10) + "...";
+            if (name.size() >= 25) {
+                name = name.substr(0, 22) + "...";
             }
             ss << std::left << std::fixed << std::setprecision(2)
-               << std::setw(15) << name
+               << std::setw(25) << name
                << std::setw(25) << type
                << std::setw(25) << albedo
                << std::setw(12) << roughness
@@ -304,14 +308,13 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n';
 
         // 9.2 Print primitive list
-        // if (m_primitives.size() < n) {
-        //     for (const auto& prm : m_primitives) { printPrmInfo(prm); }
-        // } else {
-        //     for (const auto& prm : m_primitives | std::views::take(k)) { printPrmInfo(prm); }
-        //     ss << "   ......\n";
-        //     for (const auto& prm : m_primitives | std::views::drop(m_primitives.size() - k)) { printPrmInfo(prm); }
-        // }
-        for (const auto& prm : m_primitives) { printPrmInfo(prm); }
+        if (m_primitives.size() < n) {
+            for (const auto& prm : m_primitives) { printPrmInfo(prm); }
+        } else {
+            for (const auto& prm : m_primitives | std::views::take(k)) { printPrmInfo(prm); }
+            ss << "   ......\n";
+            for (const auto& prm : m_primitives | std::views::drop(m_primitives.size() - k)) { printPrmInfo(prm); }
+        }
         BOX_LOG("RENDERABLE PRIMITIVES", width)
             << std::left
             << std::setw(15) << "ID"
@@ -328,7 +331,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         }
         BOX_LOG("RENDERABLE MATERIALS", width)
             << std::left
-            << std::setw(15) << "Name"
+            << std::setw(25) << "Name"
             << std::setw(25) << "Material Type"
             << std::setw(25) << "Albedo (R, G, B)"
             << std::setw(12) << "Roughness"
@@ -469,7 +472,13 @@ std::span<std::shared_ptr<Material>> Scene::loadMaterials(const fs::path& mtl_di
 
     // 1. Convert tinyobj::material_t into spt::Material
     start = m_materials.size();
-    for (auto& mtl : materials) {
+    for (auto mtl : materials) {
+        // 1.1 Update texture directory path
+        mtl.diffuse_texname   = mtl_dir / mtl.diffuse_texname;
+        mtl.roughness_texname = mtl_dir / mtl.roughness_texname;
+        mtl.metallic_texname  = mtl_dir / mtl.metallic_texname;
+
+        // 1.2 Create material
         auto nmtl = std::make_shared<Material>(m_materials.size(), mtl);
         m_materials.push_back(nmtl);
     }
