@@ -31,4 +31,15 @@ std::pair<std::shared_ptr<Emitter>, float> DES::sample(bool delta) const {
         return std::make_pair(m_emitters[i], m_areas[i] / m_areas.back());
     }
 }
+
+float DES::prob(std::shared_ptr<Emitter> emitter) const {
+    if (emitter == nullptr || m_emitters.empty()) { return 0.f; }
+
+    if (emitter->isDelta()) { // delta emitter
+        return 1 / (m_emitters.size() - m_areas.size());
+    } else { // non-delta emitter
+        return emitter->getPrimitive()->getShape()->area() / m_areas.back();
+    }
+}
+
 } // namespace spt

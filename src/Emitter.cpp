@@ -11,6 +11,13 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& p) const {
     return normalize(pp - p);
 }
 
+Vec3<float> AreaEmitter::sample() const {
+    if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
+
+    auto prm = m_primitive.lock();
+    return prm->sample();
+}
+
 float AreaEmitter::pdf(const Vec3<float>& wo, const Vec3<float>& n, float dis) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::pdf: invalid primitive!"); } // No light source
 

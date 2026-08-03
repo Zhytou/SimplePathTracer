@@ -28,6 +28,10 @@ class DES {
      * @return The selected emitter and corresponding probability.
     */
     std::pair<std::shared_ptr<Emitter>, float> sample(bool delta = false) const;
+    /**
+     * @brief Calculate the selection probability of a emitter.
+     */
+    float prob(std::shared_ptr<Emitter>) const;
 
    private:
     std::vector<std::shared_ptr<Emitter>> m_emitters;
