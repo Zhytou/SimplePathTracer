@@ -13,7 +13,7 @@ class Primitive {
    public:
     Primitive()  = default;
     ~Primitive() = default;
-    Primitive(int id, std::shared_ptr<Shape> shape, std::shared_ptr<Material> material, const Mat4x4<float>& transform) : m_id(id), m_shape(shape), m_material(material) { setTransform(transform); }
+    Primitive(int id, std::shared_ptr<Shape> shape, std::shared_ptr<Material> material) : m_id(id), m_shape(shape), m_material(material) {}
 
     int getID() const { return m_id; }
     std::shared_ptr<Shape> getShape() const { return m_shape; }
@@ -28,7 +28,10 @@ class Primitive {
     void setShape(std::shared_ptr<Shape> shape) { m_shape = shape; }
     void setMaterial(std::shared_ptr<Material> material) { m_material = material; }
     void setEmitter(std::shared_ptr<AreaEmitter> emitter) { m_emitter = emitter; }
-    void setInteriorMedium(std::shared_ptr<Medium> medium) { m_int_medium = medium; }
+    void setInteriorMedium(std::shared_ptr<Medium> medium) {
+        m_int_medium = medium;
+        if (medium) { m_material->setIOR(medium->getIOR()); } // set ior of material for Fresnel calculation
+    }
     void setExteriorMedium(std::shared_ptr<Medium> medium) { m_ext_medium = medium; }
     void setTransform(const Mat4x4<float>& transform) {
         m_is_identity   = transform == Mat4x4<float>::eye();

@@ -15,7 +15,9 @@ class Shape {
     virtual ~Shape() {}
 
     int getID() const { return m_id; }
+    const std::string& getName() const { return m_name; }
     void setID(int id) { m_id = id; }
+    void setName(const std::string& name) { m_name = name; }
 
     /**
      * @brief Test ray intersection against the shape under local coordinates.
@@ -59,6 +61,7 @@ class Shape {
 
    protected:
     int m_id = -1;
+    std::string m_name;
 };
 
 } // namespace spt
