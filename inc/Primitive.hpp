@@ -28,19 +28,17 @@ class Primitive {
     void setShape(std::shared_ptr<Shape> shape) { m_shape = shape; }
     void setMaterial(std::shared_ptr<Material> material) { m_material = material; }
     void setEmitter(std::shared_ptr<AreaEmitter> emitter) { m_emitter = emitter; }
-    void setInteriorMedium(std::shared_ptr<Medium> medium) {
-        m_int_medium = medium;
-        if (medium) { m_material->setIOR(medium->getIOR()); } // set ior of material for Fresnel calculation
-    }
+    void setInteriorMedium(std::shared_ptr<Medium> medium) { m_int_medium = medium; }
     void setExteriorMedium(std::shared_ptr<Medium> medium) { m_ext_medium = medium; }
     void setTransform(const Mat4x4<float>& transform) {
         m_is_identity   = transform == Mat4x4<float>::eye();
         m_transform     = transform;
         m_inv_transform = inv_affine(transform);
         m_n_transform   = {
-            {transform[0][0], transform[0][1], transform[0][2]},
-            {transform[1][0], transform[1][1], transform[1][2]},
-            {transform[2][0], transform[2][1], transform[2][2]},
+            // dont use operator[], otherwise col first
+            {transform(0, 0), transform(0, 1), transform(0, 2)},
+            {transform(1, 0), transform(1, 1), transform(1, 2)},
+            {transform(2, 0), transform(2, 1), transform(2, 2)},
         };
         m_n_transform = transpose(inv(m_n_transform));
     }
