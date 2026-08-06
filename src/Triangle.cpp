@@ -33,55 +33,59 @@ bool Triangle::intersect(const Ray& ray, IntersectRecord& rec) const {
     // Moving unknowns to the left side: -t*D + u*E1 + v*E2 = O - V0
     //
     // 2. Matrix Form (Ax = B):
-    // [ -D,  E1,  E2 ] * [ t,  u,  v ]^T = T_vec   (Where T_vec = O - V0)
+    // [ -D,  E1,  E2 ] * [ t,  u,  v ]^T = O - V0
     //
     // 3. Solving via Cramer's Rule:
-    // We use the scalar triple product identity: det(A, B, C) = (A x B) · C
+    // t = det([ O - V0, E1, E2 ]) / det([ -D, E1, E2 ])
+    // u = det([ -D, O - V0, E2 ]) / det([ -D, E1, E2 ])
+    // v = det([ -D, E1, O - V0 ]) / det([ -D, E1, E2 ])
     //
-    // det   = det(-D, E1, E2) = (D x E2) · E1       ==> Let P_vec = D x E2, det = E1 · P_vec
-    // u_num = det(T_vec, E1, E2) = (T_vec x D) · E2 ==> u = (T_vec · P_vec) / det
-    // v_num = det(-D, E1, T_vec) = (T_vec x E1) · D ==> Let Q_vec = T_vec x E1, v = D · Q_vec / det
-    // t_num = det(-D, E1, T_vec) = (T_vec x E1) · E2 ==> t = (E2 · Q_vec) / det
+    // while det([ A, B, C ]) = (A x B) · C = A · (B x C) = B · (C x A)
     //
-    // 4. Variable Meanings:
-    // - E1, E2 : Edge vectors of the triangle.
-    // - T_vec  : Vector from V0 to the ray origin (Translation vector).
-    // - P_vec  : Vector perpendicular to both the ray direction and edge E2.
-    // - Q_vec  : Vector perpendicular to both T_vec and edge E1.
+    // 4. Define several variables for convenience:
+    // - O : Org
+    // - D : Dir
+    // - E1 : V1 - V0
+    // - E2 : V2 - V0
+    // - T  : O - V0
+    // - P  : cross(D, E2)
+    // - Q  : cross(T, E1)
+    // - DET : det([ -D, E1, E2 ]) = dot(E1, P)
+    // - DET_inv : 1.0f / det([ -D, E1, E2 ])
     // ===================================================================================
 
-    Vec3<float> origin    = ray.getOrigin();
-    Vec3<float> direction = ray.getDirection();
+    Vec3<float> org = ray.getOrigin();
+    Vec3<float> dir = ray.getDirection();
 
-    Vec3<float> e1 = m_vertex[2] - m_vertex[0];
-    Vec3<float> e2 = m_vertex[1] - m_vertex[0];
+    Vec3<float> e1 = m_vertex[1] - m_vertex[0];
+    Vec3<float> e2 = m_vertex[2] - m_vertex[0];
 
-    // 1. Calculate the determinant (det) of matrix [-D, E1, E2]
-    Vec3<float> pvec = cross(direction, e2);
+    // 1. Define intermediate variables and calculate determinant of matrix [-D, E1, E2]
+    Vec3<float> tvec = org - m_vertex[0];
+    Vec3<float> pvec = cross(dir, e2);
+    Vec3<float> qvec = cross(tvec, e1);
     float det        = dot(e1, pvec);
 
     // 2. Check if the ray is parallel to the triangle plane
     if (std::fabs(det) < EPS) {
         return false;
     }
-    float invdet = 1.0f / det;
+    float det_inv = 1.0f / det;
 
     // 3. Calculate and validate Barycentric coordinate 'u'
-    Vec3<float> tvec = origin - m_vertex[0];
-    float u          = dot(tvec, pvec) * invdet;
+    float u = dot(tvec, pvec) * det_inv;
     if (u < 0.0f || u > 1.0f) {
         return false;
     }
 
     // 4. Calculate and validate Barycentric coordinate 'v'
-    Vec3<float> qvec = cross(tvec, e1);
-    float v          = dot(direction, qvec) * invdet;
+    float v = dot(dir, qvec) * det_inv;
     if (v < 0.0f || u + v > 1.0f) {
         return false;
     }
 
     // 5. Calculate the ray parameter 't' (distance)
-    float t    = dot(e2, qvec) * invdet;
+    float t    = dot(e2, qvec) * det_inv;
     float tmin = ray.getTMin();
     float tmax = ray.getTMax();
     if (t < tmin || t > tmax) {
@@ -92,14 +96,7 @@ bool Triangle::intersect(const Ray& ray, IntersectRecord& rec) const {
     float w              = 1.0f - u - v;
     Vec2<float> texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
 
-    // 7. UV Wrap Mode: Repeat logic
-    texcoord.u = std::fmod(texcoord.u, 1.0f);
-    texcoord.v = std::fmod(texcoord.v, 1.0f);
-    if (texcoord.u < 0) { texcoord.u += 1.0f; }
-    if (texcoord.v < 0) { texcoord.v += 1.0f; }
-
-    // 8. Set hit record
-    rec.id       = -1;
+    // 7. Set hit record
     rec.distance = t;
     rec.point    = ray.eval(t);
     rec.texcoord = texcoord;
