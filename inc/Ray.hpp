@@ -8,7 +8,7 @@ namespace spt {
 
 class Ray {
    public:
-    Ray(const Vec3<float>& org, const Vec3<float>& dir, float tmin = 0.0f, float tmax = INFINITY) : m_origin(org), m_direction(normalize(dir)), m_tmin(tmin), m_tmax(tmax) {}
+    Ray(const Vec3<float>& org, const Vec3<float>& dir, float tmin = DIS_EPS, float tmax = INFINITY, std::shared_ptr<Medium> medium = nullptr) : m_origin(org), m_direction(normalize(dir)), m_tmin(tmin), m_tmax(tmax), m_medium(medium) {}
 
     Vec3<float> getOrigin() const { return m_origin; }
     Vec3<float> getDirection() const { return m_direction; }
@@ -30,7 +30,7 @@ class Ray {
     Vec3<float> m_origin;
     Vec3<float> m_direction;
 
-    mutable float m_tmin = EPS;
+    mutable float m_tmin = DIS_EPS;
     mutable float m_tmax = INFINITY;
     std::weak_ptr<Medium> m_medium;
 };
