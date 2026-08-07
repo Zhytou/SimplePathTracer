@@ -34,6 +34,11 @@ struct Mat {
             ++r;
         }
     }
+    Mat(std::initializer_list<Vec<T, R>> columns) {
+        if (cols.size() != C) { throw std::invalid_argument(std::format("Mat: initializer_list col count {} does not match matrix cols {}", cols.size(), C)); }
+
+        for (int c = 0; c < C; ++c) { cols[c] = columns[c]; }
+    }
 
     static Mat zero() {
         Mat m;
@@ -140,13 +145,10 @@ T det(const Mat<T, N, N>& m) {
     if constexpr (N == 1) {
         return m(0, 0);
     } else if constexpr (N == 2) {
-        // 2x2 行列式: ad - bc
         return m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0);
     } else if constexpr (N == 3) {
-        // 3x3 行列式 (Sarrus 法则 / 余子式展开)
         return m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) - m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) + m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
     } else if constexpr (N == 4) {
-        // 4x4 行列式 (按第一行展开余子式)
         T SubFactor00 = m(2, 2) * m(3, 3) - m(3, 2) * m(2, 3);
         T SubFactor01 = m(2, 1) * m(3, 3) - m(3, 1) * m(2, 3);
         T SubFactor02 = m(2, 1) * m(3, 2) - m(3, 1) * m(2, 2);
@@ -161,13 +163,11 @@ T det(const Mat<T, N, N>& m) {
 
         return m(0, 0) * det2_0 + m(0, 1) * det2_1 + m(0, 2) * det2_2 + m(0, 3) * det2_3;
     } else {
-        // 任意 N > 4 高维矩阵: 高斯消元法求行列式 O(N^3)
         Mat<T, N, N> temp = m;
         T determinant     = static_cast<T>(1);
         int sign          = 1;
 
         for (size_t i = 0; i < N; ++i) {
-            // 选主元 Pivot
             size_t pivot = i;
             for (size_t j = i + 1; j < N; ++j) {
                 if (std::abs(temp(j, i)) > std::abs(temp(pivot, i))) {
@@ -176,11 +176,10 @@ T det(const Mat<T, N, N>& m) {
             }
 
             if (std::abs(temp(pivot, i)) < static_cast<T>(1e-9)) {
-                return static_cast<T>(0); // 奇异矩阵，行列式为 0
+                return static_cast<T>(0);
             }
 
             if (pivot != i) {
-                // 交换行，行列式变号
                 for (size_t k = 0; k < N; ++k) {
                     std::swap(temp(i, k), temp(pivot, k));
                 }
@@ -353,58 +352,25 @@ Mat<T, N, N> inv(const Mat<T, N, N>& m) {
 
 template <arithmetic T>
 Mat<T, 4, 4> inv_affine(const Mat<T, 4, 4>& m) {
-    // 1. 提取左上角 3x3 矩阵 A 和右侧平移向量 t
-    // A = [ m(0,0) m(0,1) m(0,2) ]
-    //     [ m(1,0) m(1,1) m(1,2) ]
-    //     [ m(2,0) m(2,1) m(2,2) ]
-
-    // 2. 手动展开计算 3x3 矩阵 A 的行列式 det(A)
-    T detA = m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) - m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) + m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
-
-    assert(std::abs(detA) > static_cast<T>(1e-9) && "Affine matrix A is singular!");
-    T invDetA = static_cast<T>(1) / detA;
-
-    // 3. 计算 3x3 逆矩阵 A_inv (伴随矩阵 / detA)
-    Mat<T, 3, 3> A_inv;
-    A_inv(0, 0) = (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) * invDetA;
-    A_inv(0, 1) = (m(0, 2) * m(2, 1) - m(0, 1) * m(2, 2)) * invDetA;
-    A_inv(0, 2) = (m(0, 1) * m(1, 2) - m(0, 2) * m(1, 1)) * invDetA;
-
-    A_inv(1, 0) = (m(1, 2) * m(2, 0) - m(1, 0) * m(2, 2)) * invDetA;
-    A_inv(1, 1) = (m(0, 0) * m(2, 2) - m(0, 2) * m(2, 0)) * invDetA;
-    A_inv(1, 2) = (m(0, 2) * m(1, 0) - m(0, 0) * m(1, 2)) * invDetA;
-
-    A_inv(2, 0) = (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0)) * invDetA;
-    A_inv(2, 1) = (m(0, 1) * m(2, 0) - m(0, 0) * m(2, 1)) * invDetA;
-    A_inv(2, 2) = (m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0)) * invDetA;
-
-    // 4. 计算新的平移向量: t_inv = -A_inv * t
+    // 1. Extract 3x3 affine matrix sub_m and translation vector t from m
     Vec<T, 3> t(m(0, 3), m(1, 3), m(2, 3));
-    Vec<T, 3> t_inv = -Vec<T, 3>(
-        A_inv(0, 0) * t.x + A_inv(0, 1) * t.y + A_inv(0, 2) * t.z,
-        A_inv(1, 0) * t.x + A_inv(1, 1) * t.y + A_inv(1, 2) * t.z,
-        A_inv(2, 0) * t.x + A_inv(2, 1) * t.y + A_inv(2, 2) * t.z);
+    Mat<T, 3, 3> sub_m = {{m(0, 0), m(0, 1), m(0, 2)}, {m(1, 0), m(1, 1), m(1, 2)}, {m(2, 0), m(2, 1), m(2, 2)}};
 
-    // 5. 组装最终的 4x4 逆矩阵
-    Mat<T, 4, 4> res;
-    // 拷贝 3x3 逆矩阵
-    for (size_t r = 0; r < 3; ++r) {
-        for (size_t c = 0; c < 3; ++c) {
-            res(r, c) = A_inv(r, c);
-        }
-    }
-    // 填入新的平移向量
-    res(0, 3) = t_inv.x;
-    res(1, 3) = t_inv.y;
-    res(2, 3) = t_inv.z;
+    // 2. Calculate determinant of 3x3 matrix sub_m
+    T det_m3x3 = det(sub_m);
 
-    // 底行固定为 0, 0, 0, 1
-    res(3, 0) = static_cast<T>(0);
-    res(3, 1) = static_cast<T>(0);
-    res(3, 2) = static_cast<T>(0);
-    res(3, 3) = static_cast<T>(1);
+    // 3. Calculate inverse of 3x3 matrix sub_m
+    Mat<T, 3, 3> sub_m_inv = inv(sub_m);
 
-    return res;
+    // 4. Calculate new translation vector t_inv = -sub_m_inv * t
+    Vec<T, 3> t_inv = -(sub_m_inv * t);
+
+    return {
+        {sub_m_inv(0, 0), sub_m_inv(0, 1), sub_m_inv(0, 2), t_inv[0]},
+        {sub_m_inv(1, 0), sub_m_inv(1, 1), sub_m_inv(1, 2), t_inv[1]},
+        {sub_m_inv(2, 0), sub_m_inv(2, 1), sub_m_inv(2, 2), t_inv[2]},
+        {0, 0, 0, 1},
+    };
 }
 
 } // namespace spt
