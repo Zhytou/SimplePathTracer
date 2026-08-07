@@ -63,9 +63,10 @@ Mat4x4f rotate(const Vec3f& d) {
 Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir) {
     float cos_theta_i = dot(wi, n);
     if (cos_theta_i < 0 && !tir) {
-        throw std::runtime_error("reflect: Cosine of incident angle is negative.");
+        throw std::runtime_error("reflect: Cosine of incident angle is negative and total internal reflection is not allowed.");
     }
     Vec3<float> nn = cos_theta_i > 0 ? n : -n;
+    cos_theta_i    = std::abs(cos_theta_i);
     Vec3<float> wo = 2 * nn * cos_theta_i - wi;
     return wo;
 }
@@ -77,6 +78,9 @@ Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, f
     float eta = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
     // temporary normal vector same hemisphere with wi
     Vec3<float> nn = cos_theta_i > 0 ? n : -n;
+
+    // aboslute value of cosine incident theta
+    cos_theta_i = std::abs(cos_theta_i);
     // square of sine transmitted theta
     float sin_theta_t2 = eta * eta * (1 - cos_theta_i * cos_theta_i);
     // return if total internal reflection occurs
