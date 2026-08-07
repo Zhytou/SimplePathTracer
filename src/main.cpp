@@ -10,19 +10,21 @@ int depth   = 4;
 int rrdepth = 2;
 int spp     = 16;
 float rrp   = 0.8f;
-float lum   = 5.f;
-int cnt     = 100; // bvh leaf node count
+float lum   = 5;
+int cnt     = 20; // max bvh leaf node size
+int ts      = 32; // tile size
+int thd     = 20; // number of threads
 
-std::filesystem::path config = "../ast/json/dragon.json";
+std::filesystem::path config = "../ast/json/cuboid-sphere.json";
 
 int main() {
     std::string name = std::format("{}_{}_{}_spp{}.png", config.stem().string(), depth, rrdepth, spp);
 
     try {
-        Tracer tracer(depth, rrdepth, spp, rrp, lum);
+        std::cout << name << std::endl;
+        Tracer tracer(depth, rrdepth, spp, rrp, lum, ts, thd);
         Scene scene(config, cnt);
         tracer.render(scene, name);
-        std::cout << name << std::endl;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return 1;
