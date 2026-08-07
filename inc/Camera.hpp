@@ -1,10 +1,6 @@
 #ifndef SPT_CAMERA_HPP
 #define SPT_CAMERA_HPP
 
-#include <array>
-#include <cmath>
-#include <iostream>
-
 #include "Ray.hpp"
 
 namespace spt {
