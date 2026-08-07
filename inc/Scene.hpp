@@ -6,6 +6,8 @@
 #include "DES.hpp"
 #include "Emitter.hpp"
 #include "Material.hpp"
+#include "Medium.hpp"
+#include "Primitive.hpp"
 #include "Shape.hpp"
 
 namespace spt {
@@ -28,10 +30,8 @@ class Scene {
      */
     void clear();
 
-    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::filesystem::path& obj_path, const std::filesystem::path& mtl_dir);
+    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::filesystem::path& obj_path, int mtl_id);
     std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::vector<int>& spe_ids, const std::vector<int>& mtl_ids);
-    std::span<std::shared_ptr<Shape>> loadShapes(const std::filesystem::path& obj_path, const tinyobj::attrib_t& attrib, const std::vector<tinyobj::shape_t>& shapes);
-    std::span<std::shared_ptr<Material>> loadMaterials(const std::filesystem::path& mtl_dir, const std::vector<tinyobj::material_t>& materials);
 
     std::shared_ptr<BVH> getBVH() const { return m_bvh; }
     std::shared_ptr<DES> getDES() const { return m_des; }
@@ -47,6 +47,10 @@ class Scene {
     std::shared_ptr<Material> getMaterial(int id) const {
         if (id < 0 || id >= m_materials.size()) { throw std::out_of_range("Scene::getMaterial: Invalid material id"); }
         return m_materials[id];
+    }
+    std::shared_ptr<Medium> getMedium(int id = 0) const {
+        if (id < 0 || id >= m_mediums.size()) { throw std::out_of_range("Scene::getMedium: Invalid medium id"); }
+        return m_mediums[id];
     }
     std::shared_ptr<Primitive> getPrimitive(int id) const {
         if (id < 0 || id >= m_primitives.size()) { throw std::out_of_range("Scene::getPrimitive: Invalid primitive id"); }
