@@ -1,4 +1,4 @@
-#include "Transform.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 
@@ -89,6 +89,49 @@ Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, f
     // snell's law (ior₁·sinθ₁ = ior₂·sinθ₂)
     Vec3<float> wo = -wi * eta + nn * (eta * cos_theta_i - cos_theta_t);
     return wo;
+}
+
+float fresnel(float cos_theta_i, float eta_i, float eta_t) {
+    if (eta_i == eta_t) {
+        return 0.0f;
+    }
+    float eta = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
+
+    cos_theta_i        = std::abs(cos_theta_i);
+    float sin_theta_t2 = eta * eta * (1 - cos_theta_i * cos_theta_i);
+    float cos_theta_t  = std::sqrt(1.0f - sin_theta_t2);
+    if (sin_theta_t2 > 1.0f) { // total internal reflection
+        return 1.0f;
+    }
+
+    float Rs = (eta_i * cos_theta_i - eta_t * cos_theta_t) / (eta_i * cos_theta_i + eta_t * cos_theta_t);
+    float Rp = (eta_t * cos_theta_i - eta_i * cos_theta_t) / (eta_t * cos_theta_i + eta_i * cos_theta_t);
+
+    return (Rs * Rs + Rp * Rp) / 2.0f;
+}
+
+Vec3<float> fresnel(float cosThetaI, const Vec3<float>& eta, const Vec3<float>& eta_k) {
+    return Vec3<float>(0.0f);
+
+    // cosThetaI = clamp(cosThetaI, -1.0f, 1.0f);
+
+    // float cosThetaI2 = cosThetaI * cosThetaI;
+    // float sinThetaI2 = 1. - cosThetaI2;
+    // Color3f eta2     = eta * eta;
+    // Color3f etak2    = k * k;
+
+    // Color3f t0       = eta2 - etak2 - sinThetaI2;
+    // Color3f a2plusb2 = sqrt(t0 * t0 + 4 * eta2 * etak2);
+    // Color3f t1       = a2plusb2 + cosThetaI2;
+    // Color3f a        = sqrt(0.5f * (a2plusb2 + t0));
+    // Color3f t2       = (float)2 * cosThetaI * a;
+    // Color3f Rs       = (t1 - t2) / (t1 + t2);
+
+    // Color3f t3 = cosThetaI2 * a2plusb2 + sinThetaI2 * sinThetaI2;
+    // Color3f t4 = t2 * sinThetaI2;
+    // Color3f Rp = Rs * (t3 - t4) / (t3 + t4);
+
+    // return 0.5 * (Rp + Rs);
 }
 
 } // namespace spt

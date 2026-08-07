@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <ostream>
 #include <random>
@@ -19,17 +20,13 @@
 #include <unordered_map>
 #include <vector>
 
-#define SPT_USE_GLM
 #include "Mat.hpp"
-#include "Transform.hpp"
 #include "Vec.hpp"
 
 namespace spt {
 
-constexpr float EPS = 1e-6f;
-
-constexpr float DIS_EPS = 1e-4f;
-
+constexpr float EPS     = 1e-6f;
+constexpr float DIS_EPS = 1e-3f;
 constexpr float PDF_EPS = 1e-6f;
 
 constexpr float PI = 3.14159265358979323846f;
@@ -58,17 +55,63 @@ constexpr float degrees(float rad) {
     return rad * 180.f / PI;
 }
 
-std::vector<std::string> split(const std::string& str, char delimiter = ' ') {
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream stream(str);
+/**
+ * @brief Create translation matrix
+ * 
+ * @param t Translation offsets along each axis.
+ * @return Translation matrix
+ */
+Mat4x4f translate(const Vec3f& t);
 
-    while (std::getline(stream, token, delimiter)) {
-        tokens.push_back(token);
-    }
+/**
+ * @brief Axis-angle rotation
+ * 
+ * @param r Rotation angles(in degrees) along each axis.
+ * @return Rotation matrix
+ */
+Mat4x4f rotate(const Vec3f& d);
 
-    return tokens;
-}
+/**
+ * @brief Create scale matrix
+ * 
+ * @param s Scale factors along each axis.
+ * @return Scale matrix
+ */
+Mat4x4f scale(const Vec3f& s);
+
+/**
+ * @brief Calculate the direction of reflected light
+ * 
+ * @param wi Incident direction vector
+ * @param n Normal vector
+ * @param tir Whether to calculate the direction of total internal reflection
+ * 
+ * @return Direction of reflected light
+ */
+Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir = false);
+
+/**
+ * @brief Calculate the direction of transmitted light
+ * 
+ * @param wi Incident direction vector
+ * @param n Normal vector
+ * @param eta_i Index of refraction of the medium where the incident light originates
+ * @param eta_t Index of refraction of the medium where the transmitted light arrives
+ * @return Directionmitted direction vector
+ */
+Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, float eta_t);
+
+/**
+ * @brief Calculate the Fresnel reflection coefficient
+ * 
+ * @param cos_theta_i Cosine of the angle between the incident light and the normal vector
+ * @param eta_i Index of refraction of the medium where the incident light originates
+ * @param eta_t Index of refraction of the medium where the transmitted light arrives
+ * @return Fresnel reflection coefficient
+ */
+float fresnel(float cos_theta_i, float eta_i, float eta_t);
+
+Vec3<float> fresnel(float cosThetaI, const Vec3<float>& eta, const Vec3<float>& eta_k);
 
 } // namespace spt
 
