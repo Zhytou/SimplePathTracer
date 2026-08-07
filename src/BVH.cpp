@@ -115,7 +115,7 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
         auto laabb = prefix_aabbs[i - 1];
         auto raabb = suffix_aabbs[i];
 
-        float cost = evaluate(aabb, laabb, raabb, lcnt, rcnt);
+        float cost = eval(aabb, laabb, raabb, lcnt, rcnt);
         if (best_split.cost > cost) {
             best_split = Split{i, cost, laabb, raabb};
         }
@@ -153,42 +153,39 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
     return bvh;
 }
 
-float BVH::evaluate(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount) {
+float BVH::eval(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount) {
     return 1 + left.area() / parent.area() * lcount + right.area() / parent.area() * rcount;
 }
 
-bool BVH::intersect(const Ray& ray, IntersectRecord& rec) const {
+bool BVH::intersect(Ray& ray, Intersection& its) const {
     // 0. Initialize variables
     bool hit = false;
 
-    // 1. Check AABB intersection
+    // 1. Check AABB intersection and update ray t range
     if (!m_aabb.intersect(ray)) { return false; }
 
-    // 2. Check triangle intersection, if leaf node
+    // 2. Check triangle intersection and update ray t range if leaf node
     if (m_leaf) {
-        for (auto primitive : m_primitives) {
-            IntersectRecord crec;
-            if (primitive->intersect(ray, crec)) {
+        for (auto prm : m_primitives) {
+            Intersection cits; // current intersection info struct
+            if (prm->intersect(ray, cits)) {
                 hit = true;
-                rec = crec;
-
-                ray.setTMax(std::min(crec.distance, ray.getTMax())); // mutable member function
+                its = cits;
+                ray.setTMax(std::min(cits.distance, ray.getTMax()));
             }
         }
         return hit;
     }
 
     // 3. Check sub bvh intersection, if not leaf node
-    IntersectRecord lrec, rrec;
-    if (m_left->intersect(ray, lrec)) {
+    Intersection lits, rits;
+    if (m_left->intersect(ray, lits)) {
         hit = true;
-        rec = lrec;
-
-        ray.setTMax(std::min(lrec.distance, ray.getTMax())); // mutable member function
+        its = lits;
     }
-    if (m_right->intersect(ray, rrec)) {
+    if (m_right->intersect(ray, rits)) {
         hit = true;
-        rec = rrec;
+        its = rits;
     }
 
     return hit;

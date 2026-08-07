@@ -2,7 +2,7 @@
 
 namespace spt {
 
-bool Sphere::intersect(const Ray& ray, IntersectRecord& rec) const {
+bool Sphere::intersect(const Ray& ray, Intersection& its) const {
     // ===================================================================================
     // [Mathematical Derivation: Ray-Sphere Intersection Algorithm]
     //
@@ -66,11 +66,11 @@ bool Sphere::intersect(const Ray& ray, IntersectRecord& rec) const {
 
     float t       = t1 >= tmin && t1 <= tmax ? t1 : t2;
     Vec3<float> p = ray.eval(t);
-    rec.id        = -1;
-    rec.distance  = t;
-    rec.point     = p;
-    rec.texcoord  = parameterize(p);
-    rec.normal    = normalize(p - m_center);
+    its.id        = -1;
+    its.distance  = t;
+    its.point     = p;
+    its.texcoord  = parameterize(p);
+    its.normal    = normalize(p - m_center);
 
     return true;
 }

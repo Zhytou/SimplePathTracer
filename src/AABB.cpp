@@ -13,7 +13,7 @@ AABB AABB::create(const std::vector<std::shared_ptr<Primitive>>& primitives) {
     return aabb;
 }
 
-bool AABB::intersect(const Ray& ray) const {
+bool AABB::intersect(Ray& ray) const {
     Vec3<float> org = ray.getOrigin();
     Vec3<float> dir = ray.getDirection();
     Vec3<float> dir_inv(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
@@ -38,6 +38,7 @@ bool AABB::intersect(const Ray& ray) const {
     tmax      = std::min(tmax, std::max(tz1, tz2));
     if (tmin > tmax) { return false; }
 
+    ray.setTMax(tmax); // update ray t max, ensure that tmax is the minimum of all tmax
     return true;
 }
 

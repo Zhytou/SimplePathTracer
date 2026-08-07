@@ -2,7 +2,7 @@
 #define SPT_PRIMITIVE_HPP
 
 #include "Emitter.hpp"
-#include "IntersectRecord.hpp"
+#include "Intersection.hpp"
 #include "Material.hpp"
 #include "Medium.hpp"
 #include "Shape.hpp"
@@ -11,8 +11,6 @@ namespace spt {
 
 class Primitive {
    public:
-    Primitive()  = default;
-    ~Primitive() = default;
     Primitive(int id, std::shared_ptr<Shape> shape, std::shared_ptr<Material> material) : m_id(id), m_shape(shape), m_material(material) {}
 
     int getID() const { return m_id; }
@@ -22,6 +20,7 @@ class Primitive {
     std::shared_ptr<Medium> getInteriorMedium() const { return m_int_medium; }
     std::shared_ptr<Medium> getExteriorMedium() const { return m_ext_medium; }
     const Mat4x4<float>& getTransform() const { return m_transform; }
+    bool isTransformIdentity() const { return m_is_identity; }
     const Mat4x4<float>& getInvTransform() const { return m_inv_transform; }
 
     void setID(int id) { m_id = id; }
@@ -43,7 +42,7 @@ class Primitive {
         m_n_transform = transpose(inv(m_n_transform));
     }
 
-    bool intersect(const Ray& ray, IntersectRecord& rec) const;
+    bool intersect(const Ray& ray, Intersection& its) const;
     AABB wrap() const;
     Vec3<float> sample() const;
 

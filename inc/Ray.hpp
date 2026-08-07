@@ -17,8 +17,8 @@ class Ray {
     std::shared_ptr<Medium> getMedium() const { return !m_medium.expired() ? m_medium.lock() : nullptr; }
     void setOrigin(const Vec3<float>& org) { m_origin = org; }
     void setDirection(const Vec3<float>& dir) { m_direction = normalize(dir); }
-    void setTMin(float tmin) const { m_tmin = tmin; }
-    void setTMax(float tmax) const { m_tmax = tmax; }
+    void setTMin(float tmin) { m_tmin = tmin; }
+    void setTMax(float tmax) { m_tmax = tmax; }
     void setMedium(const std::shared_ptr<Medium>& medium) { m_medium = medium; }
 
     Vec3<float> eval(const float& t) const {
@@ -30,8 +30,8 @@ class Ray {
     Vec3<float> m_origin;
     Vec3<float> m_direction;
 
-    mutable float m_tmin = DIS_EPS;
-    mutable float m_tmax = INFINITY;
+    float m_tmin = DIS_EPS;
+    float m_tmax = INFINITY;
     std::weak_ptr<Medium> m_medium;
 };
 

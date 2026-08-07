@@ -20,7 +20,7 @@ Vec3<float> Triangle::sample() const {
     return e1 * u + e2 * v + m_vertex[0];
 }
 
-bool Triangle::intersect(const Ray& ray, IntersectRecord& rec) const {
+bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     // ===================================================================================
     // [Mathematical Derivation: Möller–Trumbore Intersection Algorithm]
     //
@@ -97,10 +97,10 @@ bool Triangle::intersect(const Ray& ray, IntersectRecord& rec) const {
     Vec2<float> texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
 
     // 7. Set hit record
-    rec.distance = t;
-    rec.point    = ray.eval(t);
-    rec.texcoord = texcoord;
-    rec.normal   = m_normal;
+    its.distance = t;
+    its.point    = ray.eval(t);
+    its.texcoord = texcoord;
+    its.normal   = m_normal;
 
     return true;
 }

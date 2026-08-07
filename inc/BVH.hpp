@@ -32,23 +32,25 @@ class BVH {
      * @param rcount Number of primitives in right child
      * @return SAH cost of the split
      */
-    static float evaluate(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount);
+    static float eval(const AABB& parent, const AABB& left, const AABB& right, int lcount, int rcount);
 
     /**
      * @brief Test ray intersection against the BVH node under world coordinates.
      * 
      * @param ray Ray to check intersection
-     * @param rec Hit record to store intersection information
+     * @param its Intersection info struct
      * @return True if the ray intersects the BVH node, False otherwise
      */
-    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const;
+    bool intersect(Ray& ray, Intersection& its) const;
 
     /**
      * @brief Get the bounding box of the BVH node
      * 
      * @return Bounding box of the BVH node
      */
-    virtual AABB wrap() const { return m_aabb; }
+    AABB wrap() const { return m_aabb; }
+
+    bool isLeaf() const { return m_leaf; }
 
    private:
     bool m_leaf                  = false;

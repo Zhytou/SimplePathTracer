@@ -2,11 +2,11 @@
 
 namespace spt {
 
-bool Primitive::intersect(const Ray& ray, IntersectRecord& rec) const {
+bool Primitive::intersect(const Ray& ray, Intersection& its) const {
     // 0. Fall back to default hit test if transform matrix is identity
     if (m_is_identity) {
-        bool hit = m_shape->intersect(ray, rec);
-        rec.id   = hit ? getID() : -1;
+        bool hit = m_shape->intersect(ray, its);
+        its.id   = hit ? getID() : -1;
         return hit;
     }
 
@@ -25,16 +25,16 @@ bool Primitive::intersect(const Ray& ray, IntersectRecord& rec) const {
 
     // 2. Do hit test in local space
     Ray ray_local(org_local, dir_local / scale, tmin * scale, tmax * scale);
-    bool hit = m_shape->intersect(ray_local, rec);
+    bool hit = m_shape->intersect(ray_local, its);
 
     // 3. Convert hit info into world space
     if (hit) {
-        Vec4<float> point_world4 = m_transform * Vec4<float>(rec.point.x, rec.point.y, rec.point.z, 1.0);
+        Vec4<float> point_world4 = m_transform * Vec4<float>(its.point.x, its.point.y, its.point.z, 1.0);
 
-        rec.id       = getID();
-        rec.distance = rec.distance / scale;
-        rec.point    = Vec3<float>(point_world4.x, point_world4.y, point_world4.z);
-        rec.normal   = normalize(m_n_transform * rec.normal);
+        its.id       = getID();
+        its.distance = its.distance / scale;
+        its.point    = Vec3<float>(point_world4.x, point_world4.y, point_world4.z);
+        its.normal   = normalize(m_n_transform * its.normal);
     }
 
     return hit;
