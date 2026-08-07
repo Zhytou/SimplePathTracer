@@ -2,9 +2,12 @@
 #define SPT_BVH_HPP
 
 #include "AABB.hpp"
-#include "Primitive.hpp"
+#include "Intersection.hpp"
+#include "Ray.hpp"
 
 namespace spt {
+
+class Primitive;
 
 /**
  * @brief Bounding Volume Hierarchy (BVH) for fast ray tracing.

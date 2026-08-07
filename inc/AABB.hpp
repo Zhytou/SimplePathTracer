@@ -1,11 +1,6 @@
 #ifndef SPT_AABB_HPP
 #define SPT_AABB_HPP
 
-#include <cassert>
-#include <cfloat>
-#include <memory>
-#include <vector>
-
 #include "Ray.hpp"
 #include "Utils.hpp"
 

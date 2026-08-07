@@ -1,14 +1,10 @@
 #ifndef SPT_IMAGE_HPP
 #define SPT_IMAGE_HPP
 
-#include <filesystem>
-#include <memory>
 #include <stb_image.h>
 #include <stb_image_write.h>
-#include <string>
-#include <vector>
 
-#include "Vec.hpp"
+#include "Utils.hpp"
 
 namespace spt {
 

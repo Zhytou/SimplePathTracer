@@ -1,3 +1,6 @@
+#ifndef SPT_QUEUE_HPP
+#define SPT_QUEUE_HPP
+
 #include <mutex>
 #include <queue>
 
@@ -30,3 +33,5 @@ class Queue {
 };
 
 } // namespace spt
+
+#endif

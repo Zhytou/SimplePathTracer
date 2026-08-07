@@ -4,9 +4,6 @@
 #include "Image.hpp"
 #include "Vec.hpp"
 
-#include <algorithm>
-#include <cmath>
-
 namespace spt {
 
 enum class WrapMode {

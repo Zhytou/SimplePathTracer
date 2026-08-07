@@ -1,4 +1,5 @@
 #include "BVH.hpp"
+#include "Primitive.hpp"
 
 namespace spt {
 
