@@ -8,15 +8,15 @@ namespace spt {
 class Triangle : public Shape {
    public:
     Triangle(int id) : Shape(id) {}
-    Triangle(int id, const std::array<Vec3<float>, 3>& v, const std::array<Vec2<float>, 3>& uv, const Vec3<float>& n) : Shape(id), m_vertex(v), m_texcoord(uv), m_normal(n) {}
+    Triangle(int id, const std::array<Vec3<float>, 3>& v, const std::array<Vec3<float>, 3>& n, const std::array<Vec2<float>, 3>& uv) : Shape(id), m_vertex(v), m_normal(n), m_texcoord(uv) {}
     ~Triangle() {}
 
     const std::array<Vec3<float>, 3>& getVertex() const { return m_vertex; }
     const std::array<Vec2<float>, 3>& getTexCoord() const { return m_texcoord; }
-    const Vec3<float>& getNormal() const { return m_normal; }
+    const std::array<Vec3<float>, 3>& getNormal() const { return m_normal; }
     void setVertex(const std::array<Vec3<float>, 3>& v) { m_vertex = v; }
     void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
-    void setNormal(const Vec3<float>& n) { m_normal = n; }
+    void setNormal(const std::array<Vec3<float>, 3>& n) { m_normal = n; }
 
     virtual bool intersect(const Ray& ray, Intersection& its) const override;
     virtual AABB wrap() const override;
@@ -28,7 +28,7 @@ class Triangle : public Shape {
    private:
     std::array<Vec3<float>, 3> m_vertex;
     std::array<Vec2<float>, 3> m_texcoord;
-    Vec3<float> m_normal;
+    std::array<Vec3<float>, 3> m_normal;
 };
 
 } // namespace spt

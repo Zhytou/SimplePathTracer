@@ -92,15 +92,47 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
         return false;
     }
 
-    // 6. Interpolate texture coordinates using weights: w = 1 - u - v
+    // 6. Interpolate using weights: w = 1 - u - v
     float w              = 1.0f - u - v;
     Vec2<float> texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
+    Vec3<float> normal   = normalize(m_normal[0] * w + m_normal[1] * u + m_normal[2] * v);
 
     // 7. Set hit record
     its.distance = t;
     its.point    = ray.eval(t);
     its.texcoord = texcoord;
-    its.normal   = m_normal;
+    its.normal   = normal;
+
+    // 7. Construct TBN space if uv coordinates are available
+    auto& uv0 = m_texcoord[0];
+    auto& uv1 = m_texcoord[1];
+    auto& uv2 = m_texcoord[2];
+
+    float du1 = uv1.x - uv0.x;
+    float dv1 = uv1.y - uv0.y;
+    float du2 = uv2.x - uv0.x;
+    float dv2 = uv2.y - uv0.y;
+
+    float det_uv = du1 * dv2 - dv1 * du2;
+    if (std::fabs(det_uv) < EPS) {
+        its.TBN();
+    } else {
+        float det_uv_inv      = 1.0f / det_uv;
+        Vec3<float> tangent   = (e1 * dv2 - e2 * dv1) * det_uv_inv;
+        Vec3<float> bitangent = (-e1 * du2 + e2 * du1) * det_uv_inv;
+
+        // Gram‑Schmidt Orthogonalization Process
+        tangent   = normalize(tangent - normal * dot(tangent, normal));
+        bitangent = normalize(bitangent - normal * dot(bitangent, normal) - tangent * dot(bitangent, tangent));
+
+        // Ensure right-hand coordinate system
+        if (dot(cross(normal, tangent), bitangent) < 0.f) {
+            bitangent = -bitangent;
+        }
+
+        its.tangent   = tangent;
+        its.bitangent = bitangent;
+    }
 
     return true;
 }
@@ -125,17 +157,19 @@ Vec2<float> Triangle::parameterize(const Vec3<float>& point) const {
     Vec3<float> e0 = v1 - v0;
     Vec3<float> e1 = v2 - v0;
     Vec3<float> n  = cross(e0, e1);
-    float area     = length(n) / 2;
-    if (area < EPS) {
+
+    float n2 = dot(n, n);
+    if (n2 < EPS) {
         return m_texcoord[0];
     }
+    float n2_inv = 1.0f / n2;
 
     Vec3<float> pv0 = v0 - p;
     Vec3<float> pv1 = v1 - p;
     Vec3<float> pv2 = v2 - p;
 
-    float u = dot(cross(pv2, pv0), m_normal) / dot(n, m_normal);
-    float v = dot(cross(pv0, pv1), m_normal) / dot(n, m_normal);
+    float u = dot(cross(pv2, pv0), n) * n2_inv;
+    float v = dot(cross(pv0, pv1), n) * n2_inv;
     float w = 1.0f - u - v;
 
     return m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
