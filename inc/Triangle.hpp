@@ -3,10 +3,6 @@
 
 #include "Shape.hpp"
 
-#include <array>
-#include <iostream>
-#include <memory>
-
 namespace spt {
 
 class Triangle : public Shape {
@@ -22,7 +18,7 @@ class Triangle : public Shape {
     void setTexCoord(const std::array<Vec2<float>, 3>& uv) { m_texcoord = uv; }
     void setNormal(const Vec3<float>& n) { m_normal = n; }
 
-    virtual bool intersect(const Ray& ray, IntersectRecord& rec) const override;
+    virtual bool intersect(const Ray& ray, Intersection& its) const override;
     virtual AABB wrap() const override;
     Vec3<float> sample() const override;
     float area() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
