@@ -1,8 +1,6 @@
 #ifndef SPT_DES_HPP
 #define SPT_DES_HPP
 
-#include <vector>
-
 #include "Emitter.hpp"
 #include "Utils.hpp"
 

@@ -183,10 +183,7 @@ bool BVH::intersect(Ray& ray, Intersection& its) const {
     if (m_left->intersect(ray, lits)) {
         hit = true;
         its = lits;
-<<<<<<< HEAD
         ray.setTMax(std::min(lits.distance, ray.getTMax()));
-=======
->>>>>>> refs/remotes/origin/master
     }
     if (m_right->intersect(ray, rits)) {
         hit = true;

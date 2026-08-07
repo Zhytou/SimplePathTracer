@@ -101,7 +101,6 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     its.distance = t;
     its.point    = ray.eval(t);
     its.texcoord = texcoord;
-<<<<<<< HEAD
     its.normal   = normal;
 
     // 7. Construct TBN space if uv coordinates are available
@@ -134,9 +133,6 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
         its.tangent   = tangent;
         its.bitangent = bitangent;
     }
-=======
-    its.normal   = m_normal;
->>>>>>> refs/remotes/origin/master
 
     return true;
 }
