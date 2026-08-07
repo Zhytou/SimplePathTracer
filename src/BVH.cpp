@@ -162,7 +162,7 @@ bool BVH::intersect(Ray& ray, Intersection& its) const {
     // 0. Initialize variables
     bool hit = false;
 
-    // 1. Check AABB intersection
+    // 1. Check AABB intersection and update ray t range
     if (!m_aabb.intersect(ray)) { return false; }
 
     // 2. Check triangle intersection and update ray t range if leaf node
@@ -183,7 +183,10 @@ bool BVH::intersect(Ray& ray, Intersection& its) const {
     if (m_left->intersect(ray, lits)) {
         hit = true;
         its = lits;
+<<<<<<< HEAD
         ray.setTMax(std::min(lits.distance, ray.getTMax()));
+=======
+>>>>>>> refs/remotes/origin/master
     }
     if (m_right->intersect(ray, rits)) {
         hit = true;

@@ -71,7 +71,10 @@ bool Sphere::intersect(const Ray& ray, Intersection& its) const {
     its.point     = p;
     its.texcoord  = parameterize(p);
     its.normal    = normalize(p - m_center);
+<<<<<<< HEAD
     its.TBN();
+=======
+>>>>>>> refs/remotes/origin/master
 
     return true;
 }
