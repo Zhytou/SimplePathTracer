@@ -100,15 +100,15 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     return;
 }
 
-Vec3<float> Tracer::cast(const Scene& scene, const Ray& ray) {
-    IntersectRecord rec;
-    if (scene.getBVH()->intersect(ray, rec)) {
-        return trace(scene, ray, rec, 0);
+Vec3<float> Tracer::cast(const Scene& scene, Ray& ray) {
+    Intersection its;
+    if (scene.getBVH()->intersect(ray, its)) {
+        return trace(scene, ray, its, 0);
     }
     return Vec3<float>(0.f);
 }
 
-Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, IntersectRecord& reci, int depth) {
+Vec3<float> Tracer::trace(const Scene& scene, Ray& rayi, Intersection& itsi, int depth) {
     // 0. Initialize scene to render and color to return
     auto bvh = scene.getBVH();
     auto des = scene.getDES();
@@ -116,97 +116,99 @@ Vec3<float> Tracer::trace(const Scene& scene, const Ray& rayi, IntersectRecord& 
     Vec3<float> color_e(0.f), color_d(0.f), color_ind(0.f);
 
     // 1. Avoid no hit and infinite recursion
-    if (reci.id < 0 || depth >= m_depth) {
+    if (itsi.id < 0 || depth >= m_depth) {
         return color;
     }
 
-    // 2. Get input hit info
-    int id        = reci.id;
-    auto prmi     = scene.getPrimitive(id);    // primitive hit by the rayi
-    auto mtli     = prmi->getMaterial();       // material hit by the rayi(could be nullptr if emissive primitive)
-    auto emti     = prmi->getEmitter();        // emitter hit by the rayi
-    auto int_medi = prmi->getInteriorMedium(); // internal medium hit by the rayi
-    auto ext_medi = prmi->getExteriorMedium(); // external medium hit by the rayi
+    // 2. Collect hit info
+    int id    = itsi.id;
+    auto prmi = scene.getPrimitive(id); // primitive hit by the rayi
+    auto mtli = prmi->getMaterial();    // material of the hit primitive(could be nullptr if emissive)
+    auto emti = prmi->getEmitter();     // emitter of the hit primitive
 
-    Vec3<float> n  = reci.normal;
-    Vec3<float> p  = reci.point;
-    Vec2<float> uv = reci.texcoord;
-    float eta      = int_medi && ext_medi ? ext_medi->getIOR() / int_medi->getIOR() : NAN;
+    // 3. Initialize geometry info
+    Vec3<float> p  = itsi.point;    // hit point
+    Vec3<float> n  = itsi.normal;   // normal at the hit point
+    Vec2<float> uv = itsi.texcoord; // texture coordinate at the hit point
 
-    // 3. Initialize output ray and bsdf
-    Vec3<float> wi   = -rayi.getDirection(); // view direction(wi) P -> Eye
-    Vec3<float> wo   = Vec3<float>(0.f);     // light direction(wo) P -> ight
-    Vec3<float> bsdf = Vec3<float>(0.f);     // material bsdf value at hit point P
-    float cos        = 0.f;                  // cosine of the angle between normal and light direction(wo)
+    Vec3<float> wi       = -rayi.getDirection(); // view direction(wi) P -> Eye
+    Vec3<float> wo       = Vec3<float>(0.f);     // light direction(wo) P -> ight
+    Vec3<float> wi_local = itsi.toLocal(wi);
+    Vec3<float> wo_local = itsi.toLocal(wo);
 
-    // 4. Get emissive light color
+    // 4. Apply russian roulette for later indirect color calculation
+    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
+    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
+
+    // 5. Get emissive light color
     if (emti) {
         color_e = emti->getColor();
     }
 
-    // 5. Calculate specular manifold sampling color
+    // 6. Calculate specular manifold sampling color
     if (0) {
     }
 
-    // 6. Calculate direct light sampling color
+    // 7. Calculate direct light sampling color
     if (!emti && !mtli->isDelta()) {
-        // 6.1 Sample non-delta light
+        // 7.1 Sample non-delta light
         auto [emts, prob] = des->sample(); // emitter sampled from the scene
+        wo                = emts->sample(p);
+        wo_local          = itsi.toLocal(wo);
 
-        wo   = emts->sample(p);
-        bsdf = mtli->bsdf(wi, n, wo, uv, eta);
-        cos  = std::fabs(dot(n, wo)); // for both reflection and transmission
+        auto bsdf = mtli->eval(wi_local, wo_local, uv); // light sampling only support reflection
+        float cos = std::max(wo_local.z, 0.f);
 
-        // 6.2 Do hit test
+        // 7.2 Do hit test
         Ray rayo(p, wo, DIS_EPS, INFINITY);
-        IntersectRecord reco;
-        bool hit  = bvh->intersect(rayo, reco);
-        auto prmo = hit ? scene.getPrimitive(reco.id) : nullptr;
+        Intersection itso;
+        bool hit  = bvh->intersect(rayo, itso);
+        auto prmo = hit ? scene.getPrimitive(itso.id) : nullptr;
         auto emto = hit ? prmo->getEmitter() : nullptr;
 
-        // 6.3 Calculate probability density function of
-        float pdf_emt = emts->pdf(wo, reco.normal, reco.distance) * prob;
-        float pdf_mtl = mtli->pdf(wi, n, wo, uv, eta);
+        // 7.3 Calculate PDFs and MIS weight
+        float pdf_emt = emts->pdf(wo, itso.normal, itso.distance) * prob;
+        float pdf_mtl = mtli->pdf(wi_local, wo_local, uv);
         float weight  = mix(pdf_emt, pdf_mtl);
 
         color_d += hit && emto && pdf_emt > 0.f ? emto->getColor() * bsdf * cos * weight / pdf_emt : Vec3<float>(0.f); // avoid division by zero when output direction(wo) and light normal are parallel or opposite
     }
 
-    // 7. Apply russian roulette and calculate material sampling color
-    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
-    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
+    // 8. Calculate material sampling color
     if (!emti && rrp < m_rrp) {
-        // 7.1 Sample material
-        wo   = mtli->scatter(wi, n, uv, eta);
-        bsdf = mtli->bsdf(wi, n, wo, uv, eta);
-        cos  = std::fabs(dot(n, wo));
+        // 8.1 Sample material
+        wo_local = mtli->sample(wi_local, uv);
+        wo       = itsi.toWorld(wo_local);
 
-        // 7.2 Do hit test
+        auto bsdf = mtli->eval(wi_local, wo_local, uv);
+        float cos = std::fabs(wo_local.z); // consider both reflection and transmission
+
+        // 8.2 Do hit test
         Ray rayo(p, wo, DIS_EPS, INFINITY);
-        IntersectRecord reco;
-        bool hit  = bvh->intersect(rayo, reco);
-        auto prmo = hit ? scene.getPrimitive(reco.id) : nullptr;
+        Intersection itso;
+        bool hit  = bvh->intersect(rayo, itso);
+        auto prmo = hit ? scene.getPrimitive(itso.id) : nullptr;
         auto emto = hit ? prmo->getEmitter() : nullptr;
 
-        // 7.3 Calculate indirect light color
+        // 8.3 Recursive tracing for delta material and calculate PDFs and MIS weight for non-delta material
         if (mtli->isDelta()) {
-            color_ind = hit ? trace(scene, rayo, reco, depth + 1) * bsdf : Vec3<float>(0.f);
+            color_ind = hit ? trace(scene, rayo, itso, depth + 1) * bsdf : Vec3<float>(0.f);
         } else {
             float prob    = des->prob(emti);
-            float pdf_mtl = mtli->pdf(wi, n, wo, uv, eta);
-            float pdf_emt = emto ? emto->pdf(wo, reco.normal, reco.distance) * prob : 0.f;
+            float pdf_mtl = mtli->pdf(wi_local, wo_local, uv);
+            float pdf_emt = emto ? emto->pdf(wo, itso.normal, itso.distance) * prob : 0.f;
             float weight  = mix(pdf_mtl, pdf_emt);
 
-            color_ind = hit && pdf_mtl > 0.f ? trace(scene, rayo, reco, depth + 1) * bsdf * cos * weight / pdf_mtl : Vec3<float>(0.f); // avoid duplicate direct light calculation when sampling material's ray hit area light
+            color_ind = hit && pdf_mtl > 0.f ? trace(scene, rayo, itso, depth + 1) * bsdf * cos * weight / pdf_mtl : Vec3<float>(0.f); // avoid duplicate direct light calculation when sampling material's ray hit area light
         }
 
-        // 7.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
+        // 8.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
         if (!mtli->isDelta() && dot(color_ind, Vec3<float>(0.2126f, 0.7152f, 0.0722f)) > m_lum) { // luminance threshold
             color_ind = Vec3<float>(0.f);
         }
     }
 
-    // 8. Calculate final output color
+    // 9. Calculate final output color
     color = color_e + color_d + color_ind * rrweight;
 
     return color;

@@ -29,16 +29,16 @@ class Tracer {
      * @param ray The ray to cast
      * @return The result of casting the ray
      */
-    Vec3<float> cast(const Scene& scene, const Ray& ray);
+    Vec3<float> cast(const Scene& scene, Ray& ray);
     /**
      * @brief  Trace a ray through the scene and return the color at the intersection point
      * @param scene The scene to render
      * @param ray The ray to trace
-     * @param rec The intersection record of the ray
+     * @param its The intersection info struct
      * @param depth The current depth of the path trace
      * @return The color at the intersection point
      */
-    Vec3<float> trace(const Scene& scene, const Ray& ray, IntersectRecord& rec, int depth);
+    Vec3<float> trace(const Scene& scene, Ray& ray, Intersection& its, int depth);
     /**
      * @brief  Postprocess the high dynamic range color to low dynamic range color
      * @param hdr The hdr color [0, inf)
