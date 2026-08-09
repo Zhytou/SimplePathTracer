@@ -6,19 +6,27 @@
 
 ## 📸 Showcases
 
+### Cornell Box
+
 | Diffuse Cuboid | Glossy Cuboid | Metal Cuboid |
 | :---: | :---: | :---: |
 | ![cuboid](res/cuboid_4_2_spp144.png) | ![glossy-cuboid](res/glossy-cuboid_4_2_spp144.png) | ![metal-cuboid](res/metal-cuboid_4_2_spp144.png) |
 
-| Diffuse Sphere | Glossy Sphere | Metal Sphere | Glass Sphere |
-| :---: | :---: | :---: | :---: |
-| ![sphere](res/sphere_4_2_spp144.png) | ![glossy-sphere](res/glossy-sphere_4_2_spp144.png) | ![metal-sphere](res/metal-sphere_4_2_spp144.png) | ![glass-sphere](res/glass-sphere_4_2_spp144.png) |
+| Diffuse Sphere | Glossy Sphere | Metal Sphere |
+| :---: | :---: | :---: |
+| ![sphere](res/sphere_4_2_spp144.png) | ![glossy-sphere](res/glossy-sphere_4_2_spp144.png) | ![metal-sphere](res/metal-sphere_4_2_spp144.png) |
 
 ---
 
+### Specular-Diffuse-Specular Scenario
+
+| Glass Sphere |
+| :---: |
+| ![glass-sphere](res/glass-sphere_4_2_spp144.png) |
+
 **More Examples**:
 
-![dragon](res/prev/dragon_spp128_5324s.png)
+![dragon](res/dragon_4_2_spp144.png)
 
 ![veach-mis](res/prev/veach-mis_spp32_mis_2434s.png)
 
