@@ -14,18 +14,6 @@ class Distribution {
     virtual float pdf(const Vec3<float>& wo_local) const = 0;
 };
 
-class DeltaDistribution : public Distribution {
-   public:
-    DeltaDistribution() {}
-
-    virtual Vec3<float> sample() const override {
-        return {0.f, 0.f, 1.f};
-    }
-    virtual float pdf(const Vec3<float>& wo_local) const override {
-        return INFINITY;
-    }
-};
-
 class CosineDistribution : public Distribution {
    public:
     CosineDistribution() {}
