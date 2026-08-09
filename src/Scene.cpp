@@ -57,8 +57,24 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             m_materials.push_back(mtl);
         }
 
-        for (int i = 0; i < (doc["material"].HasMember("conductor") ? doc["material"]["conductor"].Size() : 0); i++) {
-            auto& mtl_doc                               = doc["material"]["conductor"][i];
+        for (int i = 0; i < (doc["material"].HasMember("mirror") ? doc["material"]["mirror"].Size() : 0); i++) {
+            auto& mtl_doc    = doc["material"]["mirror"][i];
+            std::string name = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
+            auto mtl         = std::make_shared<Mirror>(m_materials.size(), name);
+            m_materials.push_back(mtl);
+        }
+
+        for (int i = 0; i < (doc["material"].HasMember("dielectric") ? doc["material"]["dielectric"].Size() : 0); i++) {
+            auto& mtl_doc    = doc["material"]["dielectric"][i];
+            std::string name = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
+            float int_ior    = mtl_doc.HasMember("interior_ior") ? mtl_doc["interior_ior"].GetFloat() : 0.f;
+            float ext_ior    = mtl_doc.HasMember("exterior_ior") ? mtl_doc["exterior_ior"].GetFloat() : 0.f;
+            auto mtl         = std::make_shared<Dielectric>(m_materials.size(), name, int_ior, ext_ior);
+            m_materials.push_back(mtl);
+        }
+
+        for (int i = 0; i < (doc["material"].HasMember("microfacet_conductor") ? doc["material"]["microfacet_conductor"].Size() : 0); i++) {
+            auto& mtl_doc                               = doc["material"]["microfacet_conductor"][i];
             std::string name                            = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
             fs::path dir                                = mtl_doc.HasMember("directory") ? fs::path(mtl_doc["directory"].GetString()) : fs::path();
             float real_ior                              = mtl_doc.HasMember("real_ior") ? mtl_doc["real_ior"].GetFloat() : 0.f;
@@ -66,20 +82,20 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             float roughness                             = mtl_doc.HasMember("roughness") ? mtl_doc["roughness"].GetFloat() : 0.f;
             fs::path roughness_texpath                  = mtl_doc.HasMember("roughness_texture") ? dir / mtl_doc["roughness_texture"].GetString() : dir;
             std::shared_ptr<Image<float>> roughness_map = fs::is_regular_file(roughness_texpath) ? Image<float>::read(roughness_texpath, 0, true) : nullptr;
-            auto mtl                                    = std::make_shared<Conductor>(m_materials.size(), name, real_ior, imag_ior, roughness, roughness_map);
+            auto mtl                                    = std::make_shared<MicrofacetConductor>(m_materials.size(), name, real_ior, imag_ior, roughness, roughness_map);
             m_materials.push_back(mtl);
         }
 
-        for (int i = 0; i < (doc["material"].HasMember("dielectric") ? doc["material"]["dielectric"].Size() : 0); i++) {
-            auto& mtl_doc                               = doc["material"]["dielectric"][i];
+        for (int i = 0; i < (doc["material"].HasMember("microfacet_dielectric") ? doc["material"]["microfacet_dielectric"].Size() : 0); i++) {
+            auto& mtl_doc                               = doc["material"]["microfacet_dielectric"][i];
             std::string name                            = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
             fs::path dir                                = mtl_doc.HasMember("directory") ? fs::path(mtl_doc["directory"].GetString()) : fs::path();
-            float int_ior                               = mtl_doc.HasMember("int_ior") ? mtl_doc["int_ior"].GetFloat() : 0.f;
-            float ext_ior                               = mtl_doc.HasMember("ext_ior") ? mtl_doc["ext_ior"].GetFloat() : 0.f;
+            float int_ior                               = mtl_doc.HasMember("interior_ior") ? mtl_doc["interior_ior"].GetFloat() : 0.f;
+            float ext_ior                               = mtl_doc.HasMember("exterior_ior") ? mtl_doc["exterior_ior"].GetFloat() : 0.f;
             float roughness                             = mtl_doc.HasMember("roughness") ? mtl_doc["roughness"].GetFloat() : 0.f;
             fs::path roughness_texpath                  = mtl_doc.HasMember("roughness_texture") ? dir / mtl_doc["roughness_texture"].GetString() : dir;
             std::shared_ptr<Image<float>> roughness_map = fs::is_regular_file(roughness_texpath) ? Image<float>::read(roughness_texpath, 0, true) : nullptr;
-            auto mtl                                    = std::make_shared<Dielectric>(m_materials.size(), name, int_ior, ext_ior, roughness, roughness_map);
+            auto mtl                                    = std::make_shared<MicrofacetConductor>(m_materials.size(), name, int_ior, ext_ior, roughness, roughness_map);
             m_materials.push_back(mtl);
         }
     }
@@ -121,8 +137,9 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             // 5.1 Initialize primitive list
             if (prm_doc.HasMember("object_path")) {
                 fs::path obj_path = prm_doc["object_path"].GetString();
+                fs::path mtl_dir  = prm_doc.HasMember("material_directory") ? fs::path(prm_doc["material_directory"].GetString()) : fs::path();
                 int mtl_id        = prm_doc.HasMember("material_id") ? prm_doc["material_id"].GetInt() : -1;
-                prms              = loadPrimitives(obj_path, mtl_id);
+                prms              = loadPrimitives(obj_path, mtl_dir, mtl_id);
             } else {
                 auto spe_ids = getArr(prm_doc["shape_ids"]);
                 auto mtl_ids = getArr(prm_doc["material_ids"]);
@@ -164,7 +181,6 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
                     emt->setPrimitive(prm);
                     m_emitters.push_back(emt);
                 }
-                assert(mtl != nullptr || emt != nullptr); // each primitive must have a material or emitter set
                 prm->setInteriorMedium(int_med);
                 prm->setExteriorMedium(ext_med);
                 prm->setTransform(tfm);
@@ -209,7 +225,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             std::unordered_map<std::string, std::vector<std::shared_ptr<Primitive>>> primitives; // emissive primitives
             for (int i = 0; i < doc["light"]["area"].Size(); i++) {
                 auto& light_doc   = doc["light"]["area"][i];
-                std::string name  = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light{}", i);
+                std::string name  = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light_{}", i);
                 Vec3<float> color = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
                 emissions[name]   = color;
             }
@@ -348,22 +364,22 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::vector<in
     return std::span<std::shared_ptr<Primitive>>(m_primitives.data() + start, count);
 }
 
-std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesystem::path& obj_path, int mtl_id) {
+std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesystem::path& obj_path, const std::filesystem::path& mtl_dir, int dft_mtl_id) {
     // 1. Load obj file with tinyobj
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_path.c_str(), nullptr, true)) {
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_path.c_str(), mtl_dir.c_str(), true)) {
         throw std::runtime_error("Scene::loadModel: " + err);
     }
 
-    // 2 Convert tinyobj::shape_t into spt::Shape and cache the result
-    int start_spe = m_shapes.size(), count_spe = 0;
-    static std::unordered_map<std::string, std::pair<int, int>> cache;
-    if (cache.count(obj_path.string())) {
-        start_spe = cache[obj_path.string()].first;
-        count_spe = cache[obj_path.string()].second;
+    // 2. Convert tinyobj::shape_t into spt::Shape and cache the result
+    int spe_start = m_shapes.size(), spe_count = 0;
+    static std::unordered_map<std::string, std::pair<int, int>> spe_cache;
+    if (spe_cache.count(obj_path.string())) {
+        spe_start = spe_cache[obj_path.string()].first;
+        spe_count = spe_cache[obj_path.string()].second;
     } else {
         for (const auto& shape : shapes) {
             for (int i = 0; i < shape.mesh.material_ids.size(); ++i) { // i is face index
@@ -404,23 +420,48 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
                 // 2.4 Create triangle shape
                 auto spe = std::make_shared<Triangle>(m_shapes.size(), vertex, normal, uv);
                 m_shapes.push_back(spe);
-                count_spe++;
+                spe_count++;
             }
         }
+        spe_cache[obj_path.string()] = std::make_pair(spe_start, spe_count);
     }
-    auto spes = std::span<std::shared_ptr<Shape>>(m_shapes.data() + start_spe, count_spe);
-    auto mtl  = mtl_id != -1 ? m_materials[mtl_id] : nullptr;
+    auto spes = std::span<std::shared_ptr<Shape>>(m_shapes.data() + spe_start, spe_count);
 
-    // 3. Create primitives
-    int start_prm = m_primitives.size(), count_prm = 0;
-    for (auto& spe : spes) {
-        auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl);
-        m_primitives.push_back(prm);
-        count_prm++;
+    // 3. Convert tinyobj::shape_t into spt::Shape and cache the result
+    int mtl_start = m_materials.size(), mtl_count = 0;
+    static std::unordered_map<std::string, std::pair<int, int>> mtl_cache;
+    if (mtl_cache.count(obj_path.string())) {
+        mtl_start = mtl_cache[obj_path.string()].first;
+        mtl_count = mtl_cache[obj_path.string()].second;
+    } else {
+        for (const auto& material : materials) {
+            auto name       = material.name;
+            auto albedo     = Vec3<float>{material.diffuse[0], material.diffuse[1], material.diffuse[2]};
+            auto albedo_map = fs::is_regular_file(mtl_dir / material.diffuse_texname) ? Image<float>::read(mtl_dir / material.diffuse_texname) : nullptr;
+
+            auto mtl = std::make_shared<Diffuse>(m_materials.size(), name, albedo, albedo_map);
+            mtl_count++;
+            m_materials.push_back(mtl);
+        }
+        mtl_cache[obj_path.string()] = std::make_pair(mtl_start, mtl_count);
+    }
+    auto mtls    = std::span<std::shared_ptr<Material>>(m_materials.data() + mtl_start, mtl_count);
+    auto dft_mtl = dft_mtl_id != -1 ? m_materials[dft_mtl_id] : nullptr;
+
+    // 4. Create primitives
+    int prm_start = m_primitives.size(), prm_count = 0;
+    for (const auto& shape : shapes) {
+        for (auto mtl_id : shape.mesh.material_ids) {
+            auto spe = spes[prm_count];
+            auto mtl = mtl_id == -1 ? dft_mtl : mtls[mtl_id];
+            auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl);
+            m_primitives.push_back(prm);
+            prm_count++;
+        }
     }
 
-    // 4. Return primitives view
-    return std::span<std::shared_ptr<Primitive>>(m_primitives.data() + start_prm, count_prm);
+    // 5. Return primitives view
+    return std::span<std::shared_ptr<Primitive>>(m_primitives.data() + prm_start, prm_count);
 }
 
 }; // namespace spt

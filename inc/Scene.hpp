@@ -30,7 +30,7 @@ class Scene {
      */
     void clear();
 
-    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::filesystem::path& obj_path, int mtl_id);
+    std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::filesystem::path& obj_path, const std::filesystem::path& mtl_dir, int dft_mtl_id);
     std::span<std::shared_ptr<Primitive>> loadPrimitives(const std::vector<int>& spe_ids, const std::vector<int>& mtl_ids);
 
     std::shared_ptr<BVH> getBVH() const { return m_bvh; }
