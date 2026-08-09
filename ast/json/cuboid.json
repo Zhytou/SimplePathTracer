@@ -9,56 +9,77 @@
             "fovy": 39.3
         }
     },
-    "material": [
-        {
-            "name": "Diffuse",
-            "albedo": [0.725, 0.71, 0.68],
-            "metallic": 0.0,
-            "roughness": 1.0
-        },
-        {
-            "name": "Metal",
-            "albedo": [0.725, 0.71, 0.68],
-            "metallic": 1.0,
-            "roughness": 0.0
-        },
-        {
-            "name": "Glossy",
-            "albedo": [0.725, 0.71, 0.68],
-            "metallic": 0.5,
-            "roughness": 0.5
-        }
-    ],
+    "material": {
+        "diffuse": [
+            {
+                "name": "Gray",
+                "albedo": [0.725, 0.71, 0.68]
+            }, 
+            {
+                "name": "Red",
+                "albedo": [0.63, 0.065, 0.05]
+            },
+            {
+                "name": "Green",
+                "albedo": [0.14, 0.45, 0.091]
+            }
+        ],
+        "mirror": [
+            {
+                "name": "Smooth-Metal"
+            }
+        ],
+        "dielectric": [
+            {
+                "name": "Smooth-Glass",
+                "exterior_ior": 1.0,
+                "interior_ior": 1.5
+            }
+        ],
+        "microfacet_conductor": [
+            {
+                "name": "Glossy-Metal",
+                "roughness": 0.2
+            }
+        ],
+        "microfacet_dielectric": [
+            {
+                "name": "Glossy-Glass",
+                "roughness": 0.5,
+                "exterior_ior": 1.0,
+                "interior_ior": 1.5
+            }
+        ]
+    },
     "primitive": [
         {
             "name": "cuboid",
             "object_path": "../ast/obj/cuboid.obj",
-            "default_material_id": 0
+            "material_id": 0
         },
         {
             "name": "short-cuboid",
             "object_path": "../ast/obj/short-cuboid.obj",
-            "default_material_id": 0
+            "material_id": 0
         },
         {
             "name": "floor",
             "object_path": "../ast/obj/cornell-box/floor.obj",
-            "material_directory": "../ast/mtl/cornell-box-pr"
+            "material_id": 0
         },
         {
             "name": "left",
             "object_path": "../ast/obj/cornell-box/left.obj",
-            "material_directory": "../ast/mtl/cornell-box-pr"
+            "material_id": 1
         },
         {
             "name": "right",
             "object_path": "../ast/obj/cornell-box/right.obj",
-            "material_directory": "../ast/mtl/cornell-box-pr"
+            "material_id": 2
         },
         {
             "name": "light",
             "object_path": "../ast/obj/cornell-box/light.obj",
-            "material_directory": "../ast/mtl/cornell-box-pr",
             "emission": [48, 38, 31]
         }
     ]
