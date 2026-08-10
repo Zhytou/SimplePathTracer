@@ -1,11 +1,7 @@
 #ifndef SPT_MATERIAL_HPP
 #define SPT_MATERIAL_HPP
 
-#include <format>
-#include <memory>
-#include <string>
 #include <tiny_obj_loader.h>
-#include <unordered_map>
 
 #include "Image.hpp"
 #include "Sampler.hpp"
@@ -13,81 +9,136 @@
 
 namespace spt {
 
-enum MaterialType {
-    MATERIAL_NONE = 0,
-
-    MATERIAL_PHYSICS_CONDUCTIVE     = 0b0001,
-    MATERIAL_PHYSICS_SEMICONDUCTIVE = 0b0010,
-    MATERIAL_PHYSICS_DIELECTRIC     = 0b0100, // could be transparent, indicate with opacity
-
-    MATERIAL_SURFACE_DIFFUSE  = 0b0001 << 4,
-    MATERIAL_SURFACE_GLOSSY   = 0b0010 << 4,
-    MATERIAL_SURFACE_SPECULAR = 0b0100 << 4,
-};
-
-constexpr int PHYSICS_MASK = 0b1111;
-
-constexpr int SURFACE_MASK = 0b11110000;
-
 class Material {
    public:
-    Material(const std::string& name) : m_name(name) { m_sampler = std::make_shared<Sampler>(WrapMode::SAMPLER_WRAP_REPEAT, FilterMode::SAMPLER_FILTER_NEAREST); }
+    Material(int id, const std::string& name) : m_id(id), m_name(name), m_sampler(WrapMode::SAMPLER_WRAP_REPEAT, FilterMode::SAMPLER_FILTER_NEAREST) {}
+    virtual ~Material() {}
 
-    bool isDelta() const { return m_type & MATERIAL_SURFACE_SPECULAR; }
-    bool isEmissive() const { return min(m_emission) > 0.f; }
-    bool isTransmissive() const { return (m_type & (MATERIAL_PHYSICS_SEMICONDUCTIVE | MATERIAL_PHYSICS_DIELECTRIC)) && m_opacity < 1.0f && m_ior > 1.f; }
+    virtual bool isDelta() const { return false; }
+    int getID() const { return m_id; }
     std::string getName() const { return m_name; }
-    std::string getTypeStr() const { return std::format("[physics_{} surface_{}]", m_type & MATERIAL_PHYSICS_CONDUCTIVE ? "conductive" : (m_type & MATERIAL_PHYSICS_SEMICONDUCTIVE ? "semiconductive" : "dielectric"), m_type & MATERIAL_SURFACE_DIFFUSE ? "diffuse" : (m_type & MATERIAL_SURFACE_GLOSSY ? "glossy" : "specular")); }
-    Vec3<float> getEmission() const { return m_emission; }
-    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo_map && m_sampler ? m_sampler->sample<float, 3>(m_albedo_map, uv) : m_albedo; }
-    float getMetallic(const Vec2<float>& uv) const { return m_metallic_map && m_sampler ? m_sampler->sample<float, 1>(m_metallic_map, uv)[0] : m_metallic; }
-    float getRoughness(const Vec2<float>& uv) const { return m_roughness_map && m_sampler ? m_sampler->sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
-    float getOpacity() const { return m_opacity; }
-    float getIOR() const { return m_ior; }
-    void setType(MaterialType type) { m_type = type; }
-    void setEmission(Vec3<float> e) { m_emission = e; }
-    void setAlbedo(Vec3<float> a) { m_albedo = a; }
-    void setIOR(float ior) { m_ior = ior; }
-    void setOpacity(float o) { m_opacity = o; }
-    void setRoughness(float r) { m_roughness = r; }
-    void setMetallic(float m) { m_metallic = m; }
-    void setAlbedoMap(std::shared_ptr<Image<float>> map) { m_albedo_map = map; }
-    void setMetallicMap(std::shared_ptr<Image<float>> map) { m_metallic_map = map; }
-    void setRoughnessMap(std::shared_ptr<Image<float>> map) { m_roughness_map = map; }
+    void setID(int id) { m_id = id; }
+    void setName(const std::string& name) { m_name = name; }
 
-    Vec3<float> Fresnel_Zero(const Vec2<float>& UV) const;
-    Vec3<float> Fresnel_Schlick(float NdotV, const Vec3<float>& F0) const;
-    float GGX_D(float NdotH, const Vec2<float>& UV) const;
-    float Smith_G(float NdotV, float NdotL, const Vec2<float>& UV) const;
+    /**
+     * @brief Samples a direction for Monte Carlo integration of the material's BSDF.
+     *
+     * This function performs importance sampling based on the material's surface.
+     * For example, it uses cosine-weighted hemisphere sampling for diffuse lobes.
+     *
+     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
+     * @param uv Texture coordinates.
+     * 
+     * @return Sampled local outgoing direction (pointing AWAY from the surface).
+     */
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const = 0;
 
-    Vec3<float> bsdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec2<float>& uv) const;
-    Vec3<float> brdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv) const;
-    Vec3<float> brdf_tir(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv) const;
-    Vec3<float> btdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec3<float>& h, const Vec2<float>& uv, float eta) const;
+    /**
+     * @brief Evaluates the BSDF value for given direction and point.
+     * 
+     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
+     * @param wo_local Incident light direction (pointing AWAY from the surface).
+     * @param uv Texture coordinates.
+     * 
+     * @return The computed BSDF value.
+     */
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
 
-    Vec3<float> scatter(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
-    Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
-    Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
+    /**
+     * @brief Computes the probability density function (PDF) for the given direction and point.
+     * 
+     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
+     * @param wo_local Incident light direction (pointing AWAY from the surface).
+     * @param uv Texture coordinates.
+     * 
+     * @return The computed PDF value.
+     */
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
 
-    Vec3<float> sample(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv, const std::string& mode) const;
-    float ratio(const Vec3<float>& wi, const Vec3<float>& n, const Vec2<float>& uv) const;
-    float pdf(const Vec3<float>& wi, const Vec3<float>& n, const Vec3<float>& wo, const Vec2<float>& uv) const;
+   protected:
+    int m_id = -1;
+    std::string m_name;
+    Sampler m_sampler;
+};
+
+class Diffuse : public Material {
+   public:
+    Diffuse(int id, const std::string& name, const Vec3<float>& albedo, const std::shared_ptr<Image<float>>& albedo_map = nullptr) : Material(id, name), m_albedo(albedo), m_albedo_map(albedo_map) {}
+    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo_map ? m_sampler.sample<float, 3>(m_albedo_map, uv) : m_albedo; }
+    void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
+    void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
+
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 
    private:
-    std::string m_name;
-    MaterialType m_type = MATERIAL_NONE;
-    Vec3<float> m_emission{0.f, 0.f, 0.f}; // emission color Ke
-    Vec3<float> m_albedo{0.f, 0.f, 0.f};   // base color Kd
-    float m_roughness = 0.f;               // roughness Pr
-    float m_metallic  = 0.f;               // metalness Pm
+    Vec3<float> m_albedo = Vec3<float>(0.f);
+    std::shared_ptr<Image<float>> m_albedo_map;
+};
 
-    std::shared_ptr<Image<float>> m_albedo_map    = nullptr;
-    std::shared_ptr<Image<float>> m_metallic_map  = nullptr;
-    std::shared_ptr<Image<float>> m_roughness_map = nullptr;
-    std::shared_ptr<Sampler> m_sampler            = nullptr;
+class Mirror : public Material {
+   public:
+    Mirror(int id, const std::string& name) : Material(id, name) {}
 
-    float m_ior     = 1.f; // index of refraction Ni
-    float m_opacity = 1.f; // opacity D
+    bool isDelta() const override { return true; }
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+};
+
+class Dielectric : public Material {
+   public:
+    Dielectric(int id, const std::string& name, float int_ior, float ext_ior) : Material(id, name), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
+
+    bool isDelta() const override { return true; }
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+
+   private:
+    float m_int_ior = 1.f;
+    float m_ext_ior = 1.f;
+};
+
+class MicrofacetMaterial : public Material {
+   public:
+    MicrofacetMaterial(int id, const std::string& name, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : Material(id, name), m_roughness(roughness), m_roughness_map(roughness_map) {}
+
+    virtual bool isDelta() const override { return false; }
+    float getRoughness(const Vec2<float>& uv) const { return m_roughness_map ? m_sampler.sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
+    void setRoughness(float roughness) { m_roughness = roughness; }
+    void setRoughnessMap(std::shared_ptr<Image<float>> roughness_map) { m_roughness_map = roughness_map; }
+
+   protected:
+    float m_roughness = 0.f;
+    std::shared_ptr<Image<float>> m_roughness_map;
+};
+
+class MicrofacetConductor : public MicrofacetMaterial {
+   public:
+    MicrofacetConductor(int id, const std::string& name, float real_ior, float imag_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_real_ior(real_ior), m_imag_ior(imag_ior) {}
+
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+
+   private:
+    float m_real_ior; // index of refraction eta
+    float m_imag_ior; // extinction index k
+};
+
+class MicrofacetDielectric : public MicrofacetMaterial {
+   public:
+    MicrofacetDielectric(int id, const std::string& name, float int_ior, float ext_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
+
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+
+   private:
+    float m_ext_ior = 1.f;
+    float m_int_ior = 1.f;
 };
 
 } // namespace spt
