@@ -20,10 +20,10 @@ class Triangle : public Shape {
 
     virtual bool intersect(const Ray& ray, Intersection& its) const override;
     virtual AABB wrap() const override;
-    Vec3<float> sample() const override;
-    float area() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
-    Vec3<float> center() const override { return (m_vertex[0] + m_vertex[1] + m_vertex[2]) / 3.f; }
-    Vec2<float> parameterize(const Vec3<float>& p) const override;
+    virtual void sample(Vec3<float>& p, Vec3<float>& n) const override;
+    virtual Vec2<float> parameterize(const Vec3<float>& p) const override;
+    virtual float area() const override { return length(cross(m_vertex[2] - m_vertex[0], m_vertex[1] - m_vertex[0])) / 2; }
+    virtual Vec3<float> center() const override { return (m_vertex[0] + m_vertex[1] + m_vertex[2]) / 3.f; }
 
    private:
     std::array<Vec3<float>, 3> m_vertex;

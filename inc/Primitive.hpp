@@ -20,8 +20,9 @@ class Primitive {
     std::shared_ptr<Medium> getInteriorMedium() const { return m_int_medium; }
     std::shared_ptr<Medium> getExteriorMedium() const { return m_ext_medium; }
     const Mat4x4<float>& getTransform() const { return m_transform; }
-    bool isTransformIdentity() const { return m_is_identity; }
     const Mat4x4<float>& getInvTransform() const { return m_inv_transform; }
+    const Mat3x3<float>& getNormalTransform() const { return m_n_transform; }
+    bool isTransformIdentity() const { return m_is_identity; }
 
     void setID(int id) { m_id = id; }
     void setShape(std::shared_ptr<Shape> shape) { m_shape = shape; }
@@ -44,7 +45,7 @@ class Primitive {
 
     bool intersect(const Ray& ray, Intersection& its) const;
     AABB wrap() const;
-    Vec3<float> sample() const;
+    void sample(Vec3<float>& p, Vec3<float>& n) const;
 
    private:
     int m_id = -1;

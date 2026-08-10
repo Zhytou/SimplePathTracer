@@ -5,7 +5,7 @@
 
 namespace spt {
 
-Vec3<float> Triangle::sample() const {
+void Triangle::sample(Vec3<float>& p, Vec3<float>& n) const {
     Vec3<float> e1 = m_vertex[2] - m_vertex[0];
     Vec3<float> e2 = m_vertex[1] - m_vertex[0];
 
@@ -14,10 +14,10 @@ Vec3<float> Triangle::sample() const {
 
     float u = 1 - std::sqrt(r1);
     float v = r2 * std::sqrt(r1);
+    float w = 1 - u - v;
 
-    // p = (1 - u - v) * p0 + u * p1 + v * p2 = p0 + u * e1 + v * e2
-    // u >= 0, v >= 0, u + v <= 1
-    return e1 * u + e2 * v + m_vertex[0];
+    p = w * m_vertex[0] + u * m_vertex[1] + v * m_vertex[2];
+    n = w * m_normal[0] + u * m_normal[1] + v * m_normal[2];
 }
 
 bool Triangle::intersect(const Ray& ray, Intersection& its) const {

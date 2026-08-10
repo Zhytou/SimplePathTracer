@@ -18,10 +18,10 @@ class Sphere : public Shape {
 
     virtual bool intersect(const Ray& ray, Intersection& its) const override;
     virtual AABB wrap() const override;
-    virtual Vec3<float> sample() const override;
-    float area() const override { return 4 * PI * m_radius * m_radius; }
-    Vec3<float> center() const override { return m_center; }
-    Vec2<float> parameterize(const Vec3<float>& p) const override;
+    virtual void sample(Vec3<float>& p, Vec3<float>& n) const override;
+    virtual Vec2<float> parameterize(const Vec3<float>& p) const override;
+    virtual float area() const override { return 4 * PI * m_radius * m_radius; }
+    virtual Vec3<float> center() const override { return m_center; }
 
    private:
     Vec3<float> m_center;

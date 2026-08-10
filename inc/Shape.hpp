@@ -36,9 +36,10 @@ class Shape {
     /**
      * @brief Sample a random point on the shape.
      * 
-     * @return Random point on the shape.
+     * @param p[out] Random point on the shape.
+     * @param n[out] Normal at the point on the shape.
      */
-    virtual Vec3<float> sample() const = 0;
+    virtual void sample(Vec3<float>& p, Vec3<float>& n) const = 0;
     /**
      * @brief Get the texture coordinates of the corresponding point on the shape.
      * 

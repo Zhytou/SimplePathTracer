@@ -82,7 +82,7 @@ AABB Sphere::wrap() const {
     return AABB(xyz1, xyz2);
 }
 
-Vec3<float> Sphere::sample() const {
+void Sphere::sample(Vec3<float>& p, Vec3<float>& n) const {
     float phi   = rand(0.0f, PI) - PI * 0.5f;
     float theta = rand(0.0f, 2 * PI);
 
@@ -90,7 +90,8 @@ Vec3<float> Sphere::sample() const {
     float y = ::cos(phi) * ::sin(theta);
     float z = ::sin(phi);
 
-    return m_center + Vec3<float>(x, y, z) * m_radius;
+    p = m_center + Vec3<float>(x, y, z) * m_radius;
+    n = {x, y, z};
 }
 
 Vec2<float> Sphere::parameterize(const Vec3<float>& point) const {
