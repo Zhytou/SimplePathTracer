@@ -63,7 +63,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
                     Vec3<float> color(0.f);
                     for (int k = 0; k < m_spp; k++) {
                         Ray ray = camera->emit(row, col, k, n);
-                        color += cast(scene, ray);
+                        color += trace(scene, ray);
                     }
                     color /= m_spp;
 
@@ -100,120 +100,6 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
     return;
 }
 
-Vec3<float> Tracer::cast(const Scene& scene, Ray& ray) {
-    Intersection its;
-    if (scene.getBVH()->intersect(ray, its)) {
-        return trace(scene, ray, its, 0);
-    }
-    return Vec3<float>(0.f);
-}
-
-Vec3<float> Tracer::trace(const Scene& scene, Ray& rayi, Intersection& itsi, int depth) {
-    // 0. Initialize scene to render and color to return
-    auto bvh = scene.getBVH();
-    auto des = scene.getDES();
-    Vec3<float> color(0.f);
-    Vec3<float> color_e(0.f), color_d(0.f), color_ind(0.f);
-
-    // 1. Avoid no hit and infinite recursion
-    if (itsi.id < 0 || depth >= m_depth) {
-        return color;
-    }
-
-    // 2. Collect hit info
-    int id    = itsi.id;
-    auto prmi = scene.getPrimitive(id); // primitive hit by the rayi
-    auto mtli = prmi->getMaterial();    // material of the hit primitive(could be nullptr if emissive)
-    auto emti = prmi->getEmitter();     // emitter of the hit primitive
-
-    // 3. Initialize geometry info
-    Vec3<float> p  = itsi.point;    // hit point
-    Vec3<float> n  = itsi.normal;   // normal at the hit point
-    Vec2<float> uv = itsi.texcoord; // texture coordinate at the hit point
-
-    Vec3<float> wi       = -rayi.getDirection(); // view direction(wi) P -> Eye
-    Vec3<float> wo       = Vec3<float>(0.f);     // light direction(wo) P -> ight
-    Vec3<float> wi_local = itsi.toLocal(wi);
-    Vec3<float> wo_local = itsi.toLocal(wo);
-
-    // 4. Apply russian roulette for later indirect color calculation
-    float rrp      = depth >= m_rrdepth ? rand(0.0f, 1.0f) : 0.f; // when tracing depth deeper than depth threshold, apply russian roulette
-    float rrweight = rrp >= m_rrp ? 0.f : 1.f / m_rrp;            // when rpp higher than rpp threshold, no need to calculate indirect color
-
-    // 5. Get emissive light color
-    if (emti) {
-        color_e = emti->getColor();
-    }
-
-    // 6. Calculate specular manifold sampling color
-    if (0) {
-    }
-
-    // 7. Calculate direct light sampling color
-    if (!emti && !mtli->isDelta()) {
-        // 7.1 Sample non-delta light
-        auto [emts, prob] = des->sample(); // emitter sampled from the scene
-        wo                = emts->sample(p);
-        wo_local          = itsi.toLocal(wo);
-
-        auto bsdf = mtli->eval(wi_local, wo_local, uv); // light sampling only support reflection
-        float cos = std::max(wo_local.z, 0.f);
-
-        // 7.2 Do hit test
-        Ray rayo(p, wo, DIS_EPS, INFINITY);
-        Intersection itso;
-        bool hit  = bvh->intersect(rayo, itso);
-        auto prmo = hit ? scene.getPrimitive(itso.id) : nullptr;
-        auto emto = hit ? prmo->getEmitter() : nullptr;
-
-        // 7.3 Calculate PDFs and MIS weight
-        float pdf_emt = emts->pdf(wo, itso.normal, itso.distance) * prob;
-        float pdf_mtl = mtli->pdf(wi_local, wo_local, uv);
-        float weight  = mix(pdf_emt, pdf_mtl);
-
-        color_d += hit && emto && pdf_emt > 0.f ? emto->getColor() * bsdf * cos * weight / pdf_emt : Vec3<float>(0.f); // avoid division by zero when output direction(wo) and light normal are parallel or opposite
-    }
-
-    // 8. Calculate material sampling color
-    if (!emti && rrp < m_rrp) {
-        // 8.1 Sample material
-        wo_local = mtli->sample(wi_local, uv);
-        wo       = itsi.toWorld(wo_local);
-
-        auto bsdf = mtli->eval(wi_local, wo_local, uv);
-        float cos = std::fabs(wo_local.z); // consider both reflection and transmission
-
-        // 8.2 Do hit test
-        Ray rayo(p, wo, DIS_EPS, INFINITY);
-        Intersection itso;
-        bool hit  = bvh->intersect(rayo, itso);
-        auto prmo = hit ? scene.getPrimitive(itso.id) : nullptr;
-        auto emto = hit ? prmo->getEmitter() : nullptr;
-
-        // 8.3 Recursive tracing for delta material and calculate PDFs and MIS weight for non-delta material
-        if (mtli->isDelta()) {
-            color_ind = hit ? trace(scene, rayo, itso, depth + 1) * bsdf : Vec3<float>(0.f);
-        } else {
-            float prob    = des->prob(emti);
-            float pdf_mtl = mtli->pdf(wi_local, wo_local, uv);
-            float pdf_emt = emto ? emto->pdf(wo, itso.normal, itso.distance) * prob : 0.f;
-            float weight  = mix(pdf_mtl, pdf_emt);
-
-            color_ind = hit && pdf_mtl > 0.f ? trace(scene, rayo, itso, depth + 1) * bsdf * cos * weight / pdf_mtl : Vec3<float>(0.f); // avoid duplicate direct light calculation when sampling material's ray hit area light
-        }
-
-        // 8.4 Avoid firefly(e.g. white noise pixels casued by diffuse cuboid->sepcular sphere->light render chain in metal-sphere.json)
-        if (!mtli->isDelta() && dot(color_ind, Vec3<float>(0.2126f, 0.7152f, 0.0722f)) > m_lum) { // luminance threshold
-            color_ind = Vec3<float>(0.f);
-        }
-    }
-
-    // 9. Calculate final output color
-    color = color_e + color_d + color_ind * rrweight;
-
-    return color;
-}
-
 Vec3<float> Tracer::postprocess(const Vec3<float>& hdr, float range) {
     Vec3<float> ldr = hdr;
 
@@ -240,8 +126,8 @@ Vec3<float> Tracer::postprocess(const Vec3<float>& hdr, float range) {
 }
 
 float Tracer::mix(float pdf1, float pdf2) {
-    // pdf1 = pdf1 * pdf1;
-    // pdf2 = pdf2 * pdf2;
+    pdf1 = pdf1 * pdf1;
+    pdf2 = pdf2 * pdf2;
 
     return pdf1 / (PDF_EPS + pdf1 + pdf2);
 }
@@ -266,6 +152,150 @@ void Tracer::progress(float percent, float second) {
         std::cout << '\r';
         std::cout.flush();
     }
+}
+
+Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
+    auto its       = Intersection();           // intersection info
+    auto bvh       = scene.getBVH();           // intersection accelerator of the scene
+    auto des       = scene.getDES();           // direct emitter sampler of the scene
+    auto hit       = bvh->intersect(ray, its); // current hit primitive or not
+    auto hit_spec  = false;                    // previous hit material is specular or not
+    auto pdf_bsdf  = 0.f;                      // previous pdf of the bsdf sampling
+    auto weight_rr = 1.f;                      // current weight of russian roulette
+    Vec3<float> radiance(0.f);                 // accumulative emitted and scattered radiance
+    Vec3<float> throughput(1.f);
+
+    for (int depth = 0; hit && depth < m_depth; depth++) {
+        // 1. Collect hit info
+        auto prm = scene.getPrimitive(its.id); // primitive hit by the ray
+        auto mtl = prm->getMaterial();         // material of the hit primitive(could be nullptr if emissive)
+        auto emt = prm->getEmitter();          // emitter of the hit primitive
+
+        // 2. Initialize geometry info
+        Vec3<float> o  = ray.getOrigin(); // ray origin
+        Vec3<float> p  = its.point;       // hit point
+        Vec3<float> n  = its.normal;      // normal at the hit point
+        Vec2<float> uv = its.texcoord;    // texture coordinate at the hit point
+
+        Vec3<float> wi       = -ray.getDirection(); // view direction(wi) P -> Eye
+        Vec3<float> wo       = Vec3<float>(0.f);    // light direction(wo) P -> ight
+        Vec3<float> wi_local = its.toLocal(wi);
+        Vec3<float> wo_local = its.toLocal(wo);
+
+        // 3. Calculate emissive light radiance or do direct light sampling
+        if (emt) {
+            auto emitted = emt->eval(wi);
+
+            if (depth == 0 || hit_spec) { // return emissive radiance if at the first depth or hit a specular material
+                radiance += throughput * emitted;
+            } else { // do multiple importance sampling
+                float pdf_emt    = emt->pdf(o, p, n) * des->prob(emt);
+                float pdf_mtl    = pdf_bsdf;
+                float weight_mis = mix(pdf_mtl, pdf_emt);
+                radiance += throughput * emitted * weight_mis;
+            }
+        } else if (mtl && !mtl->isDelta()) {
+            // 3.1 Sample the emitter
+            Vec3<float> pp, nn;               // sampled light point and normal
+            auto [emt, prob] = des->sample(); // sampled emitter and corresponding probability
+            auto emitted     = emt->sample(p, pp, nn) / prob;
+
+            // 3.2 Check if the sampled light point is visible from the hit point
+            wo         = normalize(pp - p);
+            wo_local   = its.toLocal(wo);
+            float tmin = DIS_EPS;
+            float tmax = length(pp - p) - DIS_EPS;
+            Ray shadow_ray(p, wo, tmin, tmax);
+            Intersection shadow_its;
+            bool hit = bvh->intersect(shadow_ray, shadow_its);
+
+            if (!hit) {
+                float cos_theta  = std::max(0.f, wo_local.z);
+                Vec3<float> bsdf = mtl->eval(wi_local, wo_local, uv);
+                float pdf_emt    = emt->pdf(p, pp, nn) * prob;
+                float pdf_mtl    = mtl->pdf(wi_local, wo_local, uv);
+                float weight_mis = mix(pdf_emt, pdf_mtl);
+                radiance += throughput * emitted * bsdf * cos_theta * weight_mis;
+            }
+        }
+
+        // 4. Apply russian roulette and do indirect light sampling
+        if (mtl) {
+            // 4.1 Sample the material
+            throughput *= mtl->sample(wi_local, wo_local, uv);
+            hit_spec = mtl->isDelta();
+            pdf_bsdf = mtl->pdf(wi_local, wo_local, uv);
+
+            // 4.2 Update ray and trace the reflected/refracted ray
+            wo  = its.toWorld(wo_local);
+            ray = Ray(p, wo, DIS_EPS, INFINITY);
+            hit = bvh->intersect(ray, its);
+        } else {
+            hit = false;
+        }
+    }
+
+    return radiance;
+}
+
+Vec3<float> BidirectionalPathTracer::trace(const Scene& scene, Ray& ray) const {
+    std::vector<PathVertex> cam_path, emt_path;
+    int m             = trace(scene, ray, cam_path);
+    int n             = trace(scene, emt_path);
+    Vec3<float> color = Vec3<float>(0.f);
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+        }
+    }
+    return color;
+}
+
+int BidirectionalPathTracer::trace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const {
+    auto its = Intersection(); // intersection info
+    auto bvh = scene.getBVH(); // intersection accelerator of the scene
+    auto des = scene.getDES(); // direct emitter sampler of the scene
+
+    Vec3<float> throughput(1.f);
+    float pdf;
+
+    for (int depth = 0; depth < m_depth; ++depth) {
+        if (!bvh->intersect(ray, its)) { break; }
+
+        auto prm = scene.getPrimitive(its.id);
+        auto mtl = prm->getMaterial();
+        auto emt = prm->getEmitter();
+
+        auto p  = its.point;
+        auto n  = its.normal;
+        auto uv = its.texcoord;
+
+        auto wi       = -ray.getDirection();
+        auto wo       = Vec3<float>(0.f);
+        auto wi_local = its.toLocal(wi);
+        auto wo_local = its.toLocal(wo);
+        throughput *= mtl->sample(wi_local, wo_local, uv);
+        pdf = mtl->pdf(wi_local, wo_local, uv);
+
+        // auto v = PathVertex{
+        //     .its = its,
+        //     .wi  = -ray.getDirection(),
+        //     .throughput = throughput,
+        //     .spec = mtl && mtl->isDelta(),
+        // };
+        // cam_path.push_back(v);
+    }
+
+    return cam_path.size();
+}
+
+int BidirectionalPathTracer::trace(const Scene& scene, std::vector<PathVertex>& emt_path) const {
+    auto bvh = scene.getBVH();
+
+    return emt_path.size();
+}
+
+Vec3<float> BidirectionalPathTracer::connect(const Scene& scene) const {
+    return Vec3<float>(0.f);
 }
 
 } // namespace spt

@@ -15,7 +15,7 @@ namespace spt {
 class Tracer {
    public:
     Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32);
-    ~Tracer() {}
+    virtual ~Tracer() {}
 
     /**
      * @brief  Render a scene and save the result as an image
@@ -24,21 +24,12 @@ class Tracer {
      */
     void render(const Scene& scene, const std::filesystem::path& imgpath = "result.png");
     /**
-     * @brief  Cast a ray through the scene and return the result
-     * @param scene The scene to render
-     * @param ray The ray to cast
-     * @return The result of casting the ray
-     */
-    Vec3<float> cast(const Scene& scene, Ray& ray);
-    /**
-     * @brief  Trace a ray through the scene and return the color at the intersection point
+     * @brief  Trace a ray through the scene and evaluate the radiance along the given ray
      * @param scene The scene to render
      * @param ray The ray to trace
-     * @param its The intersection info struct
-     * @param depth The current depth of the path trace
-     * @return The color at the intersection point
+     * @return The result of tracing the ray
      */
-    Vec3<float> trace(const Scene& scene, Ray& ray, Intersection& its, int depth);
+    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const = 0;
     /**
      * @brief  Postprocess the high dynamic range color to low dynamic range color
      * @param hdr The hdr color [0, inf)
@@ -60,7 +51,7 @@ class Tracer {
      */
     static void progress(float percent, float second);
 
-   private:
+   protected:
     int m_depth   = 10;       // max depth of path trace
     int m_rrdepth = 4;        // depth of russian roulette
     int m_spp     = 32;       // samples per pixel
@@ -68,6 +59,34 @@ class Tracer {
     float m_lum   = INFINITY; // luminance threshold for indirect light clamping, closed by default
     int m_thd     = 32;       //number of threads used for rendering
     int m_ts      = 32;       // size of tile for parallel rendering
+};
+
+class PathTracer : public Tracer {
+   public:
+    PathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
+    ~PathTracer() {}
+
+    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
+};
+
+struct PathVertex {
+    Intersection intersection;
+    Vec3<float> direction;  // incoming direction to this vertex
+    Vec3<float> throughput; // path throughput, namely accumulated bsdf*cos/pdf
+    float pdf;              // sampling pdf when arrive this vertex
+    bool spec;              // delta bsdf(mirror/ideal glass)
+};
+
+class BidirectionalPathTracer : public Tracer {
+   public:
+    BidirectionalPathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
+    ~BidirectionalPathTracer() {}
+
+    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
+    Vec3<float> connect(const Scene& scene) const;
+
+    int trace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const;
+    int trace(const Scene& scene, std::vector<PathVertex>& emt_path) const;
 };
 
 } // namespace spt
