@@ -76,14 +76,18 @@ AABB Primitive::wrap() const {
     return aabb_world;
 }
 
-Vec3<float> Primitive::sample() const {
+void Primitive::sample(Vec3<float>& point, Vec3<float>& normal) const {
     if (m_is_identity) {
-        return m_shape->sample();
+        m_shape->sample(point, normal);
+        return;
     }
 
-    auto point_local = m_shape->sample();
-    auto point_world = m_transform * Vec4<float>(point_local.x, point_local.y, point_local.z, 1.0);
-    return {point_world.x, point_world.y, point_world.z};
+    Vec3<float> point_local, normal_local;
+    m_shape->sample(point_local, normal_local);
+    auto point_world4 = m_transform * Vec4<float>(point_local.x, point_local.y, point_local.z, 1.0);
+
+    point  = Vec3<float>(point_world4.x, point_world4.y, point_world4.z);
+    normal = normalize(m_n_transform * normal_local);
 }
 
 } // namespace spt
