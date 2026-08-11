@@ -32,7 +32,7 @@ struct Intersection {
      * @param dir Direction vector in local space
      * @return Direction vector in world space
      */
-    Vec3<float> toWorld(const Vec3<float>& dir) {
+    Vec3<float> toWorld(const Vec3<float>& dir) const {
         return tangent * dir.x + bitangent * dir.y + normal * dir.z;
     }
 
@@ -42,7 +42,7 @@ struct Intersection {
      * @param dir Direction vector in world space
      * @return Direction vector in local space
      */
-    Vec3<float> toLocal(const Vec3<float>& dir) {
+    Vec3<float> toLocal(const Vec3<float>& dir) const {
         return {dot(tangent, dir), dot(bitangent, dir), dot(normal, dir)};
     }
 };
