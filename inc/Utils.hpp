@@ -56,6 +56,15 @@ constexpr float degrees(float rad) {
 }
 
 /**
+ * @brief Create orthonormal basis(local-to-world transform matrix) based on the given normal vector
+ * 
+ * @param normal Normal vector
+ * @param[out] tangent Tangent vector
+ * @param[out] bitangent Bitangent vector
+ */
+void TBN(const Vec3<float>& normal, Vec3<float>& tangent, Vec3<float>& bitangent);
+
+/**
  * @brief Create translation matrix
  * 
  * @param t Translation offsets along each axis.
@@ -84,7 +93,7 @@ Mat4x4f scale(const Vec3f& s);
  * 
  * @param wi Incident direction vector
  * @param n Normal vector
- * @param tir Whether to calculate the direction of total internal reflection
+ * @param tir Indicator of total internal reflection allowed
  * 
  * @return Direction of reflected light
  */

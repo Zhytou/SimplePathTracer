@@ -15,18 +15,6 @@ struct Intersection {
     Vec3<float> bitangent = Vec3<float>(0.f);
 
     /**
-     * @brief Create a local-to-world transform matrix
-     */
-    void TBN() {
-        // Duff et al. 2017 Building an Orthonormal Basis, Revisited
-        float sign = std::copysign(1.0f, normal.z);
-        float a    = -1.0f / (sign + normal.z);
-        float c    = normal.x * normal.y * a;
-        tangent    = Vec3<float>(1.0f + sign * normal.x * normal.x * a, sign * c, -sign * normal.x);
-        bitangent  = Vec3<float>(c, sign + normal.y * normal.y * a, -normal.y);
-    }
-
-    /**
      * @brief Transform a direction vector from local to world space
      * 
      * @param dir Direction vector in local space

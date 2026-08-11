@@ -71,7 +71,7 @@ bool Sphere::intersect(const Ray& ray, Intersection& its) const {
     its.point     = p;
     its.texcoord  = parameterize(p);
     its.normal    = normalize(p - m_center);
-    its.TBN();
+    TBN(its.normal, its.tangent, its.bitangent);
 
     return true;
 }

@@ -67,7 +67,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     float det        = dot(e1, pvec);
 
     // 2. Check if the ray is parallel to the triangle plane
-    if (std::fabs(det) < EPS) {
+    if (std::abs(det) < EPS) {
         return false;
     }
     float det_inv = 1.0f / det;
@@ -114,8 +114,8 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     float dv2 = uv2.y - uv0.y;
 
     float det_uv = du1 * dv2 - dv1 * du2;
-    if (std::fabs(det_uv) < EPS) {
-        its.TBN();
+    if (std::abs(det_uv) < EPS) {
+        TBN(normal, its.tangent, its.bitangent);
     } else {
         float det_uv_inv      = 1.0f / det_uv;
         Vec3<float> tangent   = (e1 * dv2 - e2 * dv1) * det_uv_inv;

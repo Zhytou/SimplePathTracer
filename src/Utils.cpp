@@ -2,6 +2,15 @@
 
 namespace spt {
 
+void TBN(const Vec3<float>& normal, Vec3<float>& tangent, Vec3<float>& bitangent) {
+    // Duff et al. 2017 Building an Orthonormal Basis, Revisited
+    float sign = std::copysign(1.0f, normal.z);
+    float a    = -1.0f / (sign + normal.z);
+    float c    = normal.x * normal.y * a;
+    tangent    = Vec3<float>(1.0f + sign * normal.x * normal.x * a, sign * c, -sign * normal.x);
+    bitangent  = Vec3<float>(c, sign + normal.y * normal.y * a, -normal.y);
+}
+
 Mat4x4f translate(const Vec3f& t) {
     Mat4x4f mat = Mat4x4f::eye();
     mat(0, 3)   = t[0];
@@ -99,9 +108,12 @@ float fresnel(float cos_theta_i, float eta_i, float eta_t) {
     if (eta_i == eta_t) {
         return 0.0f;
     }
-    float eta = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
+    if (cos_theta_i < 0) {
+        cos_theta_i = -cos_theta_i;
+        std::swap(eta_i, eta_t);
+    }
+    float eta = eta_i / eta_t;
 
-    cos_theta_i        = std::abs(cos_theta_i);
     float sin_theta_t2 = eta * eta * (1 - cos_theta_i * cos_theta_i);
     float cos_theta_t  = std::sqrt(1.0f - sin_theta_t2);
     if (sin_theta_t2 > 1.0f) { // total internal reflection
@@ -111,31 +123,29 @@ float fresnel(float cos_theta_i, float eta_i, float eta_t) {
     float Rs = (eta_i * cos_theta_i - eta_t * cos_theta_t) / (eta_i * cos_theta_i + eta_t * cos_theta_t);
     float Rp = (eta_t * cos_theta_i - eta_i * cos_theta_t) / (eta_t * cos_theta_i + eta_i * cos_theta_t);
 
-    return (Rs * Rs + Rp * Rp) / 2.0f;
+    return (Rs * Rs + Rp * Rp) * 0.5f;
 }
 
-Vec3<float> fresnel(float cosThetaI, const Vec3<float>& eta, const Vec3<float>& eta_k) {
-    return Vec3<float>(0.0f);
+Vec3<float> fresnel(float cos_theta_i, const Vec3<float>& eta, const Vec3<float>& k) {
+    cos_theta_i = std::clamp(cos_theta_i, -1.0f, 1.0f);
 
-    // cosThetaI = clamp(cosThetaI, -1.0f, 1.0f);
+    float cos_theta_i2 = cos_theta_i * cos_theta_i;
+    float sin_theta_i2 = 1. - cos_theta_i2;
+    Vec3<float> eta2   = eta * eta;
+    Vec3<float> etak2  = k * k;
 
-    // float cosThetaI2 = cosThetaI * cosThetaI;
-    // float sinThetaI2 = 1. - cosThetaI2;
-    // Color3f eta2     = eta * eta;
-    // Color3f etak2    = k * k;
+    Vec3<float> t0       = eta2 - etak2 - Vec3<float>(sin_theta_i2);
+    Vec3<float> a2plusb2 = pow(t0 * t0 + 4 * eta2 * etak2, 0.5f);
+    Vec3<float> t1       = a2plusb2 + Vec3<float>(cos_theta_i2);
+    Vec3<float> a        = pow(0.5f * (a2plusb2 + t0), 0.5f);
+    Vec3<float> t2       = 2.f * cos_theta_i * a;
+    Vec3<float> Rs       = (t1 - t2) / (t1 + t2);
 
-    // Color3f t0       = eta2 - etak2 - sinThetaI2;
-    // Color3f a2plusb2 = sqrt(t0 * t0 + 4 * eta2 * etak2);
-    // Color3f t1       = a2plusb2 + cosThetaI2;
-    // Color3f a        = sqrt(0.5f * (a2plusb2 + t0));
-    // Color3f t2       = (float)2 * cosThetaI * a;
-    // Color3f Rs       = (t1 - t2) / (t1 + t2);
+    Vec3<float> t3 = cos_theta_i2 * a2plusb2 + Vec3<float>(sin_theta_i2 * sin_theta_i2);
+    Vec3<float> t4 = t2 * sin_theta_i2;
+    Vec3<float> Rp = Rs * (t3 - t4) / (t3 + t4);
 
-    // Color3f t3 = cosThetaI2 * a2plusb2 + sinThetaI2 * sinThetaI2;
-    // Color3f t4 = t2 * sinThetaI2;
-    // Color3f Rp = Rs * (t3 - t4) / (t3 + t4);
-
-    // return 0.5 * (Rp + Rs);
+    return (Rp + Rs) * 0.5f;
 }
 
 } // namespace spt

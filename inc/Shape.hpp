@@ -36,8 +36,8 @@ class Shape {
     /**
      * @brief Sample a random point on the shape.
      * 
-     * @param p[out] Random point on the shape.
-     * @param n[out] Normal at the point on the shape.
+     * @param[out] p Random point on the shape.
+     * @param[out] n Normal at the point on the shape.
      */
     virtual void sample(Vec3<float>& p, Vec3<float>& n) const = 0;
     /**
