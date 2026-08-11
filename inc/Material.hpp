@@ -21,23 +21,33 @@ class Material {
     void setName(const std::string& name) { m_name = name; }
 
     /**
-     * @brief Samples a direction for Monte Carlo integration of the material's BSDF.
-     *
-     * This function performs importance sampling based on the material's surface.
-     * For example, it uses cosine-weighted hemisphere sampling for diffuse lobes.
-     *
-     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
+     * @brief Samples an outgoing direction according to the material's BSDF.
+     * 
+     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
+     * @param wo_local Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
      * 
-     * @return Sampled local outgoing direction (pointing AWAY from the surface).
+     * @return The Monte Carlo throughput (weight) of the sampled direction. 
+     *         For non-delta materials, this equals (bsdf * cos / pdf). 
+     *         For delta materials, this equals bsdf, namely 1.0 for ideal reflection or 1 / (eta^2) for ideal refraction.
+     * 
+     * @note For delta materials (e.g., ideal specular reflection and refraction), the 
+     *       cos(theta) term in the rendering equation is cancelled out. Mathematically, 
+     *       a Dirac delta BSDF is defined with a 1 / cos(theta) factor, i.e.,
+     *       f_r = F * delta(wo - wr) / cos(theta), to ensure that integrating over the 
+     *       hemisphere yields the total energy F. 
+     *       This 1 / cos(theta) factor directly cancels the geometric cos(theta) term in 
+     *       the rendering equation integrand. Consequently, when importance sampled, 
+     *       the Fresnel factor F cancels with the sampling probability P = F, leaving 
+     *       a net throughput free of both F and cos(theta).
      */
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const = 0;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
 
     /**
      * @brief Evaluates the BSDF value for given direction and point.
      * 
-     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
-     * @param wo_local Incident light direction (pointing AWAY from the surface).
+     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
+     * @param wo_local Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
      * 
      * @return The computed BSDF value.
@@ -47,8 +57,8 @@ class Material {
     /**
      * @brief Computes the probability density function (PDF) for the given direction and point.
      * 
-     * @param wi_local Local outgoing view direction (pointing AWAY from the surface). 
-     * @param wo_local Incident light direction (pointing AWAY from the surface).
+     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
+     * @param wo_local Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
      * 
      * @return The computed PDF value.
@@ -68,7 +78,7 @@ class Diffuse : public Material {
     void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
     void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 
@@ -82,7 +92,7 @@ class Mirror : public Material {
     Mirror(int id, const std::string& name) : Material(id, name) {}
 
     bool isDelta() const override { return true; }
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 };
@@ -92,7 +102,7 @@ class Dielectric : public Material {
     Dielectric(int id, const std::string& name, float int_ior, float ext_ior) : Material(id, name), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
 
     bool isDelta() const override { return true; }
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 
@@ -119,7 +129,7 @@ class MicrofacetConductor : public MicrofacetMaterial {
    public:
     MicrofacetConductor(int id, const std::string& name, float real_ior, float imag_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_real_ior(real_ior), m_imag_ior(imag_ior) {}
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 
@@ -132,7 +142,7 @@ class MicrofacetDielectric : public MicrofacetMaterial {
    public:
     MicrofacetDielectric(int id, const std::string& name, float int_ior, float ext_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
 

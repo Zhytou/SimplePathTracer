@@ -3,10 +3,10 @@
 
 namespace spt {
 
-Vec3<float> Diffuse::sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const {
+Vec3<float> Diffuse::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
     CosineDistribution distribution;
-    Vec3<float> wo_local = distribution.sample();
-    return wo_local;
+    wo_local = distribution.sample();
+    return wo_local.z > 0 ? m_albedo : Vec3<float>(0.f);
 }
 Vec3<float> Diffuse::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
     return m_albedo / PI;
@@ -16,20 +16,21 @@ float Diffuse::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, con
     return distribution.pdf(wo_local);
 }
 
-Vec3<float> Mirror::sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const {
-    if (wi_local.z < 0.f) { return Vec3<float>(0.f); }
-    return {-wi_local.x, -wi_local.y, wi_local.z};
+Vec3<float> Mirror::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+    wo_local = {-wi_local.x, -wi_local.y, wi_local.z};
+    return wo_local.z > 0 ? Vec3<float>(1.f) : Vec3<float>(0.f);
 }
 
 Vec3<float> Mirror::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    return Vec3<float>(1.f);
+    throw std::runtime_error("Mirror::eval Ideal reflection eval is not needed");
+    // return Vec3<float>(1.f);
 }
 
 float Mirror::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    return INFINITY;
+    return 0.f;
 }
 
-Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const {
+Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
     float eta_i        = m_ext_ior;
     float eta_t        = m_int_ior;
     float eta          = wi_local.z > 0 ? eta_i / eta_t : eta_t / eta_i;
@@ -39,23 +40,31 @@ Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, const Vec2<float>& u
 
     float ref  = fresnel(wi_local.z, eta_i, eta_t); // when tir occurs, ref is 1.f
     float prob = rand(0.f, 1.f);
-    return prob < ref ? Vec3<float>{-wi_local.x, -wi_local.y, wi_local.z} : Vec3<float>{-eta * wi_local.x, -eta * wi_local.y, cos_theta_i > 0 ? -cos_theta_t : cos_theta_t};
+
+    if (prob < ref) { // reflection or total internal reflection
+        wo_local = Vec3<float>{-wi_local.x, -wi_local.y, wi_local.z};
+        return Vec3<float>(1);
+    } else { // transmission
+        wo_local = Vec3<float>{-eta * wi_local.x, -eta * wi_local.y, cos_theta_i > 0 ? -cos_theta_t : cos_theta_t};
+        return Vec3<float>(1 / (eta * eta));
+    }
 }
 
 Vec3<float> Dielectric::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    float eta_i     = m_ext_ior;
-    float eta_t     = m_int_ior;
-    float eta       = wi_local.z > 0 ? eta_i / eta_t : eta_t / eta_i;
-    bool is_reflect = wi_local.z * wo_local.z > 0.f;
+    throw std::runtime_error("Dielectric::eval Ideal reflection/refraction eval is not needed");
+    // float eta_i     = m_ext_ior;
+    // float eta_t     = m_int_ior;
+    // float eta       = wi_local.z > 0 ? eta_i / eta_t : eta_t / eta_i;
+    // bool is_reflect = wi_local.z * wo_local.z > 0.f;
 
-    return is_reflect ? Vec3<float>(1.f) : Vec3<float>(1 / (eta * eta));
+    // return is_reflect ? Vec3<float>(1.f) : Vec3<float>(1 / (eta * eta));
 }
 
 float Dielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    return INFINITY;
+    return 0.f;
 }
 
-Vec3<float> MicrofacetConductor::sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const {
+Vec3<float> MicrofacetConductor::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
     float roughness = getRoughness(uv);
 
     GGXDistribution distribution(roughness);
@@ -92,7 +101,7 @@ float MicrofacetConductor::pdf(const Vec3<float>& wi_local, const Vec3<float>& w
     return pdf_w;
 }
 
-Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, const Vec2<float>& uv) const {
+Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
     float roughness = getRoughness(uv);
     float eta_i     = m_ext_ior;
     float eta_t     = m_int_ior;
@@ -124,7 +133,7 @@ Vec3<float> MicrofacetDielectric::eval(const Vec3<float>& wi_local, const Vec3<f
     float F     = fresnel(cos_theta_ih, eta_i, eta_t);
     float D     = distribution.D(h_local);
     float G     = distribution.G(wi_local, wo_local);
-    float num   = is_reflect ? F * D * G : (1 - F) * D * G * std::fabs(cos_theta_ih * cos_theta_oh / (cos_theta_i * cos_theta_o));
+    float num   = is_reflect ? F * D * G : (1 - F) * D * G * std::abs(cos_theta_ih * cos_theta_oh / (cos_theta_i * cos_theta_o));
     float denom = is_reflect ? std::max(4.f * cos_theta_i * cos_theta_o, PDF_EPS) : std::max(std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f), PDF_EPS);
 
     return Vec3<float>(num / denom);
@@ -144,7 +153,7 @@ float MicrofacetDielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& 
     float cos_theta_ih = dot(wi_local, h_local);
     float cos_theta_oh = dot(wo_local, h_local);
 
-    float jacobian = is_reflect ? 4.f * std::fabs(cos_theta_oh) : std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f) / std::max(std::fabs(cos_theta_oh), PDF_EPS);
+    float jacobian = is_reflect ? 4.f * std::abs(cos_theta_oh) : std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f) / std::max(std::abs(cos_theta_oh), PDF_EPS);
     float pdf_h    = distribution.pdf(h_local);
     float pdf_w    = pdf_h / std::max(jacobian, PDF_EPS);
 
