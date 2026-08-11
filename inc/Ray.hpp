@@ -10,8 +10,8 @@ class Ray {
    public:
     Ray(const Vec3<float>& org, const Vec3<float>& dir, float tmin = DIS_EPS, float tmax = INFINITY, std::shared_ptr<Medium> medium = nullptr) : m_origin(org), m_direction(normalize(dir)), m_tmin(tmin), m_tmax(tmax), m_medium(medium) {}
 
-    Vec3<float> getOrigin() const { return m_origin; }
-    Vec3<float> getDirection() const { return m_direction; }
+    const Vec3<float>& getOrigin() const { return m_origin; }
+    const Vec3<float>& getDirection() const { return m_direction; }
     float getTMin() const { return m_tmin; }
     float getTMax() const { return m_tmax; }
     std::shared_ptr<Medium> getMedium() const { return !m_medium.expired() ? m_medium.lock() : nullptr; }
