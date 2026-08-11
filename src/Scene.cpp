@@ -95,7 +95,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             float roughness                             = mtl_doc.HasMember("roughness") ? mtl_doc["roughness"].GetFloat() : 0.f;
             fs::path roughness_texpath                  = mtl_doc.HasMember("roughness_texture") ? dir / mtl_doc["roughness_texture"].GetString() : dir;
             std::shared_ptr<Image<float>> roughness_map = fs::is_regular_file(roughness_texpath) ? Image<float>::read(roughness_texpath, 0, true) : nullptr;
-            auto mtl                                    = std::make_shared<MicrofacetConductor>(m_materials.size(), name, int_ior, ext_ior, roughness, roughness_map);
+            auto mtl                                    = std::make_shared<MicrofacetDielectric>(m_materials.size(), name, int_ior, ext_ior, roughness, roughness_map);
             m_materials.push_back(mtl);
         }
     }
@@ -248,22 +248,6 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
                 }
             }
         }
-
-        // 7.2 Load point light
-        for (int i = 0; i < doc["light"].HasMember("point") ? doc["light"]["point"].Size() : 0; i++) {
-            auto& light_doc      = doc["light"]["point"][i];
-            Vec3<float> position = light_doc.HasMember("position") ? getVec3(light_doc["position"]) : Vec3<float>(0.f);
-            Vec3<float> color    = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
-            m_emitters.push_back(std::make_shared<PointEmitter>(m_emitters.size(), color, position));
-        }
-
-        // 7.3 Load directional light
-        for (int i = 0; i < doc["light"].HasMember("directional") ? doc["light"]["directional"].Size() : 0; i++) {
-            auto& light_doc       = doc["light"]["directional"][i];
-            Vec3<float> direction = light_doc.HasMember("direction") ? getVec3(light_doc["direction"]) : Vec3<float>(0.f);
-            Vec3<float> color     = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
-            m_emitters.push_back(std::make_shared<DirectionalEmitter>(m_emitters.size(), color, direction));
-        }
     }
 
     // 8. Set bounding volume hierarchy and direct light sampler
@@ -293,6 +277,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
                << std::setw(10) << prm->getID()
                << std::setw(15) << (spe ? typeid(*spe).name() : "None")
                << std::setw(15) << (mtl ? mtl->getName() : "None")
+               << std::setw(15) << (mtl ? typeid(*mtl).name() : "None")
                << std::setw(15) << (emt ? typeid(*emt).name() : "None")
                << std::setw(15) << (int_med ? int_med->getName() : "None")
                << std::setw(15) << (ext_med ? ext_med->getName() : "None")
@@ -331,6 +316,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             << std::setw(10) << "ID"
             << std::setw(15) << "Shape"
             << std::setw(15) << "Material"
+            << std::setw(15) << "Material"
             << std::setw(15) << "Emitter"
             << std::setw(15) << "Int Medium"
             << std::setw(15) << "Ext Medium"
@@ -356,7 +342,6 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::vector<in
         auto spe = m_shapes[sid];
         auto mtl = mid != -1 ? m_materials[mid] : nullptr;
         auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl);
-        if (mtl && mtl->isDelta()) { m_delta_primitives.push_back(prm); }
         m_primitives.push_back(prm);
         count++;
     }

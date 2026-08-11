@@ -3,7 +3,6 @@
 
 #include "BVH.hpp"
 #include "Camera.hpp"
-#include "DES.hpp"
 #include "Emitter.hpp"
 #include "Material.hpp"
 #include "Medium.hpp"
@@ -56,7 +55,6 @@ class Scene {
         if (id < 0 || id >= m_primitives.size()) { throw std::out_of_range("Scene::getPrimitive: Invalid primitive id"); }
         return m_primitives[id];
     }
-    const std::vector<std::shared_ptr<Primitive>>& getDeltaPrimitives() const { return m_delta_primitives; }
 
    private:
     std::shared_ptr<BVH> m_bvh       = nullptr;
@@ -68,7 +66,6 @@ class Scene {
     std::vector<std::shared_ptr<Material>> m_materials;
     std::vector<std::shared_ptr<Medium>> m_mediums;
     std::vector<std::shared_ptr<Primitive>> m_primitives;
-    std::vector<std::shared_ptr<Primitive>> m_delta_primitives;
 };
 
 }; // namespace spt
