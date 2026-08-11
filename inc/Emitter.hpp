@@ -23,9 +23,18 @@ class Emitter {
     * @param point_x The point whose lighting is being evaluated 
     * @param[out] point_y The sampled point 
     * @param[out] normal_y The normal on the sampled point
-    * @return The emitted radiance value divided by the probability density of the sampled point.
+    * @return The emitted radiance value divided by the probability density of the sampled point, namely radiance / pdf_a.
     */
     virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const = 0;
+    /**
+     * @brief Sample the emitter and return the emitted radiance divided by the PDF.
+     * 
+     * @param[out] origin The origin point of the ray.
+     * @param[out] direction The direction to sample from the emitter.
+     * @param[out] normal The normal on the sampled point.
+     * @return The emitted radiance value divided by the probability density of the sampled direction, namely radiance / (pdf_a * pdf_w).
+     */
+    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const = 0;
     /**
      * @brief Evaluate the radiance of emitter at a given direction.
      * 
@@ -34,14 +43,11 @@ class Emitter {
      */
     virtual Vec3<float> eval(const Vec3<float>& dir) const { return m_radiance; }
     /**
-     *  @brief Calculate the probability density function (PDF) in solid angle for sampling the emitter from a shading point.
+     *  @brief Calculate the PDF of area for NEE(direct light sampling).
      * 
-     * @param point_x The point whose lighting is being evaluated 
-     * @param point_y The sampled point 
-     * @param normal_y The normal on the sampled point
-     * @return The probability density of area emitter
+     * @return The probability density of emitter
      */
-    virtual float pdf(const Vec3<float>& point_x, const Vec3<float>& point_y, const Vec3<float>& normal_y) const = 0;
+    virtual float pdf() const = 0;
 
    protected:
     int m_id = -1;
@@ -56,7 +62,8 @@ class AreaEmitter : public Emitter {
 
     virtual bool isDelta() const { return false; }
     virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const override;
-    virtual float pdf(const Vec3<float>& point_x, const Vec3<float>& point_y, const Vec3<float>& normal_y) const override;
+    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const override;
+    virtual float pdf() const override;
 };
 
 class DES {

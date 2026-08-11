@@ -50,6 +50,34 @@ class Tracer {
      * @param second The time cost of rendering
      */
     static void progress(float percent, float second);
+    /**
+     * @brief  Evaluate the G function for a given point p and light source pp
+     * 
+     * G = dot(pp - p, n) * dot(p - pp, nn) / dist4
+     * 
+     * @param p The shading point
+     * @param n The normal of the shading point
+     * @param pp The sampled light point
+     * @param nn The normal of the sampled light point
+     * @return The value of the G function
+     */
+    static float G(const Vec3<float>& p, const Vec3<float>& n, const Vec3<float>& pp, const Vec3<float>& nn);
+    /**
+     * @brief  Convert the area PDF to the solid angle PDF
+     * @param pdf_a Area PDF
+     * @param dist Distance between the shading point and the light source
+     * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
+     * @return Corresponding solid-angle PDF defined over direction space
+     */
+    static float a2w(float pdf_a, float dist, float cos_theta) { return pdf_a * dist * dist / std::max(cos_theta, PDF_EPS); }
+    /**
+     * @brief  Convert the solid angle PDF to the area PDF
+     * @param pdf_w Solid-angle probability density defined over direction space
+     * @param dist Distance between shading point and sampled light point
+     * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
+     * @return Corresponding area PDF defined over light surface area
+     */
+    static float w2a(float pdf_w, float dist, float cos_theta) { return pdf_w * cos_theta / std::max(dist * dist, PDF_EPS); }
 
    protected:
     int m_depth   = 10;       // max depth of path trace
@@ -70,11 +98,11 @@ class PathTracer : public Tracer {
 };
 
 struct PathVertex {
-    Intersection intersection;
-    Vec3<float> direction;  // incoming direction to this vertex
-    Vec3<float> throughput; // path throughput, namely accumulated bsdf*cos/pdf
-    float pdf;              // sampling pdf when arrive this vertex
-    bool spec;              // delta bsdf(mirror/ideal glass)
+    Intersection its;
+    Vec3<float> wi; // incoming direction to this vertex
+    Vec3<float> tp; // path throughput, namely accumulated bsdf*cos/pdf
+    float pdf;      // sampling pdf when arrive this vertex
+    bool spec;      // delta bsdf(mirror/ideal glass)
 };
 
 class BidirectionalPathTracer : public Tracer {
@@ -85,8 +113,8 @@ class BidirectionalPathTracer : public Tracer {
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
     Vec3<float> connect(const Scene& scene) const;
 
-    int trace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const;
-    int trace(const Scene& scene, std::vector<PathVertex>& emt_path) const;
+    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const;
+    int subtrace(const Scene& scene, std::vector<PathVertex>& emt_path) const;
 };
 
 } // namespace spt
