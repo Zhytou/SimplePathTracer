@@ -261,7 +261,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     {
         constexpr int n     = 10;
         constexpr int k     = 5;
-        constexpr int width = 115; // width for box logging
+        constexpr int width = 125; // width for box logging
 
         // 9.0 Lambda functors and temperol variables
         std::stringstream ss;
@@ -275,10 +275,9 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
             ss << std::left
                << std::setw(10) << prm->getID()
-               << std::setw(15) << (spe ? typeid(*spe).name() : "None")
-               << std::setw(15) << (mtl ? mtl->getName() : "None")
-               << std::setw(15) << (mtl ? typeid(*mtl).name() : "None")
-               << std::setw(15) << (emt ? typeid(*emt).name() : "None")
+               << std::setw(15) << (spe ? spe->getTypeName() : "None")
+               << std::setw(20) << (mtl ? std::string(mtl->getTypeName()) + "_" + mtl->getName() : "None")
+               << std::setw(15) << (emt ? emt->getTypeName() : "None")
                << std::setw(15) << (int_med ? int_med->getName() : "None")
                << std::setw(15) << (ext_med ? ext_med->getName() : "None")
                << std::setw(15) << (prm->isTransformIdentity() ? "Yes" : "No")
@@ -300,8 +299,8 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
         // 9.1 Print camera configuration
         BOX_LOG("CAMERA SETTINGS", width)
-            << std::left << std::setw(15) << " - Eye:    " << std::setw(25) << m_camera->getEye() << std::setw(15) << " - Target: " << std::setw(25) << m_camera->getTarget() << '\n'
-            << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n';
+            << std::left << std::setw(15) << " - Type: " << std::setw(25) << m_camera->getTypeName() << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n'
+            << std::setw(15) << " - Eye:    " << std::setw(25) << m_camera->getEye() << std::setw(15) << " - Target: " << std::setw(25) << m_camera->getTarget() << std::setw(15) << " - Up:     " << std::setw(25) << m_camera->getUp() << '\n';
 
         // 9.2 Print primitive list
         if (m_primitives.size() < 100) {
@@ -315,8 +314,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             << std::left
             << std::setw(10) << "ID"
             << std::setw(15) << "Shape"
-            << std::setw(15) << "Material"
-            << std::setw(15) << "Material"
+            << std::setw(20) << "Material"
             << std::setw(15) << "Emitter"
             << std::setw(15) << "Int Medium"
             << std::setw(15) << "Ext Medium"
