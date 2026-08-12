@@ -17,6 +17,7 @@ class Material {
     virtual bool isDelta() const { return false; }
     int getID() const { return m_id; }
     std::string getName() const { return m_name; }
+    virtual const char* getTypeName() const = 0;
     void setID(int id) { m_id = id; }
     void setName(const std::string& name) { m_name = name; }
 
@@ -74,6 +75,8 @@ class Material {
 class Diffuse : public Material {
    public:
     Diffuse(int id, const std::string& name, const Vec3<float>& albedo, const std::shared_ptr<Image<float>>& albedo_map = nullptr) : Material(id, name), m_albedo(albedo), m_albedo_map(albedo_map) {}
+
+    virtual const char* getTypeName() const override { return "Diffuse"; }
     Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo_map ? m_sampler.sample<float, 3>(m_albedo_map, uv) : m_albedo; }
     void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
     void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
@@ -91,7 +94,9 @@ class Mirror : public Material {
    public:
     Mirror(int id, const std::string& name) : Material(id, name) {}
 
-    bool isDelta() const override { return true; }
+    virtual bool isDelta() const override { return true; }
+    virtual const char* getTypeName() const override { return "Mirror"; }
+
     virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
@@ -101,7 +106,9 @@ class Dielectric : public Material {
    public:
     Dielectric(int id, const std::string& name, float int_ior, float ext_ior) : Material(id, name), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
 
-    bool isDelta() const override { return true; }
+    virtual bool isDelta() const override { return true; }
+    virtual const char* getTypeName() const override { return "Dielectric"; }
+
     virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
@@ -116,6 +123,7 @@ class MicrofacetMaterial : public Material {
     MicrofacetMaterial(int id, const std::string& name, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : Material(id, name), m_roughness(roughness), m_roughness_map(roughness_map) {}
 
     virtual bool isDelta() const override { return false; }
+
     float getRoughness(const Vec2<float>& uv) const { return m_roughness_map ? m_sampler.sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
     void setRoughness(float roughness) { m_roughness = roughness; }
     void setRoughnessMap(std::shared_ptr<Image<float>> roughness_map) { m_roughness_map = roughness_map; }
@@ -129,6 +137,8 @@ class MicrofacetConductor : public MicrofacetMaterial {
    public:
     MicrofacetConductor(int id, const std::string& name, float real_ior, float imag_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_real_ior(real_ior), m_imag_ior(imag_ior) {}
 
+    virtual const char* getTypeName() const override { return "MicrofacetConductor"; }
+
     virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
@@ -141,6 +151,8 @@ class MicrofacetConductor : public MicrofacetMaterial {
 class MicrofacetDielectric : public MicrofacetMaterial {
    public:
     MicrofacetDielectric(int id, const std::string& name, float int_ior, float ext_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_int_ior(int_ior), m_ext_ior(ext_ior) {}
+
+    virtual const char* getTypeName() const override { return "MicrofacetDielectric"; }
 
     virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
     virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
