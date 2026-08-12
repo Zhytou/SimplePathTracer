@@ -51,7 +51,8 @@ class Tracer {
      */
     static void progress(float percent, float second);
     /**
-     * @brief  Evaluate the G function for a given point p and light source pp
+     * @brief  Evaluate the Geometry term of rendering equation for a given point p and light source pp
+     * @note The G term different from the G in the microsoft bsdf model, here it is used in the rendering equation when integrating over the light source.
      * 
      * G = dot(pp - p, n) * dot(p - pp, nn) / dist4
      * 
@@ -62,6 +63,14 @@ class Tracer {
      * @return The value of the G function
      */
     static float G(const Vec3<float>& p, const Vec3<float>& n, const Vec3<float>& pp, const Vec3<float>& nn);
+    /**
+     * @brief  Check the Visibility term of rendering equation for two given point p and pp
+     * 
+     * @param p The first point
+     * @param pp The second point
+     * @return The value of the V function
+     */
+    static bool V(const Scene& scene, const Vec3<float>& p, const Vec3<float>& pp);
     /**
      * @brief  Convert the area PDF to the solid angle PDF
      * @param pdf_a Area PDF
@@ -111,10 +120,10 @@ class BidirectionalPathTracer : public Tracer {
     ~BidirectionalPathTracer() {}
 
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
-    Vec3<float> connect(const Scene& scene) const;
+    Vec3<float> connect(const Scene& scene, const PathVertex& v_cam, const PathVertex& v_emt) const;
 
-    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const;
-    int subtrace(const Scene& scene, std::vector<PathVertex>& emt_path) const;
+    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const;
+    int subtrace(const Scene& scene, std::vector<PathVertex>& path_emt) const;
 };
 
 } // namespace spt

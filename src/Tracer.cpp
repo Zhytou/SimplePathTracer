@@ -163,6 +163,19 @@ float Tracer::G(const Vec3<float>& p, const Vec3<float>& n_p, const Vec3<float>&
     return std::max(0.f, dot(n_p, dir)) * std::max(0.f, dot(n_pp, -dir)) / d2;
 }
 
+bool Tracer::V(const Scene& scene, const Vec3<float>& p, const Vec3<float>& pp) {
+    auto bvh   = scene.getBVH();
+    auto dis   = length(pp - p);
+    auto dir   = (pp - p) / dis;
+    auto org   = p;
+    float tmin = DIS_EPS;
+    float tmax = dis - DIS_EPS;
+
+    Ray ray(org, dir, tmin, tmax);
+    Intersection its;
+    return !bvh->intersect(ray, its);
+}
+
 Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
     auto its       = Intersection();           // intersection info
     auto bvh       = scene.getBVH();           // intersection accelerator of the scene
@@ -211,24 +224,20 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
             auto [emt, prob] = des->sample(); // sampled emitter and corresponding probability
             auto emitted     = emt->sample(p, pp, nn) / prob;
 
-            // 3.2 Check if the sampled light point is visible from the hit point
-            wo         = normalize(pp - p);
-            wo_local   = its.toLocal(wo);
-            float tmin = DIS_EPS;
-            float tmax = length(pp - p) - DIS_EPS;
-            Ray shadow_ray(p, wo, tmin, tmax);
-            Intersection shadow_its;
-            bool visible = !bvh->intersect(shadow_ray, shadow_its);
-            float g      = G(p, n, pp, nn);
-
-            if (visible && g > 0.f) {
+            // 3.2 Accept connection only if mutually visible and geometrically valid:
+            //     V ensures no occlusion; G > 0 ensures both surfaces face each other
+            bool vis  = V(scene, p, pp); // visibility term
+            float geo = G(p, n, pp, nn); // geometry term
+            if (vis && geo > 0.f) {
+                wo               = normalize(pp - p);
+                wo_local         = its.toLocal(wo);
                 Vec3<float> bsdf = mtl->eval(wi_local, wo_local, uv);
                 float dist       = length(pp - p);
                 float cos_theta  = std::max(0.f, dot(nn, pp - p) / dist); //Cosine of the angle between light surface normal and outgoing light direction
                 float pdf_emt    = a2w(emt->pdf(), dist, cos_theta) * prob;
                 float pdf_mtl    = mtl->pdf(wi_local, wo_local, uv);
                 float weight_mis = mix(pdf_emt, pdf_mtl);
-                radiance += throughput * emitted * bsdf * g * weight_mis;
+                radiance += throughput * emitted * bsdf * geo * weight_mis;
             }
         }
 
@@ -252,26 +261,37 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
 }
 
 Vec3<float> BidirectionalPathTracer::trace(const Scene& scene, Ray& ray) const {
-    std::vector<PathVertex> cam_path, emt_path;
-    int m             = subtrace(scene, ray, cam_path);
-    int n             = subtrace(scene, emt_path);
-    Vec3<float> color = Vec3<float>(0.f);
+    std::vector<PathVertex> path_cam, path_emt;
+    int m = subtrace(scene, ray, path_cam);
+    int n = subtrace(scene, path_emt);
+
+    auto radiance = Vec3<float>(0.f);
     for (int i = 0; i < m; i++) {
+        auto v_cam = path_cam[i];
+        if (v_cam.spec) { continue; }
         for (int j = 0; j < n; j++) {
+            auto v_emt = path_emt[j];
+            if (v_emt.spec) { continue; }
+            radiance += connect(scene, v_cam, v_emt);
         }
     }
-    return color;
+    return radiance;
 }
 
-int BidirectionalPathTracer::subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& cam_path) const {
+int BidirectionalPathTracer::subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const {
+    auto its = Intersection(); // intersection info
     auto bvh = scene.getBVH(); // intersection accelerator of the scene
     auto des = scene.getDES(); // direct emitter sampler of the scene
 
     Vec3<float> throughput(1.f);
     float pdf;
 
+    auto wi       = -ray.getDirection();
+    auto wo       = Vec3<float>(0.f);
+    auto wi_local = its.toLocal(wi);
+    auto wo_local = its.toLocal(wo);
+
     for (int depth = 0; depth < m_depth; ++depth) {
-        auto its = Intersection();
         if (!bvh->intersect(ray, its)) { break; }
 
         auto prm = scene.getPrimitive(its.id);
@@ -282,12 +302,8 @@ int BidirectionalPathTracer::subtrace(const Scene& scene, Ray& ray, std::vector<
         auto n  = its.normal;
         auto uv = its.texcoord;
 
-        auto wi       = -ray.getDirection();
-        auto wo       = Vec3<float>(0.f);
-        auto wi_local = its.toLocal(wi);
-        auto wo_local = its.toLocal(wo);
-        throughput *= mtl->sample(wi_local, wo_local, uv);
-        pdf = mtl->pdf(wi_local, wo_local, uv);
+        wi       = -ray.getDirection();
+        wi_local = its.toLocal(wi);
 
         auto v = PathVertex{
             .its  = its,
@@ -296,15 +312,20 @@ int BidirectionalPathTracer::subtrace(const Scene& scene, Ray& ray, std::vector<
             .pdf  = pdf,
             .spec = mtl && mtl->isDelta(),
         };
-        cam_path.push_back(v);
+        path_cam.push_back(v);
 
+        if (!mtl) { break; }
+        throughput *= mtl->sample(wi_local, wo_local, uv);
+        pdf = mtl->pdf(wi_local, wo_local, uv);
+        wo  = its.toWorld(wo_local);
         ray = Ray(p, wo, DIS_EPS, INFINITY);
     }
 
-    return cam_path.size();
+    return path_cam.size();
 }
 
-int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex>& emt_path) const {
+int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex>& path_emt) const {
+    auto its = Intersection(); // intersection info
     auto bvh = scene.getBVH(); // intersection accelerator of the scene
     auto des = scene.getDES(); // direct emitter sampler of the scene
 
@@ -317,10 +338,14 @@ int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex
 
     auto [emt, prob] = des->sample();
     auto emitted     = emt->sample(org, dir, n) / prob;
-    auto ray         = Ray(Vec3<float>(0.f), Vec3<float>(0.f));
+    auto ray         = Ray(org, dir);
+
+    auto wi       = -ray.getDirection();
+    auto wo       = Vec3<float>(0.f);
+    auto wi_local = its.toLocal(wi);
+    auto wo_local = its.toLocal(wo);
 
     for (int depth = 0; depth < m_depth; ++depth) {
-        auto its = Intersection();
         if (!bvh->intersect(ray, its)) { break; }
 
         auto prm = scene.getPrimitive(its.id);
@@ -331,12 +356,8 @@ int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex
         auto n  = its.normal;
         auto uv = its.texcoord;
 
-        auto wi       = -ray.getDirection();
-        auto wo       = Vec3<float>(0.f);
-        auto wi_local = its.toLocal(wi);
-        auto wo_local = its.toLocal(wo);
-        throughput *= mtl->sample(wi_local, wo_local, uv);
-        pdf = mtl->pdf(wi_local, wo_local, uv);
+        wi       = -ray.getDirection();
+        wi_local = its.toLocal(wi);
 
         auto v = PathVertex{
             .its  = its,
@@ -345,16 +366,45 @@ int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex
             .pdf  = pdf,
             .spec = mtl && mtl->isDelta(),
         };
-        emt_path.push_back(v);
+        path_emt.push_back(v);
 
+        if (!mtl) { break; }
+        throughput *= mtl->sample(wi_local, wo_local, uv);
+        pdf = mtl->pdf(wi_local, wo_local, uv);
+        wo  = its.toWorld(wo_local);
         ray = Ray(p, wo, DIS_EPS, INFINITY);
     }
 
-    return emt_path.size();
+    return path_emt.size();
 }
 
-Vec3<float> BidirectionalPathTracer::connect(const Scene& scene) const {
-    return Vec3<float>(0.f);
+Vec3<float> BidirectionalPathTracer::connect(const Scene& scene, const PathVertex& v_cam, const PathVertex& v_emt) const {
+    auto its = Intersection(); // intersection info
+    auto bvh = scene.getBVH(); // intersection accelerator of the scene
+
+    auto p1   = v_cam.its.point;
+    auto n1   = v_cam.its.normal;
+    auto uv1  = v_cam.its.texcoord;
+    auto mtl1 = scene.getPrimitive(v_cam.its.id)->getMaterial();
+
+    auto p2   = v_emt.its.point;
+    auto n2   = v_emt.its.normal;
+    auto uv2  = v_emt.its.texcoord;
+    auto mtl2 = scene.getPrimitive(v_emt.its.id)->getMaterial();
+
+    auto ray = Ray(p1, p2 - p1);
+    if (!bvh->intersect(ray, its)) { return Vec3<float>(0.f); }
+
+    auto g         = G(p1, n1, p2, n2);
+    auto wi1_local = v_cam.its.toLocal(v_cam.wi);
+    auto wo1_local = v_cam.its.toLocal(normalize(p2 - p1));
+    auto wi2_local = v_emt.its.toLocal(v_emt.wi);
+    auto wo2_local = v_emt.its.toLocal(normalize(p2 - p1));
+
+    auto bsdf1 = mtl1->eval(wi1_local, wo1_local, uv1);
+    auto bsdf2 = mtl2->eval(wi2_local, wo2_local, uv2);
+
+    return v_cam.tp * bsdf1 * g * bsdf2 * v_emt.tp;
 }
 
 } // namespace spt
