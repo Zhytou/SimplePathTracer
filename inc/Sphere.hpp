@@ -11,6 +11,7 @@ class Sphere : public Shape {
     Sphere(int id, const Vec3<float>& center, float radius) : Shape(id), m_center(center), m_radius(radius) {}
     ~Sphere() {}
 
+    virtual const char* getTypeName() const override { return "Sphere"; }
     const Vec3<float>& getCenter() const { return m_center; }
     float getRadius() const { return m_radius; }
     void setCenter(const Vec3<float>& center) { m_center = center; }

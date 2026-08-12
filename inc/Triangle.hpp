@@ -11,6 +11,7 @@ class Triangle : public Shape {
     Triangle(int id, const std::array<Vec3<float>, 3>& v, const std::array<Vec3<float>, 3>& n, const std::array<Vec2<float>, 3>& uv) : Shape(id), m_vertex(v), m_normal(n), m_texcoord(uv) {}
     ~Triangle() {}
 
+    virtual const char* getTypeName() const override { return "Triangle"; }
     const std::array<Vec3<float>, 3>& getVertex() const { return m_vertex; }
     const std::array<Vec2<float>, 3>& getTexCoord() const { return m_texcoord; }
     const std::array<Vec3<float>, 3>& getNormal() const { return m_normal; }

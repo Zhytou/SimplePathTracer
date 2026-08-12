@@ -16,6 +16,7 @@ class Shape {
 
     int getID() const { return m_id; }
     const std::string& getName() const { return m_name; }
+    virtual const char* getTypeName() const = 0;
     void setID(int id) { m_id = id; }
     void setName(const std::string& name) { m_name = name; }
 
