@@ -22,6 +22,7 @@ class Camera {
     virtual Ray emit(int row, int col, int k, int n) const = 0;
     void update();
 
+    virtual const char* getTypeName() const = 0;
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
     float getFovy() const { return m_fovy; }
@@ -75,6 +76,8 @@ class PerspectiveCamera : public Camera {
     PerspectiveCamera()  = default;
     ~PerspectiveCamera() = default;
 
+    virtual const char* getTypeName() const override { return "Perspective"; }
+
     virtual Ray emit(int row, int col, int k, int n) const override;
 };
 
@@ -82,6 +85,8 @@ class OrthographicCamera : public Camera {
    public:
     OrthographicCamera()  = default;
     ~OrthographicCamera() = default;
+
+    virtual const char* getTypeName() const override { return "Orthographic"; }
 
     virtual Ray emit(int row, int col, int k, int n) const override;
 };
