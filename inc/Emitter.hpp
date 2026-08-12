@@ -13,6 +13,7 @@ class Emitter {
     virtual ~Emitter() {}
 
     int getID() const { return m_id; }
+    virtual const char* getTypeName() const = 0;
     std::shared_ptr<Primitive> getPrimitive() const { return m_primitive.lock(); }
     void setID(int id) { m_id = id; }
     void setPrimitive(std::shared_ptr<Primitive> primitive) { m_primitive = primitive; }
@@ -60,7 +61,8 @@ class AreaEmitter : public Emitter {
     AreaEmitter(int id, const Vec3<float>& radiance) : Emitter(id, radiance) {}
     ~AreaEmitter() {}
 
-    virtual bool isDelta() const { return false; }
+    virtual const char* getTypeName() const override { return "AreaEmitter"; }
+
     virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const override;
     virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const override;
     virtual float pdf() const override;
