@@ -12,10 +12,18 @@
 #include "Scene.hpp"
 
 namespace spt {
+
 class Tracer {
    public:
     Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32);
     virtual ~Tracer() {}
+
+    virtual const char* getTypeName() const = 0;
+    int getDepth() const { return m_depth; }
+    int getRussianRrouletteDepth() const { return m_rrdepth; }
+    int getSamplesPerPixel() const { return m_spp; }
+    float getRussianRrouletteProb() const { return m_rrp; }
+    float getLumiosityTheshold() const { return m_lum; }
 
     /**
      * @brief  Render a scene and save the result as an image
@@ -103,14 +111,15 @@ class PathTracer : public Tracer {
     PathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
     ~PathTracer() {}
 
+    virtual const char* getTypeName() const override { return "PathTracer"; }
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
 };
 
 struct PathVertex {
     Intersection its;
     Vec3<float> wi; // incoming direction to this vertex
-    Vec3<float> tp; // path throughput, namely accumulated bsdf*cos/pdf
-    float pdf;      // sampling pdf when arrive this vertex
+    Vec3<float> tp; // cumulative product of (bsdf * |cosθ| / pdf) along path
+    float pdf;      // cumulative product of forward-direction sampling pdf for mis
     bool spec;      // delta bsdf(mirror/ideal glass)
 };
 
@@ -119,6 +128,7 @@ class BidirectionalPathTracer : public Tracer {
     BidirectionalPathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
     ~BidirectionalPathTracer() {}
 
+    virtual const char* getTypeName() const override { return "BidirectionalPathTracer"; }
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
     Vec3<float> connect(const Scene& scene, const PathVertex& v_cam, const PathVertex& v_emt) const;
 
