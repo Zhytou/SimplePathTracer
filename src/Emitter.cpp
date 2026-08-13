@@ -17,7 +17,7 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& point_x, Vec3<float>& point_y
     return m_radiance * area; // radiance / pdf_area
 }
 
-Vec3<float> AreaEmitter::sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const {
+Vec3<float> AreaEmitter::sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
     auto prm = m_primitive.lock();
@@ -28,15 +28,15 @@ Vec3<float> AreaEmitter::sample(Vec3<float>& origin, Vec3<float>& direction, Vec
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
     float pdf_a = 1.f / area; // pdf_area
 
-    CosineDistribution distribution;
     auto direction_local = distribution.sample();
     float pdf_w          = distribution.pdf(direction_local);
+    float cos_theta      = direction_local.z;
 
     Vec3<float> tangent, bitangent;
     TBN(normal, tangent, bitangent);
     direction = direction_local.x * tangent + direction_local.y * bitangent + direction_local.z * normal;
 
-    return m_radiance / (pdf_a * pdf_w);
+    return m_radiance * cos_theta / (pdf_a * pdf_w);
 }
 
 float AreaEmitter::pdf() const {

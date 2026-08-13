@@ -6,6 +6,7 @@
 namespace spt {
 
 class Primitive;
+class Distribution;
 
 class Emitter {
    public:
@@ -33,9 +34,10 @@ class Emitter {
      * @param[out] origin The origin point of the ray.
      * @param[out] direction The direction to sample from the emitter.
      * @param[out] normal The normal on the sampled point.
-     * @return The emitted radiance value divided by the probability density of the sampled direction, namely radiance / (pdf_a * pdf_w).
+     * @param distribution The distribution to sample direction from.
+     * @return The emitted radiance value divided by the probability density of the sampled direction, namely radiance * cos / (pdf_a * pdf_w).
      */
-    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const = 0;
+    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const = 0;
     /**
      * @brief Evaluate the radiance of emitter at a given direction.
      * 
@@ -64,7 +66,7 @@ class AreaEmitter : public Emitter {
     virtual const char* getTypeName() const override { return "AreaEmitter"; }
 
     virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const override;
-    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal) const override;
+    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const override;
     virtual float pdf() const override;
 };
 
