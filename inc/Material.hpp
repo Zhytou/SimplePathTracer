@@ -24,9 +24,10 @@ class Material {
     /**
      * @brief Samples an outgoing direction according to the material's BSDF.
      * 
-     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
-     * @param wo_local Local output ray direction (pointing AWAY from the surface).
+     * @param wi Local input ray direction (pointing AWAY from the surface). 
+     * @param wo Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
+     * @param li True if input ray comes from light source, false otherwise.
      * 
      * @return The Monte Carlo throughput (weight) of the sampled direction. 
      *         For non-delta materials, this equals (bsdf * cos / pdf). 
@@ -42,29 +43,29 @@ class Material {
      *       the Fresnel factor F cancels with the sampling probability P = F, leaving 
      *       a net throughput free of both F and cos(theta).
      */
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const = 0;
 
     /**
      * @brief Evaluates the BSDF value for given direction and point.
      * 
-     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
-     * @param wo_local Local output ray direction (pointing AWAY from the surface).
+     * @param wi Local input ray direction (pointing AWAY from the surface). 
+     * @param wo Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
      * 
      * @return The computed BSDF value.
      */
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const = 0;
 
     /**
      * @brief Computes the probability density function (PDF) for the given direction and point.
      * 
-     * @param wi_local Local input ray direction (pointing AWAY from the surface). 
-     * @param wo_local Local output ray direction (pointing AWAY from the surface).
+     * @param wi Local input ray direction (pointing AWAY from the surface). 
+     * @param wo Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
      * 
      * @return The computed PDF value.
      */
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const = 0;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const = 0;
 
    protected:
     int m_id = -1;
@@ -81,9 +82,9 @@ class Diffuse : public Material {
     void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
     void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
     Vec3<float> m_albedo = Vec3<float>(0.f);
@@ -97,9 +98,9 @@ class Mirror : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Mirror"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 };
 
 class Dielectric : public Material {
@@ -109,9 +110,9 @@ class Dielectric : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Dielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
     float m_int_ior = 1.f;
@@ -139,9 +140,9 @@ class MicrofacetConductor : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetConductor"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
     float m_real_ior; // index of refraction eta
@@ -154,9 +155,9 @@ class MicrofacetDielectric : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetDielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
-    virtual float pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
     float m_ext_ior = 1.f;

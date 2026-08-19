@@ -3,20 +3,27 @@
 
 namespace spt {
 
-Vec3<float> Diffuse::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+Vec3<float> Diffuse::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, bool li) const {
     CosineDistribution distribution;
     wo_local = distribution.sample();
-    return wo_local.z > 0 ? m_albedo : Vec3<float>(0.f);
+
+    float cos_theta = li ? wi_local.z : wo_local.z;
+    float pdf       = wo_local.z / PI;
+    Vec3f bsdf      = eval(wi_local, wo_local, uv);
+
+    return wi_local.z > 0 ? bsdf * cos_theta / pdf : Vec3<float>(0.f);
 }
+
 Vec3<float> Diffuse::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
     return m_albedo / PI;
 }
+
 float Diffuse::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
     CosineDistribution distribution;
     return distribution.pdf(wo_local);
 }
 
-Vec3<float> Mirror::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+Vec3<float> Mirror::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, bool li) const {
     wo_local = {-wi_local.x, -wi_local.y, wi_local.z};
     return wo_local.z > 0 ? Vec3<float>(1.f) : Vec3<float>(0.f);
 }
@@ -30,7 +37,7 @@ float Mirror::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, cons
     return 0.f;
 }
 
-Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, bool li) const {
     float eta_i        = m_ext_ior;
     float eta_t        = m_int_ior;
     float eta          = wi_local.z > 0 ? eta_i / eta_t : eta_t / eta_i;
@@ -64,7 +71,7 @@ float Dielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, 
     return 0.f;
 }
 
-Vec3<float> MicrofacetConductor::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+Vec3<float> MicrofacetConductor::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, bool li) const {
     float roughness = getRoughness(uv);
 
     GGXDistribution distribution(roughness);
@@ -101,7 +108,7 @@ float MicrofacetConductor::pdf(const Vec3<float>& wi_local, const Vec3<float>& w
     return pdf_w;
 }
 
-Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv) const {
+Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, bool li) const {
     float roughness = getRoughness(uv);
     float eta_i     = m_ext_ior;
     float eta_t     = m_int_ior;
