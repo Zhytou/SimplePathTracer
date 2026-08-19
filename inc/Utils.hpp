@@ -25,9 +25,9 @@
 
 namespace spt {
 
-constexpr float EPS     = 1e-6f;
+constexpr float EPS     = 1e-12f;
 constexpr float DIS_EPS = 1e-3f;
-constexpr float PDF_EPS = 1e-6f;
+constexpr float PDF_EPS = 1e-9f;
 
 constexpr float PI = 3.14159265358979323846f;
 
@@ -54,6 +54,24 @@ constexpr float radians(float deg) {
 constexpr float degrees(float rad) {
     return rad * 180.f / PI;
 }
+
+/**
+ * @brief  Convert the area PDF to the solid angle PDF
+ * @param pdf_a Area PDF
+ * @param dis Distance between the shading point and the light source
+ * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
+ * @return Corresponding solid-angle PDF defined over direction space
+ */
+constexpr float a2w(float pdf_a, float dis, float cos_theta) { return pdf_a * dis * dis / std::max(std::abs(cos_theta), PDF_EPS); }
+
+/**
+ * @brief  Convert the solid angle PDF to the area PDF
+ * @param pdf_w Solid-angle probability density defined over direction space
+ * @param dis Distance between shading point and sampled light point
+ * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
+ * @return Corresponding area PDF defined over light surface area
+ */
+constexpr float w2a(float pdf_w, float dis, float cos_theta) { return pdf_w * std::abs(cos_theta) / std::max(dis * dis, PDF_EPS); }
 
 /**
  * @brief Create orthonormal basis(local-to-world transform matrix) based on the given normal vector
