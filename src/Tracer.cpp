@@ -166,7 +166,7 @@ float Tracer::G(const Vec3<float>& p, const Vec3<float>& n_p, const Vec3<float>&
 
 bool Tracer::V(const Scene& scene, const Vec3<float>& p, const Vec3<float>& pp) {
     auto bvh   = scene.getBVH();
-    auto dis   = length(pp - p);
+    auto dis   = distance(pp, p);
     auto dir   = (pp - p) / dis;
     auto org   = p;
     float tmin = DIS_EPS;
@@ -181,13 +181,16 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
     auto bvh = scene.getBVH(); // intersection accelerator of the scene
     auto des = scene.getDES(); // direct emitter sampler of the scene
 
-    Vec3<float> radiance(0.f);                 // accumulative sum of emitted and scattered radiance
-    Vec3<float> throughput(1.f);               // cumulative product of (bsdf * |cosθ| / pdf) along path
-    auto its       = Intersection();           // intersection info
-    auto hit       = bvh->intersect(ray, its); // current hit primitive or not
-    auto hit_spec  = false;                    // previous hit material is specular or not
-    auto pdf_bsdf  = 0.f;                      // previous pdf of the bsdf sampling
-    auto weight_rr = 1.f;                      // current weight of russian roulette
+    Vec3<float> radiance(0.f);   // accumulative sum of emitted and scattered radiance
+    Vec3<float> throughput(1.f); // cumulative product of (bsdf * |cosθ| / pdf) along path
+
+    Intersection its;                           // intersection info
+    bool hit        = bvh->intersect(ray, its); // current hit primitive or not
+    bool hit_spec   = false;                    // previous hit material is specular or not
+    float pdf_bsdf  = 0.f;                      // previous pdf of the bsdf sampling
+    float weight_rr = 1.f;                      // current weight of russian roulette
+    Vec3<float> wi_local(0.f);                  // local view direction(wi) P -> Eye
+    Vec3<float> wo_local(0.f);                  // local light direction(wo) P -> Light
 
     for (int depth = 0; hit && depth < m_depth; depth++) {
         // 1. Collect hit info
@@ -201,42 +204,37 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
         const Vec3<float>& n  = its.normal;      // normal at the hit point
         const Vec2<float>& uv = its.texcoord;    // texture coordinate at the hit point
 
-        Vec3<float> wi       = -ray.getDirection(); // view direction(wi) P -> Eye
-        Vec3<float> wo       = Vec3<float>(0.f);    // light direction(wo) P -> ight
-        Vec3<float> wi_local = its.toLocal(wi);
-        Vec3<float> wo_local = its.toLocal(wo);
-
+        wi_local = its.toLocal(-ray.getDirection());
         // 3. Calculate emissive light radiance or do direct light sampling
-        if (emt) {
-            auto emitted = emt->eval(wi);
+        if (emt) { // hit emissive primitive
+            auto emitted = emt->eval(wi_local);
 
             if (depth == 0 || hit_spec) { // return emissive radiance if at the first depth or hit a specular material
                 radiance += throughput * emitted;
             } else { // do multiple importance sampling
-                float dist       = distance(o, p);
-                float cos_theta  = std::max(0.f, dot(n, o - p) / dist);
-                float pdf_emt    = a2w(emt->pdf(), dist, cos_theta) * des->prob(emt);
+                float dis        = distance(o, p);
+                float cos_theta  = std::max(0.f, dot(n, o - p) / dis);
+                float pdf_emt    = a2w(emt->pdf(), dis, cos_theta) * des->prob(emt);
                 float pdf_mtl    = pdf_bsdf;
                 float weight_mis = mix(pdf_mtl, pdf_emt);
                 radiance += throughput * emitted * weight_mis;
             }
         } else if (mtl && !mtl->isDelta()) {
             // 3.1 Sample the emitter
-            Vec3<float> pp, nn;               // sampled light point and normal
-            auto [emt, prob] = des->sample(); // sampled emitter and corresponding probability
-            auto emitted     = emt->sample(p, pp, nn) / prob;
+            Vec3<float> pp, nn;                // sampled light point and normal
+            auto [emts, prob] = des->sample(); // sampled emitter and corresponding probability
+            auto emitted      = emts->sample(p, pp, nn) / prob;
 
             // 3.2 Accept connection only if mutually visible and geometrically valid:
             //     V ensures no occlusion; G > 0 ensures both surfaces face each other
             bool vis  = V(scene, p, pp); // visibility term
             float geo = G(p, n, pp, nn); // geometry term
             if (vis && geo > 0.f) {
-                wo               = normalize(pp - p);
-                wo_local         = its.toLocal(wo);
+                wo_local         = its.toLocal(normalize(pp - p));
                 Vec3<float> bsdf = mtl->eval(wi_local, wo_local, uv);
-                float dist       = length(pp - p);
-                float cos_theta  = std::max(0.f, dot(nn, pp - p) / dist);   //Cosine of the angle between light surface normal and outgoing light direction
-                float pdf_emt    = a2w(emt->pdf(), dist, cos_theta) * prob; // pdf of the emitter sampling in solid angle
+                float dis        = distance(pp, p);
+                float cos_theta  = std::max(0.f, dot(nn, pp - p) / dis);    //Cosine of the angle between light surface normal and outgoing light direction
+                float pdf_emt    = a2w(emts->pdf(), dis, cos_theta) * prob; // pdf of the emitter sampling in solid angle
                 float pdf_mtl    = mtl->pdf(wi_local, wo_local, uv);        // pdf of the material sampling in solid angle
                 float weight_mis = mix(pdf_emt, pdf_mtl);                   // multiple importance sampling weight
                 radiance += throughput * emitted * bsdf * geo * weight_mis;
@@ -251,8 +249,7 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
             pdf_bsdf = mtl->pdf(wi_local, wo_local, uv);
 
             // 4.2 Update ray and trace the reflected/refracted ray
-            wo  = its.toWorld(wo_local);
-            ray = Ray(p, wo, DIS_EPS, INFINITY);
+            ray = Ray(p, its.toWorld(wo_local), DIS_EPS, INFINITY);
             hit = bvh->intersect(ray, its);
         } else {
             hit = false;
@@ -264,175 +261,210 @@ Vec3<float> PathTracer::trace(const Scene& scene, Ray& ray) const {
 
 Vec3<float> BidirectionalPathTracer::trace(const Scene& scene, Ray& ray) const {
     std::vector<PathVertex> path_cam, path_emt;
-    int m = subtrace(scene, ray, path_cam);
-    int n = subtrace(scene, path_emt);
+    int size_emt = subtrace(scene, path_emt);
+    int size_cam = subtrace(scene, ray, path_cam);
 
     auto radiance = Vec3<float>(0.f);
-    for (int i = 1; i < m; i++) { // first vertex is camera
-        auto v_cam = path_cam[i];
-        if (v_cam.spec) { break; }
-        for (int j = 0; j < n; j++) { // first vertex is emitter
-            auto v_emt = path_emt[j];
-            if (v_emt.spec) { break; }
-            radiance += connect(scene, v_cam, v_emt);
+    for (int s = 0; s <= size_emt; s++) {     // s is source emitter
+        for (int t = 1; t <= size_cam; t++) { // t is target camera
+            int depth = s + t - 2;
+            // exclude (0, 1) and (1, 1)
+            if ((s == 1 && t == 1) || depth < 0 || depth > m_depth) { continue; }
+            // connect path_emt[0, s - 1] to path_cam[0, t - 1]
+            radiance += connect(scene, path_emt, path_cam, s, t);
         }
     }
     return radiance;
 }
 
 int BidirectionalPathTracer::subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const {
-    // 1. Initialize
     auto bvh = scene.getBVH(); // intersection accelerator of the scene
-    auto des = scene.getDES(); // direct emitter sampler of the scene
 
-    Vec3<float> wi(0.f), wi_local(0.f);
-    Vec3<float> wo(0.f), wo_local(0.f);
-
-    // 2. Set camera as the first vertex
-    Vec3<float> tp(1.f); // throughput
-    float pdf = 1.f;     // pdf
-
-    auto its = Intersection{
-        .id       = -1, // camera is not a primitive
-        .distance = 0.f,
-        .point    = ray.getOrigin(),
-        .normal   = ray.getDirection(),
+    Vec3f tp(1.f); // initial throughput
+    Intersection its = {
+        .id    = -1,
+        .point = ray.getOrigin(),
     };
-    auto vex = PathVertex{
-        .its  = its,
-        .wi   = wi,
-        .tp   = tp,
-        .pdf  = pdf,
-        .spec = false,
-    };
-    path_cam.push_back(vex);
+    path_cam.push_back(PathVertex{
+        .intersection = its,
+        .throughput   = tp,
+        .forward_pdf  = 1.f,
+        .backward_pdf = 0.f,
+        .delta        = true,
+    });
 
-    // 3. Trace the ray
     for (int depth = 0; depth < m_depth; ++depth) {
-        // 3.1 Collect the intersection info
+        // 1. Collect the intersection info
         if (!bvh->intersect(ray, its)) { break; }
         auto prm = scene.getPrimitive(its.id);
         auto mtl = prm->getMaterial();
         auto emt = prm->getEmitter();
-        if (emt) { break; } // TODO: consider the case when the camera ray hit emitter directly
 
-        // 3.2 Set the direction of the ray to the normal of the hit primitive
-        wi       = -ray.getDirection();
-        wi_local = its.toLocal(wi);
-        vex      = PathVertex{
-            .its  = its,
-            .wi   = wi,
-            .tp   = tp,
-            .pdf  = pdf,
-            .spec = mtl && mtl->isDelta(),
+        // 2. Generate the new hit path vertex, even if hit emitter directly
+        auto nxt = PathVertex{
+            .intersection = its,
+            .throughput   = tp,
+            .delta        = mtl && mtl->isDelta(),
         };
-        path_cam.push_back(vex);
 
+        // 3. Update the forward and backward pdf of the previous and next vertex if necessary
+        if (path_cam.size() >= 2) {
+            auto& pre        = path_cam[path_cam.size() - 2];
+            auto& cur        = path_cam[path_cam.size() - 1];
+            pre.backward_pdf = cur.pdf(scene, &nxt, pre);
+            nxt.forward_pdf  = cur.pdf(scene, &pre, nxt);
+        } else { // set the forward_pdf of path_cam[1] vertex
+            nxt.forward_pdf = w2a(1.f, its.distance, dot(its.normal, -ray.getDirection()));
+        }
+        path_cam.push_back(nxt);
+
+        // 4. Sample bsdf to get a new ray
         if (!mtl) { break; }
-        const Vec3<float>& p  = its.point;
-        const Vec2<float>& uv = its.texcoord;
-        tp *= mtl->sample(wi_local, wo_local, uv);
-        pdf *= mtl->pdf(wi_local, wo_local, uv);
-        wo  = its.toWorld(wo_local);
-        ray = Ray(p, wo, DIS_EPS, INFINITY);
+        Vec3f wi_local(its.toLocal(-ray.getDirection())), wo_local(0.f); // view direction(wi) P->Eye, light direction(wo) P->Light
+        tp *= mtl->sample(wi_local, wo_local, its.texcoord);
+        ray = Ray(its.point, its.toWorld(wo_local), DIS_EPS, INFINITY);
     }
 
     return path_cam.size();
 }
 
 int BidirectionalPathTracer::subtrace(const Scene& scene, std::vector<PathVertex>& path_emt) const {
-    // 1.
     auto bvh = scene.getBVH(); // intersection accelerator of the scene
     auto des = scene.getDES(); // direct emitter sampler of the scene
 
-    Vec3<float> wi(0.f), wi_local(0.f);
-    Vec3<float> wo(0.f), wo_local(0.f);
-
-    // 2. Sample emitter to get a random ray and set emitter as the first vertex
     CosineDistribution dsb;
-    Vec3<float> o, d, n;                                 // sampled origin, direction, and normal
-    auto [emt, prob] = des->sample();                    // sampled emitter and corresponding selection probability
-    Vec3<float> tp   = emt->sample(o, d, n, dsb) / prob; // initial throughput (radiance * cos / (pdf_a * pdf_w * prob))
-    float pdf        = 1.f;                              // initial pdf
-
-    auto ray = Ray(o, d);
-    auto its = Intersection{
-        .id       = emt->getPrimitive()->getID(), // get the ID of the primitive bound to the emitter
-        .distance = 0.f,
-        .point    = o,
-        .normal   = n,
+    Vec3f org, dir, norm;                                         // sampled origin, direction, and normal
+    auto [emts, prob] = des->sample();                            // sampled emitter and corresponding selection probability
+    Vec3f tp          = emts->sample(org, dir, norm, dsb) / prob; // initial throughput (radiance * cos / (pdf_a * pdf_w * prob))
+    Ray ray(org, dir);                                            // sampled ray
+    Intersection its = {
+        .id     = emts->getPrimitive()->getID(),
+        .point  = org,
+        .normal = norm,
     };
-    auto vex = PathVertex{
-        .its  = its,
-        .wi   = wi,
-        .tp   = tp,
-        .pdf  = pdf,
-        .spec = false,
-    };
-    path_emt.push_back(vex); // set emitter as the first vertex
+    TBN(its.normal, its.tangent, its.bitangent);
 
-    // 3. Trace the ray and generate the path
+    float pdf = dsb.pdf(its.toLocal(dir)) * emts->pdf() * prob;
+    path_emt.push_back(PathVertex{
+        .intersection = its,
+        .throughput   = tp,
+        .forward_pdf  = pdf,
+        .backward_pdf = 0.f,
+        .delta        = emts->isDelta(),
+    });
+
     for (int depth = 0; depth < m_depth; ++depth) {
-        // 3.1 Collect the intersection info
+        // 1. Collect the intersection info
         if (!bvh->intersect(ray, its)) { break; }
         auto prm = scene.getPrimitive(its.id);
         auto mtl = prm->getMaterial();
         auto emt = prm->getEmitter();
 
-        // 3.2 Update the path vertex and add it to the path
-        wi       = -ray.getDirection();
-        wi_local = its.toLocal(wi);
-        vex      = PathVertex{
-            .its  = its,
-            .wi   = wi,
-            .tp   = tp,
-            .pdf  = pdf,
-            .spec = mtl && mtl->isDelta(),
+        // 2. Generate the new hit path vertex
+        auto nxt = PathVertex{
+            .intersection = its,
+            .throughput   = tp,
+            .delta        = mtl && mtl->isDelta(),
         };
-        path_emt.push_back(vex);
 
-        // 3.3 Sample material to get a new ray and iterate
+        // 3. Update the forward and backward pdf of the previous and next vertex if necessary
+        if (path_emt.size() >= 2) {
+            auto& pre        = path_emt[path_emt.size() - 2];
+            auto& cur        = path_emt[path_emt.size() - 1];
+            pre.backward_pdf = cur.pdf(scene, &nxt, pre);
+            nxt.forward_pdf  = cur.pdf(scene, &pre, nxt);
+        } else { // set the forward_pdf of path_emt[1] vertex
+            nxt.forward_pdf = w2a(pdf / (emts->pdf() * prob), its.distance, dot(its.normal, ray.getDirection()));
+        }
+        path_emt.push_back(nxt);
+
+        // 4. Sample bsdf to get a new ray
         if (!mtl) { break; }
-        const Vec3<float>& p  = its.point;
-        const Vec2<float>& uv = its.texcoord;
-        tp *= mtl->sample(wi_local, wo_local, uv);
-        pdf *= mtl->pdf(wi_local, wo_local, uv);
-        wo  = its.toWorld(wo_local);
-        ray = Ray(p, wo, DIS_EPS, INFINITY);
+        Vec3f wi_local(its.toLocal(-ray.getDirection())), wo_local(0.f); // light direction(wi) P->Eye, view direction(wo) P->Light
+        tp *= mtl->sample(wi_local, wo_local, its.texcoord, true);
+        ray = Ray(its.point, its.toWorld(wo_local), DIS_EPS, INFINITY);
     }
 
     return path_emt.size();
 }
 
-Vec3<float> BidirectionalPathTracer::connect(const Scene& scene, const PathVertex& vex_cam, const PathVertex& vex_emt) const {
-    auto its = Intersection(); // intersection info
-    auto bvh = scene.getBVH(); // intersection accelerator of the scene
+Vec3<float> BidirectionalPathTracer::connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const {
+    Vec3f radiance(0.f);
 
-    auto p1   = vex_cam.its.point;
-    auto n1   = vex_cam.its.normal;
-    auto uv1  = vex_cam.its.texcoord;
-    auto mtl1 = scene.getPrimitive(vex_cam.its.id)->getMaterial();
+    if (s == 0) { // suggest the t-1 vertex in camera path should be emissive
+        const auto& vt = path_cam[t - 1];
+        if (true) {
+            radiance = t >= 2 ? vt.eval(scene, path_cam[t - 2]) * vt.throughput : Vec3f(0.f);
+        }
+    } else if (s == 1) { // sample a new emitter and do NEE
+        const auto& vt = path_cam[t - 1];
+    } else if (t == 1) {
+        const auto& vs = path_emt[s - 1];
+        if (vs.delta) { return Vec3f(0.f); }
 
-    auto p2   = vex_emt.its.point;
-    auto n2   = vex_emt.its.normal;
-    auto uv2  = vex_emt.its.texcoord;
-    auto mtl2 = scene.getPrimitive(vex_emt.its.id)->getMaterial();
+        const auto& cam = scene.getCamera();
 
-    bool vis  = V(scene, p1, p2);
-    float geo = G(p1, n1, p2, n2);
-    if (!vis || geo <= 0.f) { return Vec3<float>(0.f); }
+    } else {
+        const auto &vt = path_cam[t - 1], &vs = path_emt[s - 1];
+        if (vt.delta || vs.delta) { return Vec3f(0.f); }
 
-    auto dis = length(p2 - p1);
-    auto dir = (p2 - p1) / dis;
+        Vec3f pt = vt.intersection.point, ps = vs.intersection.point;
+        Vec3f nt = vt.intersection.normal, ns = vs.intersection.normal;
+        bool vis  = V(scene, pt, ps);
+        float geo = G(pt, nt, ps, ns);
+        if (!vis || geo <= 0.f) { return Vec3f(0.f); }
 
-    auto wi1_local = vex_cam.its.toLocal(vex_cam.wi);
-    auto wo1_local = vex_cam.its.toLocal(dir);
-    auto wi2_local = vex_emt.its.toLocal(vex_emt.wi);
-    auto wo2_local = vex_emt.its.toLocal(-dir);
+        Vec3f bsdft = t >= 2 ? vt.eval(scene, path_cam[t - 2], vs) : Vec3f(1.f);
+        Vec3f bsdfs = s >= 2 ? vs.eval(scene, path_emt[s - 2], vt) : Vec3f(1.f);
+        radiance    = vt.throughput * bsdft * geo * bsdfs * vs.throughput;
+    }
 
-    auto bsdf1 = mtl1->eval(wi1_local, wo1_local, uv1);
-    auto bsdf2 = mtl2 ? mtl2->eval(wi2_local, wo2_local, uv2) : Vec3<float>(1.f); // when hit emitter directly, no bsdf
-    return 0.5 * vex_cam.tp * bsdf1 * geo * bsdf2 * vex_emt.tp;
+    float weight_mis = weight(scene, path_emt, path_cam, s, t);
+    return radiance * weight_mis;
+}
+
+float BidirectionalPathTracer::weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const {
+    float sum_ri = 0.f, ri;
+    auto remap0  = [](float f) -> float { return f != 0 ? f : 1; }; // helper function remap0 that deals with Dirac delta functions
+
+    const PathVertex *vs1 = s >= 1 ? &path_emt[s - 1] : nullptr, *vs2 = s >= 2 ? &path_emt[s - 2] : nullptr;
+    const PathVertex *vt1 = t >= 1 ? &path_cam[t - 1] : nullptr, *vt2 = t >= 2 ? &path_cam[t - 2] : nullptr;
+    float vs1_bwd_pdf = 0.f, vs2_bwd_pdf = 0.f;
+    float vt1_bwd_pdf = 0.f, vt2_bwd_pdf = 0.f;
+
+    if (s + t == 2) { return 1.f; } // camera -> emitter
+
+    if (vt1) {
+        vt1_bwd_pdf = s > 0 ? vs1->pdf(scene, vs2, *vt1) : 0.01f; //pt->PdfLightOrigin(scene, *ptMinus, lightPdf, lightToIndex)
+    }
+    if (vt2) {
+        vt2_bwd_pdf = s > 0 ? vt1->pdf(scene, vs1, *vt2) : 0.01f; //pt->PdfLight(scene, *ptMinus)
+    }
+    if (vs1) {
+        vs1_bwd_pdf = vt1->pdf(scene, vt2, *vs1);
+    }
+    if (vs2) {
+        vs2_bwd_pdf = vs1->pdf(scene, vt1, *vs2);
+    }
+
+    ri = 1.f;
+    for (int i = t - 1; i > 0; --i) {
+        float bwd_pdf = i == t - 1 ? vt1_bwd_pdf : (i == t - 2 ? vt2_bwd_pdf : path_cam[i].backward_pdf);
+        float fwd_pdf = path_cam[i].forward_pdf;
+        ri *= remap0(bwd_pdf) / remap0(fwd_pdf);
+        if (!path_cam[i].delta && !path_cam[i - 1].delta) { sum_ri += ri; }
+    }
+
+    ri = 1.f;
+    for (int i = s - 1; i >= 0; --i) {
+        float bwd_pdf = i == s - 1 ? vs1_bwd_pdf : (i == s - 2 ? vs2_bwd_pdf : path_emt[i].backward_pdf);
+        float fwd_pdf = path_emt[i].forward_pdf;
+        ri *= remap0(bwd_pdf) / remap0(fwd_pdf);
+        bool delta = i > 0 ? path_emt[i - 1].delta : path_emt[0].delta;
+        if (!path_emt[i].delta && !delta) { sum_ri += ri; }
+    }
+
+    return 1 / (1 + sum_ri);
 }
 
 } // namespace spt

@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "PathVertex.hpp"
 #include "Ray.hpp"
 #include "Scene.hpp"
 
@@ -79,22 +80,6 @@ class Tracer {
      * @return The value of the V function
      */
     static bool V(const Scene& scene, const Vec3<float>& p, const Vec3<float>& pp);
-    /**
-     * @brief  Convert the area PDF to the solid angle PDF
-     * @param pdf_a Area PDF
-     * @param dist Distance between the shading point and the light source
-     * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
-     * @return Corresponding solid-angle PDF defined over direction space
-     */
-    static float a2w(float pdf_a, float dist, float cos_theta) { return pdf_a * dist * dist / std::max(cos_theta, PDF_EPS); }
-    /**
-     * @brief  Convert the solid angle PDF to the area PDF
-     * @param pdf_w Solid-angle probability density defined over direction space
-     * @param dist Distance between shading point and sampled light point
-     * @param cos_theta Cosine of the angle between light surface normal and outgoing light direction
-     * @return Corresponding area PDF defined over light surface area
-     */
-    static float w2a(float pdf_w, float dist, float cos_theta) { return pdf_w * cos_theta / std::max(dist * dist, PDF_EPS); }
 
    protected:
     int m_depth   = 10;       // max depth of path trace
@@ -102,7 +87,7 @@ class Tracer {
     int m_spp     = 32;       // samples per pixel
     float m_rrp   = 0.8f;     // probability of russian roulette
     float m_lum   = INFINITY; // luminance threshold for indirect light clamping, closed by default
-    int m_thd     = 32;       //number of threads used for rendering
+    int m_thd     = 32;       // number of threads used for rendering
     int m_ts      = 32;       // size of tile for parallel rendering
 };
 
@@ -115,14 +100,6 @@ class PathTracer : public Tracer {
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
 };
 
-struct PathVertex {
-    Intersection its;
-    Vec3<float> wi; // incoming direction to this vertex
-    Vec3<float> tp; // cumulative product of (bsdf * |cosθ| / pdf) along path
-    float pdf;      // cumulative product of forward-direction sampling pdf for mis
-    bool spec;      // delta bsdf(mirror/ideal glass)
-};
-
 class BidirectionalPathTracer : public Tracer {
    public:
     BidirectionalPathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
@@ -130,10 +107,11 @@ class BidirectionalPathTracer : public Tracer {
 
     virtual const char* getTypeName() const override { return "BidirectionalPathTracer"; }
     virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
-    Vec3<float> connect(const Scene& scene, const PathVertex& v_cam, const PathVertex& v_emt) const;
 
-    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const;
     int subtrace(const Scene& scene, std::vector<PathVertex>& path_emt) const;
+    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const;
+    Vec3<float> connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
+    float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
 };
 
 } // namespace spt
