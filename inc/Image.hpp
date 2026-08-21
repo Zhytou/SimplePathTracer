@@ -17,9 +17,9 @@ class Image {
         : m_width(width), m_height(height), m_channels(channels) {
         m_data = new T[width * height * channels];
         if (data != nullptr) {
-            std::memcpy(m_data, data, width * height * channels * sizeof(T));
+            std::copy(data, data + width * height * channels, m_data);
         } else {
-            std::memset(m_data, 0, width * height * channels * sizeof(T));
+            std::fill(m_data, m_data + width * height * channels, static_cast<T>(0));
         }
     }
     Image(const Image& other)            = delete;
