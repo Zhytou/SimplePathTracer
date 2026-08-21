@@ -214,6 +214,9 @@ using Vec4 = Vec<T, 4>;
 using Vec2f = Vec2<float>;
 using Vec3f = Vec3<float>;
 using Vec4f = Vec4<float>;
+using Vec2i = Vec2<int>;
+using Vec3i = Vec3<int>;
+using Vec4i = Vec4<int>;
 
 template <arithmetic T, size_t N>
 bool operator==(const Vec<T, N>& v1, const Vec<T, N>& v2) {
