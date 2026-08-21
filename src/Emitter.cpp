@@ -1,6 +1,7 @@
 #include "Emitter.hpp"
 #include "Distribution.hpp"
 #include "Primitive.hpp"
+#include "Ray.hpp"
 
 namespace spt {
 
@@ -17,9 +18,10 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& point_x, Vec3<float>& point_y
     return m_radiance * area; // radiance / pdf_area
 }
 
-Vec3<float> AreaEmitter::sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const {
+Vec3<float> AreaEmitter::sample(const Distribution& distribution, Ray& ray, Vec3<float>& normal) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
+    Vec3<float> origin, direction;
     auto prm = m_primitive.lock();
     auto spe = prm->getShape();
     prm->sample(origin, normal);
@@ -28,14 +30,15 @@ Vec3<float> AreaEmitter::sample(Vec3<float>& origin, Vec3<float>& direction, Vec
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
     float pdf_a = 1.f / area; // pdf_area
 
-    auto direction_local = distribution.sample();
-    float pdf_w          = distribution.pdf(direction_local);
-    float cos_theta      = direction_local.z;
+    Vec3<float> direction_local = distribution.sample();
+    float pdf_w                 = distribution.pdf(direction_local);
+    float cos_theta             = direction_local.z;
 
     Vec3<float> tangent, bitangent;
     TBN(normal, tangent, bitangent);
     direction = direction_local.x * tangent + direction_local.y * bitangent + direction_local.z * normal;
 
+    ray = Ray(origin, direction);
     return m_radiance * cos_theta / (pdf_a * pdf_w);
 }
 
@@ -60,11 +63,11 @@ std::shared_ptr<DES> DES::create(std::vector<std::shared_ptr<Emitter>> emitters)
     return des;
 }
 
-std::pair<std::shared_ptr<Emitter>, float> DES::sample() const {
+std::shared_ptr<Emitter> DES::sample() const {
     float x  = rand(0.f, m_areas.back());
     auto itr = std::lower_bound(m_areas.begin(), m_areas.end(), x);
     int i    = std::distance(m_areas.begin(), itr);
-    return std::make_pair(m_emitters[i], m_areas[i] / m_areas.back());
+    return m_emitters[i];
 }
 
 float DES::prob(std::shared_ptr<Emitter> emitter) const {

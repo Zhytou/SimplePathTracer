@@ -7,12 +7,14 @@ namespace spt {
 
 class Primitive;
 class Distribution;
+class Ray;
 
 class Emitter {
    public:
     Emitter(int id, const Vec3<float>& radiance) : m_id(id), m_radiance(radiance) {}
     virtual ~Emitter() {}
 
+    virtual bool isDelta() const { return true; }
     int getID() const { return m_id; }
     virtual const char* getTypeName() const = 0;
     std::shared_ptr<Primitive> getPrimitive() const { return m_primitive.lock(); }
@@ -31,13 +33,12 @@ class Emitter {
     /**
      * @brief Sample the emitter and return the emitted radiance divided by the PDF.
      * 
-     * @param[out] origin The origin point of the ray.
-     * @param[out] direction The direction to sample from the emitter.
-     * @param[out] normal The normal on the sampled point.
      * @param distribution The distribution to sample direction from.
+     * @param[out] ray The sampled ray.
+     * @param[out] normal The normal on the sampled point.
      * @return The emitted radiance value divided by the probability density of the sampled direction, namely radiance * cos / (pdf_a * pdf_w).
      */
-    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const = 0;
+    virtual Vec3<float> sample(const Distribution& distribution, Ray& ray, Vec3<float>& normal) const = 0;
     /**
      * @brief Evaluate the radiance of emitter at a given direction.
      * 
@@ -63,10 +64,11 @@ class AreaEmitter : public Emitter {
     AreaEmitter(int id, const Vec3<float>& radiance) : Emitter(id, radiance) {}
     ~AreaEmitter() {}
 
+    virtual bool isDelta() const override { return false; }
     virtual const char* getTypeName() const override { return "AreaEmitter"; }
 
     virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const override;
-    virtual Vec3<float> sample(Vec3<float>& origin, Vec3<float>& direction, Vec3<float>& normal, Distribution& distribution) const override;
+    virtual Vec3<float> sample(const Distribution& distribution, Ray& ray, Vec3<float>& normal) const override;
     virtual float pdf() const override;
 };
 
@@ -82,9 +84,9 @@ class DES {
     /**
      * @brief Sample an emitter from the collection of emitters.
      * 
-     * @return The selected emitter and corresponding probability.
+     * @return The selected emitter.
     */
-    std::pair<std::shared_ptr<Emitter>, float> sample() const;
+    std::shared_ptr<Emitter> sample() const;
     /**
      * @brief Calculate the selection probability of a emitter.
      */
