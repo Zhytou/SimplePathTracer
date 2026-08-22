@@ -3,6 +3,8 @@
 #include <rapidjson/document.h>
 
 #include "BoxLogger.hpp"
+#include "Camera.hpp"
+#include "Film.hpp"
 #include "Image.hpp"
 #include "Material.hpp"
 #include "Medium.hpp"
@@ -208,8 +210,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         if (fovy == 0.f && fovx != 0.f) {
             fovy = 2 * std::atan(std::tan(fovx * 0.5f * PI / 180.f) * height / width) / PI * 180.f;
         }
-        m_camera->setWidth(width);
-        m_camera->setHeight(height);
+        m_camera->setFilm(std::make_shared<Film>(width, height));
         m_camera->setFovy(fovy);
         m_camera->setEye(eye);
         m_camera->setTarget(tar);
@@ -299,8 +300,10 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
         // 9.1 Print camera configuration
         BOX_LOG("CAMERA SETTINGS", width)
-            << std::left << std::setw(15) << " - Type: " << std::setw(25) << m_camera->getTypeName() << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n'
-            << std::setw(15) << " - Eye:    " << std::setw(25) << m_camera->getEye() << std::setw(15) << " - Target: " << std::setw(25) << m_camera->getTarget() << std::setw(15) << " - Up:     " << std::setw(25) << m_camera->getUp() << '\n';
+            << std::left << std::setw(15) << " - Type: " << std::setw(25) << m_camera->getTypeName() << std::setw(15) << " - Height: " << std::setw(25) << m_camera->getHeight() << std::setw(15) << " - Width: " << std::setw(25) << m_camera->getWidth() << '\n'
+            << std::setw(15) << " - Pixel: " << std::setw(25) << m_camera->getPixel() << std::setw(15) << " - Fovy: " << std::setw(25) << m_camera->getFovy() << std::setw(15) << " - Focus: " << std::setw(25) << m_camera->getFocus() << '\n'
+            << std::setw(15) << " - Eye:    " << std::setw(25) << m_camera->getEye() << std::setw(15) << " - Target: " << std::setw(25) << m_camera->getTarget() << std::setw(15) << " - Up:     " << std::setw(25) << m_camera->getUp() << '\n'
+            << std::setw(15) << " - Axis x:    " << std::setw(25) << m_camera->getAxis(0) << std::setw(15) << " - Axis y: " << std::setw(25) << m_camera->getAxis(1) << std::setw(15) << " - Axis z: " << std::setw(25) << m_camera->getAxis(2) << '\n';
 
         // 9.2 Print primitive list
         if (m_primitives.size() < 100) {
