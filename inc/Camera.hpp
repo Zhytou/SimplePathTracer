@@ -5,21 +5,27 @@
 
 namespace spt {
 
+class Film;
+
 class Camera {
    public:
     Camera()          = default;
     virtual ~Camera() = default;
 
     /**
-     * @brief emit a ray from the camera to the pixel at (row, col) with subpixel sampling
+     * @brief Emit a ray from the camera to the subpixel at (x, y)
      * 
-     * @param row the row index of the pixel
-     * @param col the column index of the pixel
-     * @param k the current subpixel index, ranging from [0, n * n - 1], used to locate the current sub-region within the n x n grid.
-     * @param n the subpixel sampling grid dimension factor, representing that the pixel is divided into an n x n grid.
-     * @return Ray the ray from the camera to the pixel
+     * @param coord The coordinate of subpixel
+     * @param[out] ray The sampled ray from the camera
+     * @return Vec3f the color of the pixel
      */
-    virtual Ray emit(int row, int col, int k, int n) const = 0;
+    virtual Vec3f emit(const Vec2f& coord, Ray& ray) const = 0;
+    /**
+     * @brief Sample a pixel from the camera with subpixel sampling
+     * 
+     * @return Vec3f the pixel color
+     */
+    // virtual Vec3f sample(Vec3f&, Ray& ray, Vec2f& coord) const = 0;
     void update();
 
     virtual const char* getTypeName() const = 0;
@@ -32,6 +38,7 @@ class Camera {
     const Vec3<float>& getTarget() const { return m_target; }
     const Vec3<float>& getUp() const { return m_up; }
     const Vec3<float>& getAxis(int index) const { return m_axises[index]; }
+    std::shared_ptr<Film> getFilm() const { return m_film; }
 
     void setEye(const Vec3<float>& eye) {
         m_eye = eye;
@@ -57,8 +64,11 @@ class Camera {
         m_fovy = fovy;
         update();
     }
+    void setFilm(std::shared_ptr<Film> film);
 
    protected:
+    std::shared_ptr<Film> m_film;
+
     Vec3<float> m_eye;
     Vec3<float> m_target;
     Vec3<float> m_up;
@@ -78,7 +88,7 @@ class PerspectiveCamera : public Camera {
 
     virtual const char* getTypeName() const override { return "Perspective"; }
 
-    virtual Ray emit(int row, int col, int k, int n) const override;
+    virtual Vec3f emit(const Vec2f& coord, Ray& ray) const override;
 };
 
 class OrthographicCamera : public Camera {
@@ -88,7 +98,7 @@ class OrthographicCamera : public Camera {
 
     virtual const char* getTypeName() const override { return "Orthographic"; }
 
-    virtual Ray emit(int row, int col, int k, int n) const override;
+    virtual Vec3f emit(const Vec2f& coord, Ray& ray) const override;
 };
 
 } // namespace spt

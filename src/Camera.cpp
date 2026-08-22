@@ -1,7 +1,17 @@
 #include "Camera.hpp"
+#include "Film.hpp"
 #include "Utils.hpp"
 
 namespace spt {
+
+void Camera::setFilm(std::shared_ptr<Film> film) {
+    m_film = film;
+    if (m_film) {
+        m_width  = m_film->getWidth();
+        m_height = m_film->getHeight();
+        update();
+    }
+}
 
 void Camera::update() {
     Vec3<float> forward = normalize(m_target - m_eye);
@@ -14,34 +24,44 @@ void Camera::update() {
     m_pixel = (2.f * ::tanf(m_fovy * 0.5f * PI / 180.f) * m_focus) / m_height;
 }
 
-Ray PerspectiveCamera::emit(int row, int col, int k, int n) const {
-    int sp_col = k % n;   // subpixel column
-    int sp_row = k / n;   // subpixel row
-    float sp   = 1.f / n; // subpixel size
+Vec3f PerspectiveCamera::emit(const Vec2f& coord, Ray& ray) const {
+    float r = coord.x;  // row
+    float c = coord.y;  // column
+    float d = m_pixel;  // side length of pixel
+    float h = m_height; // number of rows of pixel
+    float w = m_width;  // number of columns of pixel
+    float f = m_focus;  // focus distance
 
-    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel; // never use fixed subpixel samples, otherwise may cause aliasing and black pixels in the output image
-    float y = -(row + sp_row * sp - 0.5f - m_height / 2.f) * m_pixel;
-    float z = m_focus;
+    float x = (c - w / 2.f) * d;
+    float y = -(r - h / 2.f) * d;
+    float z = f;
 
     Vec3<float> pos = m_eye;
     Vec3<float> dir = m_axises[0] * x + m_axises[1] * y + m_axises[2] * z;
+    ray.setOrigin(pos);
+    ray.setDirection(dir);
 
-    return Ray(pos, dir);
+    return Vec3f(1.f);
 }
 
-Ray OrthographicCamera::emit(int row, int col, int k, int n) const {
-    int sp_col = k % n;   // subpixel column
-    int sp_row = k / n;   // subpixel row
-    float sp   = 1.f / n; // subpixel size
+Vec3f OrthographicCamera::emit(const Vec2f& coord, Ray& ray) const {
+    float r = coord.x;  // row
+    float c = coord.y;  // column
+    float d = m_pixel;  // side length of pixel
+    float h = m_height; // number of rows of pixel
+    float w = m_width;  // number of columns of pixel
+    float f = m_focus;  // focus distance
 
-    float x = (col + sp_col * sp - 0.5f - m_width / 2.f) * m_pixel;
-    float y = -(row + sp_row * sp - 0.5f - m_height / 2.f) * m_pixel;
-    float z = m_focus;
+    float x = (c - w / 2.f) * d;
+    float y = -(r - h / 2.f) * d;
+    float z = f;
 
     Vec3<float> pos = m_eye + m_axises[0] * x + m_axises[1] * y;
     Vec3<float> dir = m_axises[2] * z;
+    ray.setOrigin(pos);
+    ray.setDirection(dir);
 
-    return Ray(pos, dir);
+    return Vec3f(1.f);
 }
 
 } // namespace spt

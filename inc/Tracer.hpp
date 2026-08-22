@@ -33,19 +33,21 @@ class Tracer {
      */
     void render(const Scene& scene, const std::filesystem::path& imgpath = "result.png");
     /**
-     * @brief  Trace a ray through the scene and evaluate the radiance along the given ray
+     * @brief  Trace a ray through the scene and evaluate the radiance at the given pixel
      * @param scene The scene to render
-     * @param ray The ray to trace
-     * @return The result of tracing the ray
+     * @param coord The coordinate of subpixel
      */
-    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const = 0;
+    virtual void trace(const Scene& scene, const Vec2f& coord) const = 0;
     /**
-     * @brief  Postprocess the high dynamic range color to low dynamic range color
-     * @param hdr The hdr color [0, inf)
-     * @param range The range of the ldr color [0, range) default 255
-     * @return The ldr color [0, range]
+     * @brief Generates a stratified jittered offset within a [0, 1)^2 pixel domain.
+     * 
+     * Divides the pixel filter area into a grid and returns a randomized 2D sample 
+     * offset for anti-aliasing.
+     * 
+     * @param k The sample index (0 <= k < m_spp).
+     * @return The 2D subpixel offset vector in normalized pixel space.
      */
-    static Vec3<float> postprocess(const Vec3<float>& hdr, float range = 255.f);
+    Vec2f jitter(int k);
     /**
      * @brief  Mix two PDFs and return the weight of the mixed PDF
      * @param pdf1 The first PDF
@@ -71,7 +73,7 @@ class Tracer {
      * @param nn The normal of the sampled light point
      * @return The value of the G function
      */
-    static float G(const Vec3<float>& p, const Vec3<float>& n, const Vec3<float>& pp, const Vec3<float>& nn);
+    static float G(const Vec3f& p, const Vec3f& n, const Vec3f& pp, const Vec3f& nn);
     /**
      * @brief  Check the Visibility term of rendering equation for two given point p and pp
      * 
@@ -79,7 +81,7 @@ class Tracer {
      * @param pp The second point
      * @return The value of the V function
      */
-    static bool V(const Scene& scene, const Vec3<float>& p, const Vec3<float>& pp);
+    static bool V(const Scene& scene, const Vec3f& p, const Vec3f& pp);
 
    protected:
     int m_depth   = 10;       // max depth of path trace
@@ -97,7 +99,7 @@ class PathTracer : public Tracer {
     ~PathTracer() {}
 
     virtual const char* getTypeName() const override { return "PathTracer"; }
-    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
+    virtual void trace(const Scene& scene, const Vec2f& coord) const override;
 };
 
 class BidirectionalPathTracer : public Tracer {
@@ -106,11 +108,10 @@ class BidirectionalPathTracer : public Tracer {
     ~BidirectionalPathTracer() {}
 
     virtual const char* getTypeName() const override { return "BidirectionalPathTracer"; }
-    virtual Vec3<float> trace(const Scene& scene, Ray& ray) const override;
+    virtual void trace(const Scene& scene, const Vec2f& coord) const override;
 
-    int subtrace(const Scene& scene, std::vector<PathVertex>& path_emt) const;
-    int subtrace(const Scene& scene, Ray& ray, std::vector<PathVertex>& path_cam) const;
-    Vec3<float> connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
+    int subtrace(const Scene& scene, std::vector<PathVertex>& path, Vec2f coord, bool is_emissive) const;
+    Vec3f connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
     float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
 };
 
