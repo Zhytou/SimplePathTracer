@@ -5,17 +5,21 @@
 
 namespace spt {
 
-Vec3<float> AreaEmitter::sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const {
+Vec3<float> AreaEmitter::sample(const Vec3<float>& point_ref, Vec3<float>& point, Vec3<float>& normal) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
     auto prm = m_primitive.lock();
     auto spe = prm->getShape();
-    prm->sample(point_y, normal_y);
+    prm->sample(point, normal);
 
     float area = spe->area();
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
 
-    return m_radiance * area; // radiance / pdf_area
+    Vec3f tangent, bitangent;
+    TBN(normal, tangent, bitangent);
+    Vec3f radiance = le(toLocal(point_ref - point, tangent, bitangent, normal));
+
+    return radiance * area; // radiance / pdf_area
 }
 
 Vec3<float> AreaEmitter::sample(const Distribution& distribution, Ray& ray, Vec3<float>& normal) const {
@@ -36,10 +40,10 @@ Vec3<float> AreaEmitter::sample(const Distribution& distribution, Ray& ray, Vec3
 
     Vec3<float> tangent, bitangent;
     TBN(normal, tangent, bitangent);
-    direction = direction_local.x * tangent + direction_local.y * bitangent + direction_local.z * normal;
+    direction = toWorld(direction_local, tangent, bitangent, normal);
 
     ray = Ray(origin, direction);
-    return m_radiance * cos_theta / (pdf_a * pdf_w);
+    return le(direction_local) * cos_theta / (pdf_a * pdf_w);
 }
 
 float AreaEmitter::pdf() const {

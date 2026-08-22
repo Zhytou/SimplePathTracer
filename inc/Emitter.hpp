@@ -24,12 +24,12 @@ class Emitter {
     /**
     * @brief  Sample the emitter and return the emitted radiance divided by the PDF.
     * 
-    * @param point_x The point whose lighting is being evaluated 
-    * @param[out] point_y The sampled point 
-    * @param[out] normal_y The normal on the sampled point
+    * @param point_ref The reference point whose lighting is being evaluated 
+    * @param[out] point The sampled point 
+    * @param[out] normal The normal on the sampled point
     * @return The emitted radiance value divided by the probability density of the sampled point, namely radiance / pdf_a.
     */
-    virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const = 0;
+    virtual Vec3<float> sample(const Vec3<float>& point_ref, Vec3<float>& point, Vec3<float>& normal) const = 0;
     /**
      * @brief Sample the emitter and return the emitted radiance divided by the PDF.
      * 
@@ -42,10 +42,10 @@ class Emitter {
     /**
      * @brief Evaluate the radiance of emitter at a given direction.
      * 
-     * @param wo The direction to evaluate
+     * @param dir The direction to evaluate
      * @return The emitter radiance at the direction
      */
-    virtual Vec3<float> eval(const Vec3<float>& dir) const { return m_radiance; }
+    virtual Vec3<float> le(const Vec3<float>& dir_local) const { return m_radiance; }
     /**
      *  @brief Calculate the PDF of area for NEE(direct light sampling).
      * 
