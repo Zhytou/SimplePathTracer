@@ -27,19 +27,21 @@ class Film {
      * @param coord The coordinate of the pixel
      * @param color The color to deposit
      */
-    void deposit(const Vec2i coord, const Vec3f& color) {
+    void deposit(const Vec2f coord, const Vec3f& color) {
         // std::lock_guard<std::mutex> lock(m_mutex);
         // no need to lock the mutex for deposit, always tile to deposit
-        m_colors[coord.x * m_width + coord.y] += color;
+        int x = coord.x, y = coord.y;
+        m_colors[x * m_width + y] += color;
     }
     /**
      * @brief  Splat the color at the given coordinate
      * @param coord The coordinate of the pixel
      * @param color The color to splat
      */
-    void splat(const Vec2i coord, const Vec3f& color) {
+    void splat(const Vec2f coord, const Vec3f& color) {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_splat_colors.push_back({coord, color});
+        int x = coord.x, y = coord.y;
+        m_splat_colors.push_back({Vec2i{x, y}, color});
     }
     /**
      * @brief  Resolve the film by adding the splats to the pixels
@@ -47,6 +49,9 @@ class Film {
     std::shared_ptr<Image<unsigned char>> resolve(int spp) {
         std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& [coord, color] : m_splat_colors) {
+            if (coord.x < 0 || coord.x >= m_width || coord.y < 0 || coord.y >= m_height) {
+                continue;
+            }
             m_colors[coord.x * m_width + coord.y] += color;
         }
         m_splat_colors.clear();
