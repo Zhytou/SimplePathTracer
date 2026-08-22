@@ -10,7 +10,9 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <ostream>
+#include <queue>
 #include <random>
 #include <ranges>
 #include <span>
@@ -80,7 +82,29 @@ constexpr float w2a(float pdf_w, float dis, float cos_theta) { return pdf_w * st
  * @param[out] tangent Tangent vector
  * @param[out] bitangent Bitangent vector
  */
-void TBN(const Vec3<float>& normal, Vec3<float>& tangent, Vec3<float>& bitangent);
+void TBN(const Vec3f& normal, Vec3f& tangent, Vec3f& bitangent);
+
+/**
+ * @brief Convert a point from world space to local space
+ * 
+ * @param point World-space point
+ * @param tangent Tangent vector
+ * @param bitangent Bitangent vector
+ * @param normal Normal vector
+ * @return Local-space point
+ */
+Vec3f toLocal(const Vec3f& point, const Vec3f& tangent, const Vec3f& bitangent, const Vec3f& normal);
+
+/**
+ * @brief Convert a point from local space to world space
+ * 
+ * @param point Local-space point
+ * @param tangent Tangent vector
+ * @param bitangent Bitangent vector
+ * @param normal Normal vector
+ * @return World-space point
+ */
+Vec3f toWorld(const Vec3f& point, const Vec3f& tangent, const Vec3f& bitangent, const Vec3f& normal);
 
 /**
  * @brief Create translation matrix
@@ -115,7 +139,7 @@ Mat4x4f scale(const Vec3f& s);
  * 
  * @return Direction of reflected light
  */
-Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir = false);
+Vec3f reflect(const Vec3f& wi, const Vec3f& n, bool tir = false);
 
 /**
  * @brief Calculate the direction of transmitted light
@@ -126,7 +150,7 @@ Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir = fals
  * @param eta_t Index of refraction of the medium where the transmitted light arrives
  * @return Directionmitted direction vector
  */
-Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, float eta_t);
+Vec3f transmit(const Vec3f& wi, const Vec3f& n, float eta_i, float eta_t);
 
 /**
  * @brief Calculate the Fresnel reflection coefficient
@@ -138,7 +162,7 @@ Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, f
  */
 float fresnel(float cos_theta_i, float eta_i, float eta_t);
 
-Vec3<float> fresnel(float cosThetaI, const Vec3<float>& eta, const Vec3<float>& eta_k);
+Vec3f fresnel(float cosThetaI, const Vec3f& eta, const Vec3f& eta_k);
 
 } // namespace spt
 

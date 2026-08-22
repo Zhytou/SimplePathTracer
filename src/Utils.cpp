@@ -2,13 +2,21 @@
 
 namespace spt {
 
-void TBN(const Vec3<float>& normal, Vec3<float>& tangent, Vec3<float>& bitangent) {
+void TBN(const Vec3f& normal, Vec3f& tangent, Vec3f& bitangent) {
     // Duff et al. 2017 Building an Orthonormal Basis, Revisited
     float sign = std::copysign(1.0f, normal.z);
     float a    = -1.0f / (sign + normal.z);
     float c    = normal.x * normal.y * a;
     tangent    = Vec3<float>(1.0f + sign * normal.x * normal.x * a, sign * c, -sign * normal.x);
     bitangent  = Vec3<float>(c, sign + normal.y * normal.y * a, -normal.y);
+}
+
+Vec3f toLocal(const Vec3f& point, const Vec3f& tangent, const Vec3f& bitangent, const Vec3f& normal) {
+    return {dot(point, tangent), dot(point, bitangent), dot(point, normal)};
+}
+
+Vec3f toWorld(const Vec3f& point, const Vec3f& tangent, const Vec3f& bitangent, const Vec3f& normal) {
+    return point.x * tangent + point.y * bitangent + point.z * normal;
 }
 
 Mat4x4f translate(const Vec3f& t) {
@@ -69,7 +77,7 @@ Mat4x4f rotate(const Vec3f& d) {
     return mat;
 }
 
-Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir) {
+Vec3f reflect(const Vec3f& wi, const Vec3f& n, bool tir) {
     float cos_theta_i = dot(wi, n);
     if (cos_theta_i < 0 && !tir) {
         throw std::runtime_error("reflect: Cosine of incident angle is negative and total internal reflection is not allowed.");
@@ -80,7 +88,7 @@ Vec3<float> reflect(const Vec3<float>& wi, const Vec3<float>& n, bool tir) {
     return wo;
 }
 
-Vec3<float> transmit(const Vec3<float>& wi, const Vec3<float>& n, float eta_i, float eta_t) {
+Vec3f transmit(const Vec3f& wi, const Vec3f& n, float eta_i, float eta_t) {
     // cosine incident theta
     float cos_theta_i = dot(wi, n);
     // relative IOR
@@ -126,7 +134,7 @@ float fresnel(float cos_theta_i, float eta_i, float eta_t) {
     return (Rs * Rs + Rp * Rp) * 0.5f;
 }
 
-Vec3<float> fresnel(float cos_theta_i, const Vec3<float>& eta, const Vec3<float>& k) {
+Vec3f fresnel(float cos_theta_i, const Vec3f& eta, const Vec3f& k) {
     cos_theta_i = std::clamp(cos_theta_i, -1.0f, 1.0f);
 
     float cos_theta_i2 = cos_theta_i * cos_theta_i;

@@ -21,7 +21,7 @@ struct Intersection {
      * @return Direction vector in world space
      */
     Vec3<float> toWorld(const Vec3<float>& dir) const {
-        return tangent * dir.x + bitangent * dir.y + normal * dir.z;
+        return spt::toWorld(dir, tangent, bitangent, normal);
     }
 
     /**
@@ -31,7 +31,7 @@ struct Intersection {
      * @return Direction vector in local space
      */
     Vec3<float> toLocal(const Vec3<float>& dir) const {
-        return {dot(tangent, dir), dot(bitangent, dir), dot(normal, dir)};
+        return spt::toLocal(dir, tangent, bitangent, normal);
     }
 };
 
