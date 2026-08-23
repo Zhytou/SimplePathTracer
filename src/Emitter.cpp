@@ -22,7 +22,7 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& point_ref, Vec3<float>& point
     return radiance * area; // radiance / pdf_area
 }
 
-Vec3<float> AreaEmitter::sample(const Distribution& distribution, Ray& ray, Vec3<float>& normal) const {
+Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
     Vec3<float> origin, direction;
@@ -34,16 +34,17 @@ Vec3<float> AreaEmitter::sample(const Distribution& distribution, Ray& ray, Vec3
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
     float pdf_a = 1.f / area; // pdf_area
 
-    Vec3<float> direction_local = distribution.sample();
-    float pdf_w                 = distribution.pdf(direction_local);
-    float cos_theta             = direction_local.z;
+    CosineDistribution distribution;
+    Vec3<float> dir_local = distribution.sample();
+    float pdf_w           = distribution.pdf(dir_local);
+    float cos_theta       = dir_local.z;
 
     Vec3<float> tangent, bitangent;
     TBN(normal, tangent, bitangent);
-    direction = toWorld(direction_local, tangent, bitangent, normal);
+    direction = toWorld(dir_local, tangent, bitangent, normal);
 
     ray = Ray(origin, direction);
-    return le(direction_local) * cos_theta / (pdf_a * pdf_w);
+    return le(dir_local) * cos_theta / (pdf_a * pdf_w);
 }
 
 float AreaEmitter::pdf() const {
@@ -55,6 +56,11 @@ float AreaEmitter::pdf() const {
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::pdf: invalid area {}!", area)); }
 
     return 1.f / area; // pdf_area
+}
+
+float AreaEmitter::pdf(const Vec3<float>& dir_local) const {
+    CosineDistribution distribution;
+    return distribution.pdf(dir_local);
 }
 
 std::shared_ptr<DES> DES::create(std::vector<std::shared_ptr<Emitter>> emitters) {
