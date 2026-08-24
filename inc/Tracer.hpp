@@ -19,7 +19,8 @@ class Tracer {
     Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32);
     virtual ~Tracer() {}
 
-    virtual const char* getTypeName() const = 0;
+    virtual const char* getTypeName() const       = 0;
+    virtual const char* getAbbrevTypeName() const = 0;
     int getDepth() const { return m_depth; }
     int getRussianRrouletteDepth() const { return m_rrdepth; }
     int getSamplesPerPixel() const { return m_spp; }
@@ -99,6 +100,7 @@ class PathTracer : public Tracer {
     ~PathTracer() {}
 
     virtual const char* getTypeName() const override { return "PathTracer"; }
+    virtual const char* getAbbrevTypeName() const override { return "pt"; }
     virtual void trace(const Scene& scene, const Vec2f& coord) const override;
 };
 
@@ -108,11 +110,12 @@ class BidirectionalPathTracer : public Tracer {
     ~BidirectionalPathTracer() {}
 
     virtual const char* getTypeName() const override { return "BidirectionalPathTracer"; }
+    virtual const char* getAbbrevTypeName() const override { return "bpt"; }
     virtual void trace(const Scene& scene, const Vec2f& coord) const override;
 
-    int subtrace(const Scene& scene, std::vector<PathVertex>& path, Vec2f coord, bool is_emissive) const;
-    Vec3f connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
-    float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, int s, int t) const;
+    int subtrace(const Scene& scene, std::vector<PathVertex>& path, Ray& ray, float pdf, bool is_emt) const;
+    Vec3f connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, const Vec2i& strategy, Vec2f& coord_raster) const;
+    float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, const PathVertex& vex, const Vec2i& strategy) const;
 };
 
 } // namespace spt
