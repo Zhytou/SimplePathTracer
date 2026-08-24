@@ -18,12 +18,12 @@ int thd     = 20; // number of threads
 std::filesystem::path config = "../ast/json/cuboid-sphere.json";
 
 int main() {
-    std::string name = std::format("{}_{}_{}_spp{}.png", config.stem().string(), depth, rrdepth, spp);
-
     try {
-        std::cout << name << std::endl;
-        Tracer tracer(depth, rrdepth, spp, rrp, lum, ts, thd);
+        BidirectionalPathTracer tracer(depth, rrdepth, spp, rrp, lum, ts, thd);
         Scene scene(config, cnt);
+        std::string name = std::format("{}_{}_{}_spp{}_{}.png", config.stem().string(), depth, rrdepth, spp, tracer.getAbbrevTypeName());
+
+        std::cout << name << std::endl;
         tracer.render(scene, name);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
