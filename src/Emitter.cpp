@@ -12,14 +12,14 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& point_ref, Vec3<float>& point
     auto spe = prm->getShape();
     prm->sample(point, normal);
 
-    float area = spe->area();
+    float area = spe->area(); // inv of pdf_pos
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
 
     Vec3f tangent, bitangent;
     TBN(normal, tangent, bitangent);
     Vec3f radiance = le(toLocal(point_ref - point, tangent, bitangent, normal));
 
-    return radiance * area; // radiance / pdf_area
+    return radiance * area; // radiance / pdf_pos
 }
 
 Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
@@ -32,11 +32,11 @@ Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
 
     float area = spe->area();
     if (area <= EPS) { throw std::runtime_error(std::format("AreaEmitter::sample: invalid area {}!", area)); }
-    float pdf_a = 1.f / area; // pdf_area
+    float pdf_pos = 1.f / area; // sample position pdf in area
 
     CosineDistribution distribution;
     Vec3<float> dir_local = distribution.sample();
-    float pdf_w           = distribution.pdf(dir_local);
+    float pdf_dir         = distribution.pdf(dir_local); // sample direction pdf in solid angle
     float cos_theta       = dir_local.z;
 
     Vec3<float> tangent, bitangent;
@@ -44,7 +44,7 @@ Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
     direction = toWorld(dir_local, tangent, bitangent, normal);
 
     ray = Ray(origin, direction);
-    return le(dir_local) * cos_theta / (pdf_a * pdf_w);
+    return le(dir_local) * cos_theta / (pdf_pos * pdf_dir);
 }
 
 float AreaEmitter::pdf() const {
