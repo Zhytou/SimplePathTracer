@@ -40,8 +40,8 @@ class Film {
      */
     void splat(const Vec2f coord, const Vec3f& color) {
         std::lock_guard<std::mutex> lock(m_mutex);
-        int x = coord.x, y = coord.y;
-        m_splat_colors.push_back({Vec2i{x, y}, color});
+        int r = coord[0], c = coord[1];
+        m_splat_colors.push_back({Vec2i{r, c}, color});
     }
     /**
      * @brief  Resolve the film by adding the splats to the pixels
@@ -49,20 +49,21 @@ class Film {
     std::shared_ptr<Image<unsigned char>> resolve(int spp) {
         std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& [coord, color] : m_splat_colors) {
-            if (coord.x < 0 || coord.x >= m_width || coord.y < 0 || coord.y >= m_height) {
+            int r = coord[0], c = coord[1];
+            if (r < 0 || r >= m_height || c < 0 || c >= m_width) {
                 continue;
             }
-            m_colors[coord.x * m_width + coord.y] += color;
+            m_colors[r * m_width + c] += color;
         }
         m_splat_colors.clear();
 
         auto image = std::make_shared<Image<unsigned char>>(m_width, m_height, 3);
         for (int i = 0; i < m_width * m_height; ++i) {
-            int x = i / m_width, y = i % m_width;
+            int r = i / m_width, c = i % m_width;
             Vec3f color = postprocess(m_colors[i] / spp);
-            image->setElement(x, y, 0, color.x);
-            image->setElement(x, y, 1, color.y);
-            image->setElement(x, y, 2, color.z);
+            image->setElement(r, c, 0, color[0]);
+            image->setElement(r, c, 1, color[1]);
+            image->setElement(r, c, 2, color[2]);
         }
         return image;
     }
