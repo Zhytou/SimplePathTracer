@@ -9,6 +9,11 @@
 
 namespace spt {
 
+enum TransportMode {
+    RADIANCE,  // camera path(with shading normal correction and eta scale factor)
+    IMPORTANCE // light path(without shading normal correction and eta scale factor)
+};
+
 class Material {
    public:
     Material(int id, const std::string& name) : m_id(id), m_name(name), m_sampler(WrapMode::SAMPLER_WRAP_REPEAT, FilterMode::SAMPLER_FILTER_NEAREST) {}
@@ -27,7 +32,7 @@ class Material {
      * @param wi Local input ray direction (pointing AWAY from the surface). 
      * @param wo Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
-     * @param li True if input ray comes from light source, false otherwise.
+     * @param m Transport mode.
      * 
      * @return The Monte Carlo throughput (weight) of the sampled direction. 
      *         For non-delta materials, this equals (bsdf * cos / pdf). 
@@ -43,7 +48,7 @@ class Material {
      *       the Fresnel factor F cancels with the sampling probability P = F, leaving 
      *       a net throughput free of both F and cos(theta).
      */
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const = 0;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const = 0;
 
     /**
      * @brief Evaluates the BSDF value for given direction and point.
@@ -51,10 +56,11 @@ class Material {
      * @param wi Local input ray direction (pointing AWAY from the surface). 
      * @param wo Local output ray direction (pointing AWAY from the surface).
      * @param uv Texture coordinates.
+     * @param m Transport mode.
      * 
      * @return The computed BSDF value.
      */
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const = 0;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const = 0;
 
     /**
      * @brief Computes the probability density function (PDF) for the given direction and point.
@@ -82,8 +88,8 @@ class Diffuse : public Material {
     void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
     void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
     virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
@@ -98,8 +104,8 @@ class Mirror : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Mirror"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
     virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 };
 
@@ -110,8 +116,8 @@ class Dielectric : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Dielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
     virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
@@ -140,8 +146,8 @@ class MicrofacetConductor : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetConductor"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
     virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
@@ -155,8 +161,8 @@ class MicrofacetDielectric : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetDielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, bool li = false) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
     virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
 
    private:
