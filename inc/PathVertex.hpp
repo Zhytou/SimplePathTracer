@@ -21,12 +21,12 @@ struct PathVertex {
     bool delta          = false;      // delta bsdf(mirror/ideal glass)
     PathVertexType type = PathVertexType::SURFACE;
 
-    Vec3f eval(const Scene& scene, const PathVertex& pre, const PathVertex& nxt) const {
+    Vec3f eval(const Scene& scene, const PathVertex& pre, const PathVertex& nxt, TransportMode mode) const {
         if (type == PathVertexType::SURFACE) { // only surface has material bsdf
             Vec3f wi = normalize(pre.intersection.point - intersection.point);
             Vec3f wo = normalize(nxt.intersection.point - intersection.point);
             auto mtl = scene.getPrimitive(intersection.id)->getMaterial();
-            return mtl->eval(intersection.toLocal(wi), intersection.toLocal(wo), intersection.texcoord);
+            return mtl->eval(intersection.toLocal(wi), intersection.toLocal(wo), intersection.texcoord, mode);
         }
         return Vec3f(0.f);
     }
@@ -40,7 +40,7 @@ struct PathVertex {
         return Vec3f(0.f);
     }
 
-    float pdf(const Scene& scene, const PathVertex* pre, const PathVertex& nxt, bool org = true) const {
+    float pdf(const Scene& scene, const PathVertex* pre, const PathVertex& nxt, std::optional<bool> emt_org = {}) const {
         auto cam = scene.getCamera();
         auto des = scene.getDES();
         auto prm = intersection.id == -1 ? nullptr : scene.getPrimitive(intersection.id);
@@ -59,23 +59,22 @@ struct PathVertex {
                 return w2a(pdf, dis, cos_theta); // convert into area pdf
             } break;
             case PathVertexType::EMITTER: {
-                if (org) { // pdf_light_origin
+                if (!emt_org.has_value()) {
+                    return 0.f;
+                    // throw std::runtime_error("PathVertex::pdf: emt_org must be valid for emitter vertex");
+                }
+                if (emt_org.value()) { // pdf_light_origin
                     float pdf  = emt->pdf();
                     float prob = des->prob(emt);
                     return pdf * prob;
                 } else { // pdf_light_direction
-                    float pdf       = emt->pdf(intersection.toLocal(wo));
-                    float cos_theta = std::abs(dot(nxt.intersection.normal, wo));
+                    float pdf = emt->pdf(intersection.toLocal(wo));
                     return w2a(pdf, dis, cos_theta); // convert into area pdf
                 }
             } break;
             case PathVertexType::CAMERA: {
-                if (org) { // pdf_camera_origin
-                    return cam->pdf();
-                } else { // pdf_camera_direction
-                    float pdf = cam->pdf(cam->toLocal(wo));
-                    return w2a(pdf, dis, cos_theta);
-                }
+                float pdf = cam->pdf(cam->toLocal(wo));
+                return w2a(pdf, dis, cos_theta); // always pdf_camera_direction
             } break;
             default:
                 break;
