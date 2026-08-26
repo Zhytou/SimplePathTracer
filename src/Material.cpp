@@ -11,7 +11,8 @@ Vec3<float> Diffuse::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, 
     float pdf       = distribution.pdf(wo_local);
     Vec3f bsdf      = eval(wi_local, wo_local, uv, mode);
 
-    return wi_local.z > 0 ? bsdf * cos_theta / std::max(pdf, PDF_EPS) : Vec3<float>(0.f);
+    return wi_local.z > 0 ? m_albedo : Vec3<float>(0.f);
+    // return wi_local.z > 0 ? bsdf * cos_theta / std::max(pdf, PDF_EPS) : Vec3<float>(0.f);
 }
 
 Vec3<float> Diffuse::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv, TransportMode mode) const {
@@ -49,7 +50,7 @@ Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_loca
 
     if (prob < ref) { // reflection or total internal reflection
         wo_local = Vec3<float>{-wi_local.x, -wi_local.y, wi_local.z};
-        return Vec3<float>(1);
+        return Vec3<float>(1.f);
     } else { // transmission
         float cos_theta_t = std::sqrt(1 - eta * eta * sin_theta_i2);
         wo_local          = Vec3<float>{-eta * wi_local.x, -eta * wi_local.y, cos_theta_i > 0 ? -cos_theta_t : cos_theta_t};

@@ -30,8 +30,8 @@ class Film {
     void deposit(const Vec2f coord, const Vec3f& color) {
         // std::lock_guard<std::mutex> lock(m_mutex);
         // no need to lock the mutex for deposit, always tile to deposit
-        int x = coord.x, y = coord.y;
-        m_colors[x * m_width + y] += color;
+        int r = coord[0], c = coord[1];
+        m_colors[r * m_width + c] += color;
     }
     /**
      * @brief  Splat the color at the given coordinate
