@@ -38,12 +38,12 @@
         {
             "name": "light1",
             "object_path": "../ast/obj/motto/light1.obj",
-            "emission": [20, 80, 30]
+            "radiance": [20, 80, 30]
         },
         {
             "name": "light2",
             "object_path": "../ast/obj/motto/light2.obj",
-            "emission": [20, 20, 800]
+            "radiance": [20, 20, 800]
         }
     ]
 }

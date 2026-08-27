@@ -13,15 +13,15 @@
         "area": [
             {
                 "material_name": "light1",
-                "color": [3000, 3000, 3000]
+                "radiance": [3000, 3000, 3000]
             },
             {
                 "material_name": "light2",
-                "color": [500, 500, 500]
+                "radiance": [500, 500, 500]
             },
             {
                 "material_name": "light3",
-                "color": [100, 100, 100]
+                "radiance": [100, 100, 100]
             }
         ]
     },

@@ -80,7 +80,7 @@
         {
             "name": "light",
             "object_path": "../ast/obj/cornell-box/light.obj",
-            "emission": [48, 38, 31]
+            "radiance": [48, 38, 31]
         }
     ]
 }

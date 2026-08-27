@@ -13,7 +13,7 @@
         "area": [
             {
                 "material_name": "Light",
-                "color": [34, 24, 8]
+                "radiance": [34, 24, 8]
             }
         ]
     },
