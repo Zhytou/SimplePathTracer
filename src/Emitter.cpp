@@ -37,7 +37,7 @@ Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
     CosineDistribution distribution;
     Vec3<float> dir_local = distribution.sample();
     float pdf_dir         = distribution.pdf(dir_local); // sample direction pdf in solid angle
-    float cos_theta       = dir_local.z;
+    float cos_theta       = std::max(dir_local.z, 0.f);  // only consider forward direction
 
     Vec3<float> tangent, bitangent;
     TBN(normal, tangent, bitangent);
@@ -63,27 +63,61 @@ float AreaEmitter::pdf(const Vec3<float>& dir_local) const {
     return distribution.pdf(dir_local);
 }
 
-std::shared_ptr<DES> DES::create(std::vector<std::shared_ptr<Emitter>> emitters) {
+std::shared_ptr<DES> DES::create(const std::vector<std::shared_ptr<Emitter>>& emitters) {
     auto des = std::make_shared<DES>();
     for (auto emitter : emitters) {
-        auto area = emitter->getPrimitive()->getShape()->area();
-        des->m_emitters.push_back(emitter);
-        des->m_areas.push_back((des->m_areas.empty() ? 0.f : des->m_areas.back()) + area);
+        if (emitter->isDelta()) {
+            des->m_delta_emitters.push_back(emitter);
+        } else {
+            des->m_areas.push_back(emitter->getPrimitive()->getShape()->area());
+            des->m_nondelta_emitters.push_back(emitter);
+        }
     }
     return des;
 }
 
 std::shared_ptr<Emitter> DES::sample() const {
-    float x  = rand(0.f, m_areas.back());
-    auto itr = std::lower_bound(m_areas.begin(), m_areas.end(), x);
-    int i    = std::distance(m_areas.begin(), itr);
-    return m_emitters[i];
+    float p   = rand(0.f, 1.f);
+    int n1    = m_delta_emitters.size();
+    int n2    = m_nondelta_emitters.size();
+    float ref = 1.f * n1 / (n1 + n2);
+    if (p < ref) {
+        int size = m_delta_emitters.size();
+        UniformDistribution1D<int> dist(0, size - 1);
+        return m_delta_emitters[dist.sample()];
+    } else {
+        int size = m_nondelta_emitters.size();
+        PrefixDiscreteDistribution1D dist(m_areas);
+        return m_nondelta_emitters[dist.sample()];
+    }
 }
 
 float DES::prob(std::shared_ptr<Emitter> emitter) const {
-    if (emitter == nullptr || m_emitters.empty()) { return 0.f; }
+    if (emitter == nullptr) { return 0.f; }
 
-    return emitter->getPrimitive()->getShape()->area() / m_areas.back();
+    if (emitter->isDelta()) {
+        int size  = m_delta_emitters.size();
+        int index = -1;
+        for (int i = 0; i < size; i++) {
+            if (m_delta_emitters[i] == emitter) {
+                index = i;
+                break;
+            }
+        }
+        UniformDistribution1D<int> dist(0, size - 1);
+        return dist.pdf(index);
+    } else {
+        int size  = m_nondelta_emitters.size();
+        int index = -1;
+        for (int i = 0; i < size; i++) {
+            if (m_nondelta_emitters[i] == emitter) {
+                index = i;
+                break;
+            }
+        }
+        PrefixDiscreteDistribution1D dist(m_areas);
+        return dist.pdf(index);
+    }
 }
 
 } // namespace spt

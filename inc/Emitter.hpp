@@ -6,7 +6,6 @@
 namespace spt {
 
 class Primitive;
-class Distribution;
 class Ray;
 
 class Emitter {
@@ -87,7 +86,7 @@ class DES {
      * @param emitters Vector of emitters (light sources) to be sampled.
      * @return Shared pointer to the newly created DES instance.
      */
-    static std::shared_ptr<DES> create(std::vector<std::shared_ptr<Emitter>> emitters);
+    static std::shared_ptr<DES> create(const std::vector<std::shared_ptr<Emitter>>& emitters);
     /**
      * @brief Sample an emitter from the collection of emitters.
      * 
@@ -100,7 +99,8 @@ class DES {
     float prob(std::shared_ptr<Emitter>) const;
 
    private:
-    std::vector<std::shared_ptr<Emitter>> m_emitters;
+    std::vector<std::shared_ptr<Emitter>> m_delta_emitters;
+    std::vector<std::shared_ptr<Emitter>> m_nondelta_emitters;
     std::vector<float> m_areas;
 };
 

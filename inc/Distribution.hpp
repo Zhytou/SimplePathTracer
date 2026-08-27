@@ -5,16 +5,61 @@
 
 namespace spt {
 
+template <typename T>
 class Distribution {
    public:
     Distribution() {}
     virtual ~Distribution() {}
 
-    virtual Vec3<float> sample() const                   = 0;
-    virtual float pdf(const Vec3<float>& wo_local) const = 0;
+    virtual T sample() const          = 0;
+    virtual float pdf(const T&) const = 0;
 };
 
-class CosineDistribution : public Distribution {
+template <arithmetic T>
+class UniformDistribution1D : public Distribution<T> {
+   public:
+    UniformDistribution1D(T min, T max) : m_min(min), m_max(max) {}
+
+    virtual T sample() const override {
+        return rand(m_min, m_max);
+    }
+    virtual float pdf(const T& t) const override {
+        return 1.f / (m_max - m_min);
+    }
+
+   private:
+    T m_min = 0;
+    T m_max = 1;
+};
+
+class PrefixDiscreteDistribution1D : public Distribution<int> {
+   public:
+    PrefixDiscreteDistribution1D(const std::vector<float>& weights) {
+        int sum_w = 0;
+        for (auto w : weights) {
+            sum_w += w;
+            m_prefix_weights.push_back(sum_w);
+        }
+    }
+
+    virtual int sample() const override {
+        int r = rand(0.f, m_prefix_weights.back());
+        return std::lower_bound(m_prefix_weights.begin(), m_prefix_weights.end(), r) - m_prefix_weights.begin();
+    }
+    virtual float pdf(const int& t) const override {
+        return m_prefix_weights[t] / m_prefix_weights.back();
+    }
+
+   private:
+    std::vector<float> m_prefix_weights;
+};
+
+class DiskDistribution : public Distribution<Vec2f> {
+   public:
+    DiskDistribution() {}
+};
+
+class CosineDistribution : public Distribution<Vec3f> {
    public:
     CosineDistribution() {}
 
@@ -33,7 +78,7 @@ class CosineDistribution : public Distribution {
     }
 };
 
-class MicrofacetDistribution : public Distribution {
+class MicrofacetDistribution : public Distribution<Vec3f> {
    public:
     MicrofacetDistribution() {}
 
