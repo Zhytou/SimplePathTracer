@@ -28,7 +28,7 @@
 namespace spt {
 
 constexpr float EPS     = 1e-12f;
-constexpr float DIS_EPS = 1e-3f;
+constexpr float DIS_EPS = 5e-3f;
 constexpr float PDF_EPS = 1e-9f;
 
 constexpr float PI = 3.14159265358979323846f;
@@ -55,6 +55,10 @@ constexpr float radians(float deg) {
 
 constexpr float degrees(float rad) {
     return rad * 180.f / PI;
+}
+
+constexpr float luminance(const Vec3f& rgb) {
+    return 0.2126f * rgb.x + 0.7152f * rgb.y + 0.0722f * rgb.z;
 }
 
 /**
