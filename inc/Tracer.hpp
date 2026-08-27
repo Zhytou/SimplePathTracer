@@ -113,9 +113,9 @@ class BidirectionalPathTracer : public Tracer {
     virtual const char* getAbbrevTypeName() const override { return "bpt"; }
     virtual void trace(const Scene& scene, const Vec2f& coord) const override;
 
-    int subtrace(const Scene& scene, std::vector<PathVertex>& path, Ray& ray, float pdf, bool is_emt) const;
+    int subtrace(const Scene& scene, std::vector<PathVertex>& path, Ray& ray, Vec3f tp, float pdf, TransportMode mode) const;
     Vec3f connect(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, const Vec2i& strategy, Vec2f& coord_raster) const;
-    float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, const PathVertex& vex, const Vec2i& strategy) const;
+    float weight(const Scene& scene, const std::vector<PathVertex>& path_emt, const std::vector<PathVertex>& path_cam, const PathVertex& vex, const Vec2i& strategy, bool show = false) const;
 };
 
 } // namespace spt
