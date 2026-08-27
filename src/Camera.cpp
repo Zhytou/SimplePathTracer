@@ -57,9 +57,13 @@ Vec3f PerspectiveCamera::sample(const Vec3f& point_ref, Vec3f& point, Vec2f& coo
     Vec3f dir       = normalize(point_ref - pos);
     Vec3f dir_local = toLocal(dir);
     float cos_theta = dir_local.z;
+    if (cos_theta < 0.f) { return Vec3f(0.f); }
 
     point = pos;
     coord = project(dir_local);
+    if (coord[0] < 0 || coord[0] >= m_height || coord[1] < 0 || coord[1] >= m_width) {
+        return Vec3f(0.f);
+    }
 
     return we(dir_local) / pdf();
 }
