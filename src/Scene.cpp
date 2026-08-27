@@ -162,8 +162,13 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             }
 
             // 5.3 Load area emitter emission
-            bool is_ems     = prm_doc.HasMember("emission");
-            Vec3<float> emn = is_ems ? getVec3(prm_doc["emission"]) : Vec3<float>(0.f);
+            bool is_ems = prm_doc.HasMember("radiance") || prm_doc.HasMember("flux"); // is emissive
+            Vec3<float> emn(0.f);
+            if (is_ems) {
+                float area = 0.f;
+                for (auto prm : prms) { area += prm->getShape()->area(); }
+                emn = prm_doc.HasMember("radiance") ? getVec3(prm_doc["radiance"]) : getVec3(prm_doc["flux"]) / area;
+            }
 
             // 5.4 Load transform matrix
             Mat4x4f tfm = Mat4x4f::eye();
@@ -225,10 +230,10 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             std::unordered_map<std::string, Vec3<float>> emissions;
             std::unordered_map<std::string, std::vector<std::shared_ptr<Primitive>>> primitives; // emissive primitives
             for (int i = 0; i < doc["light"]["area"].Size(); i++) {
-                auto& light_doc   = doc["light"]["area"][i];
-                std::string name  = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light_{}", i);
-                Vec3<float> color = light_doc.HasMember("color") ? getVec3(light_doc["color"]) : Vec3<float>(0.f);
-                emissions[name]   = color;
+                auto& light_doc      = doc["light"]["area"][i];
+                std::string name     = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light_{}", i);
+                Vec3<float> radiance = light_doc.HasMember("radiance") ? getVec3(light_doc["radiance"]) : Vec3<float>(0.f);
+                emissions[name]      = radiance;
             }
 
             // 7.1.2 Set corresponding primitive's emission
