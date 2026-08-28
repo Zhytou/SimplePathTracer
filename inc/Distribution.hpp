@@ -124,11 +124,14 @@ class GGXDistribution : public MicrofacetDistribution {
     }
 
     virtual float G1(const Vec3<float>& w_local) const override {
-        float r = (m_roughness + 1.0f);
-        float k = (r * r) / 8.0f;
+        // float r = (m_roughness + 1.0f);
+        // float k = (r * r) / 8.0f;
+        float r = m_roughness;
+        float k = r * r / 2.0f;
+        float z = std::abs(w_local.z);
 
-        float num   = w_local.z;
-        float denom = w_local.z * (1.0f - k) + k;
+        float num   = z;
+        float denom = z * (1.0f - k) + k;
 
         return num / denom;
     }
