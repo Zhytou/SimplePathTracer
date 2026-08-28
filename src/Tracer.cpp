@@ -94,7 +94,7 @@ void Tracer::render(const Scene& scene, const std::filesystem::path& imgpath) {
 }
 
 Vec2f Tracer::jitter(int k) {
-    static int n   = std::max(2, m_spp / 16);
+    static int n   = std::max(2, m_spp / 16); // number of row and column subpixel
     static int n2  = n * n;
     static float d = 1.f / n;
 
@@ -233,6 +233,19 @@ void PathTracer::trace(const Scene& scene, const Vec2f& coord) const {
             hit = bvh->intersect(ray, its);
         } else {
             hit = false;
+        }
+
+        // DEBUG
+        if (0) {
+            float eta       = wi_local.z > 0.f ? 1.f / 1.5f : 1.5f / 1.f;
+            bool is_reflect = false;
+            Vec3f h_local   = is_reflect ? normalize(wi_local + wo_local) : normalize(eta * wi_local + wo_local);
+            std::cout << "depth: " << depth << '\n'
+                      << "throughput: " << throughput << '\n'
+                      << "wi and wo: " << wi_local << " " << wo_local << '\n'
+                      << "is_reflect: " << is_reflect << " h_local: " << h_local << '\n'
+                      << "pdf: " << pdf_bsdf << '\n'
+                      << std::endl;
         }
     }
 
@@ -433,44 +446,22 @@ Vec3f BidirectionalPathTracer::connect(const Scene& scene, const std::vector<Pat
 
     float weight_mis = weight(scene, path_emt, path_cam, vex, strategy);
 
+    // DEBUG
     if (0) {
         std::cout << radiance << std::fixed << std::setprecision(10) << weight_mis << std::endl;
-
+        std::cout << "camera path: " << std::endl;
         for (int i = 0; i < path_cam.size(); ++i) {
             auto& vex_i = path_cam[i];
             std::cout << i << " id: " << vex_i.intersection.id << " throughput: " << vex_i.throughput << " delta: " << vex_i.delta << " fwd_pdf: " << vex_i.forward_pdf << " bwd_pdf: " << vex_i.backward_pdf << " type: " << int(vex_i.type) << std::endl;
         }
 
+        std::cout << "emitter path: " << std::endl;
         for (int i = 0; i < path_emt.size(); ++i) {
             auto& vex_i = path_emt[i];
-            if (i == 0) {
-                auto des = scene.getDES();
-                auto its = vex_i.intersection;
-                auto prm = scene.getPrimitive(its.id);
-                auto emt = prm->getEmitter();
-
-                if (s > 1) {
-                    auto nvex_i = path_emt[1];
-                    auto nits   = nvex_i.intersection;
-
-                    auto dir        = normalize(nits.point - its.point);
-                    float dis       = distance(nits.point, its.point);
-                    float diss      = nits.distance;
-                    auto dir_local  = its.toLocal(dir);
-                    float prob      = des->prob(emt);
-                    float pdf_pos   = emt->pdf();
-                    float pdf_dir   = emt->pdf(dir_local);
-                    float cos_theta = std::max(dir_local.z, 0.f);
-                    Vec3f le        = emt->le(dir_local);
-
-                    std::cout << "des prob: " << prob << " emt pdf: " << pdf_pos << " emt dir pdf: " << pdf_dir << " cos_theta: " << cos_theta << " emt le: " << le << " beta: " << le * cos_theta / (pdf_pos * pdf_dir * prob) << " distance1: " << dis << " distance2:" << diss << " emt 1 pdf: " << pdf_dir * dot(-dir, nits.normal) / (dis * dis) << std::endl;
-                }
-            }
-
             std::cout << i << " id: " << vex_i.intersection.id << " throughput: " << vex_i.throughput << " delta: " << vex_i.delta << " fwd_pdf: " << vex_i.forward_pdf << " bwd_pdf: " << vex_i.backward_pdf << " type: " << int(vex_i.type) << std::endl;
         }
+
         weight(scene, path_emt, path_cam, vex, strategy, true);
-        throw std::runtime_error("Radiance is too high");
     }
 
     return radiance * weight_mis;
@@ -487,9 +478,11 @@ float BidirectionalPathTracer::weight(const Scene& scene, const std::vector<Path
     const PathVertex *vt1 = t >= 1 ? (t == 1 ? &vex : &path_cam[t - 1]) : nullptr, *vt2 = t >= 2 ? &path_cam[t - 2] : nullptr;
     float vs1_bwd_pdf = 0.f, vs2_bwd_pdf = 0.f;
     float vt1_bwd_pdf = 0.f, vt2_bwd_pdf = 0.f;
-    // when s == 0, vt assume to be a emitter vertex.
-    if (vt1) { vt1_bwd_pdf = s > 0 ? vs1->pdf(scene, vs2, *vt1) : vt1->pdf(scene, nullptr, *vt2, true); }  // pdf_light_origin
-    if (vt2) { vt2_bwd_pdf = s > 0 ? vt1->pdf(scene, vs1, *vt2) : vt1->pdf(scene, nullptr, *vt2, false); } // pdf_light_direction
+    // when s == 0, vt assume to be a emitter vertex and vt1 bwd pdf is light_pos_pdf of vt1
+    // when s > 0, vt1 bwd pdf is normal bsdf_pdf or light_dir_pdf of vs1
+    if (vt1) { vt1_bwd_pdf = s > 0 ? vs1->pdf(scene, vs2, *vt1, false) : vt1->pdf(scene, nullptr, *vt2, true); } // pdf_light_origin
+    // vt2 bwd pdf is normal bsdf_pdf or light_dir_pdf of vt1
+    if (vt2) { vt2_bwd_pdf = vt1->pdf(scene, vs1, *vt2, false); } // pdf_light_direction
     if (vs1) { vs1_bwd_pdf = vt1->pdf(scene, vt2, *vs1); }
     if (vs2) { vs2_bwd_pdf = vs1->pdf(scene, vt1, *vs2); }
 
