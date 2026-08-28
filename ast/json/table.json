@@ -97,7 +97,7 @@
         {
             "name": "light1",
             "object_path": "../ast/obj/table/mesh_1.obj",
-            "emission": [3, 3, 2.5],
+            "radiance": [3, 3, 2.5],
             "transform": {
                 "translate": [10, 0, 25],
                 "scale": [0.06, 0.06, -1]
@@ -106,7 +106,7 @@
         {
             "name": "light2",
             "object_path": "../ast/obj/table/mesh_1.obj",
-            "emission": [1, 1, 1.6],
+            "radiance": [1, 1, 1.6],
             "transform": {
                 "translate": [0, 0, 60],
                 "scale": [0.3, 0.3, -1]
