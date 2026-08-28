@@ -82,7 +82,9 @@ class MicrofacetDistribution : public Distribution<Vec3f> {
    public:
     MicrofacetDistribution() {}
 
-    virtual Vec3<float> sample() const                  = 0;
+    virtual Vec3<float> sample() const = 0;
+    // TODO: implemnt visible normal distribution function
+    // virtual Vec3<float> sample(const Vec3<float>& wi_local) const = 0;
     virtual float pdf(const Vec3<float>& h_local) const = 0;
 
     virtual float D(const Vec3<float>& h_local) const                               = 0;

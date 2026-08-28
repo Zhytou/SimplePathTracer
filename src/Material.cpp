@@ -117,13 +117,24 @@ Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float
     GGXDistribution distribution(roughness);
     Vec3<float> h_local = distribution.sample();
 
-    float prob = rand(0.f, 1.f);
-    float ref  = fresnel(dot(wi_local, h_local), eta_i, eta_t);
-    wo_local   = prob < ref ? reflect(wi_local, h_local, true) : transmit(wi_local, h_local, eta_i, eta_t);
+    float prob      = rand(0.f, 1.f);
+    float ref       = fresnel(dot(wi_local, h_local), eta_i, eta_t);
+    bool is_reflect = prob < ref;
 
-    float cos_theta = std::abs(wo_local.z);
-    Vec3f bsdf      = eval(wi_local, wo_local, uv, mode);
-    return bsdf * cos_theta / pdf(wi_local, wo_local, uv);
+    wo_local           = is_reflect ? reflect(wi_local, h_local, true) : transmit(wi_local, h_local, eta_i, eta_t);
+    float cos_theta_i  = wi_local.z;
+    float cos_theta_o  = wo_local.z;
+    float cos_theta_h  = h_local.z;
+    float cos_theta_ih = dot(wi_local, h_local);
+    float cos_theta_oh = dot(wo_local, h_local);
+
+    // bsdf * cos_theta_i / pdf
+    float G = distribution.G(wi_local, wo_local);
+
+    float eta    = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
+    float factor = !is_reflect && mode == RADIANCE ? eta * eta : 1.f;
+
+    return is_reflect ? Vec3<float>(G * std::abs(cos_theta_oh) / std::abs(cos_theta_i * cos_theta_h)) : Vec3<float>(G * std::abs(cos_theta_ih) / std::abs(cos_theta_i * cos_theta_h) * factor);
 }
 
 Vec3<float> MicrofacetDielectric::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv, TransportMode mode) const {
@@ -142,13 +153,14 @@ Vec3<float> MicrofacetDielectric::eval(const Vec3<float>& wi_local, const Vec3<f
     float cos_theta_ih = dot(wi_local, h_local);
     float cos_theta_oh = dot(wo_local, h_local);
 
-    float F     = fresnel(cos_theta_ih, eta_i, eta_t);
-    float D     = distribution.D(h_local);
-    float G     = distribution.G(wi_local, wo_local);
-    float num   = is_reflect ? F * D * G : (1 - F) * D * G * std::abs(cos_theta_ih * cos_theta_oh / (cos_theta_i * cos_theta_o));
-    float denom = is_reflect ? std::max(4.f * cos_theta_i * cos_theta_o, PDF_EPS) : std::max(std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f), PDF_EPS);
+    float F      = fresnel(cos_theta_ih, eta_i, eta_t);
+    float D      = distribution.D(h_local);
+    float G      = distribution.G(wi_local, wo_local);
+    float num    = is_reflect ? F * D * G : (1 - F) * D * G * std::abs(cos_theta_ih * cos_theta_oh) / std::abs(cos_theta_i * cos_theta_o);
+    float denom  = is_reflect ? std::max(4.f * std::abs(cos_theta_i) * std::abs(cos_theta_o), PDF_EPS) : std::max(std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f), PDF_EPS);
+    float factor = !is_reflect && mode == RADIANCE ? eta * eta : 1.f;
 
-    return Vec3<float>(num / denom);
+    return Vec3<float>(num / denom * factor);
 }
 
 float MicrofacetDielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
