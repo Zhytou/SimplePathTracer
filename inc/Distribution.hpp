@@ -57,6 +57,19 @@ class PrefixDiscreteDistribution1D : public Distribution<int> {
 class DiskDistribution : public Distribution<Vec2f> {
    public:
     DiskDistribution() {}
+
+    virtual Vec2<float> sample() const override {
+        float a = rand(0.0f, 1.f);
+        float b = rand(0.0f, 1.f);
+
+        float radius = std::sqrt(a);
+        float phi    = 2 * PI * b;
+
+        return {radius * std::cos(phi), radius * std::sin(phi)};
+    }
+    virtual float pdf(const Vec2<float>& p) const override {
+        return 1.f / PI;
+    }
 };
 
 class CosineDistribution : public Distribution<Vec3f> {
@@ -80,27 +93,35 @@ class CosineDistribution : public Distribution<Vec3f> {
 
 class MicrofacetDistribution : public Distribution<Vec3f> {
    public:
-    MicrofacetDistribution() {}
+    MicrofacetDistribution(float roughness) : m_roughness(roughness), m_alpha(roughness * roughness) {}
 
-    virtual Vec3<float> sample() const = 0;
-    // TODO: implemnt visible normal distribution function
-    // virtual Vec3<float> sample(const Vec3<float>& wi_local) const = 0;
-    virtual float pdf(const Vec3<float>& h_local) const = 0;
+    virtual Vec3<float> sample() const                                              = 0;
+    virtual float pdf(const Vec3<float>& h_local) const                             = 0;
+    virtual Vec3<float> sample(const Vec3<float>& w_local) const                    = 0;
+    virtual float pdf(const Vec3<float>& w_local, const Vec3<float>& h_local) const = 0;
 
     virtual float D(const Vec3<float>& h_local) const                               = 0;
     virtual float G1(const Vec3<float>& w_local) const                              = 0;
     virtual float G(const Vec3<float>& wo_local, const Vec3<float>& wi_local) const = 0;
+
+    float getAlpha() const { return m_alpha; }
+    float getRoughness() const { return m_roughness; }
+    void setRoughness(float roughness) { m_roughness = roughness; }
+
+   private:
+    float m_roughness;
+    float m_alpha; // the actual roughness use in sampling
 };
 
 class GGXDistribution : public MicrofacetDistribution {
    public:
-    GGXDistribution(float roughness) : m_roughness(roughness) {}
+    GGXDistribution(float roughness) : MicrofacetDistribution(roughness) {}
 
     virtual Vec3<float> sample() const override {
         float a = rand(0.0f, 1.f);
         float b = rand(0.0f, 1.f);
 
-        float alpha  = m_roughness * m_roughness;
+        float alpha  = getAlpha();
         float alpha2 = alpha * alpha;
 
         float cos_theta = std::sqrt((1.f - a) / (1.f + (alpha2 - 1.f) * a));
@@ -114,8 +135,41 @@ class GGXDistribution : public MicrofacetDistribution {
         return D(h_local) * h_local.z;
     }
 
+    virtual Vec3<float> sample(const Vec3<float>& w_local) const override {
+        // transform to hemisphere coordinate
+        float alpha          = getAlpha();
+        Vec3<float> ww_local = {alpha * w_local.x, alpha * w_local.y, w_local.z};
+        ww_local             = normalize(ww_local.z < 0 ? -ww_local : ww_local);
+        Vec3<float> ww_e1, ww_e2;
+        TBN(ww_local, ww_e1, ww_e2);
+
+        // disk sampling
+        float a      = rand(0.0f, 1.f);
+        float b      = rand(0.0f, 1.f);
+        float radius = std::sqrt(a);
+        float phi    = 2 * PI * b;
+        float x      = radius * std::cos(phi);
+        float y      = radius * std::sin(phi);
+
+        // wrap to disk
+        float h = std::sqrt(1.f - x * x);
+        float t = (1.f + ww_local.z) / 2.f;
+        y       = (1 - t) * h + t * y; // lerp(t, h, y)
+        float z = std::sqrt(std::max(0.f, 1.f - x * x - y * y));
+
+        // transform to hemisphere coordinate
+        Vec3<float> hh_local = x * ww_e1 + y * ww_e2 + z * ww_local;
+        Vec3<float> h_local  = {alpha * hh_local.x, alpha * hh_local.y, std::max(hh_local.z, EPS)};
+
+        return normalize(h_local);
+    }
+
+    virtual float pdf(const Vec3<float>& w_local, const Vec3<float>& h_local) const override {
+        return G1(w_local) / std::max(std::abs(w_local.z), PDF_EPS) * D(h_local) * std::abs(dot(w_local, h_local));
+    }
+
     virtual float D(const Vec3<float>& h_local) const override {
-        float alpha  = m_roughness * m_roughness;
+        float alpha  = getAlpha();
         float alpha2 = alpha * alpha;
 
         float num   = alpha2;
@@ -126,14 +180,24 @@ class GGXDistribution : public MicrofacetDistribution {
     }
 
     virtual float G1(const Vec3<float>& w_local) const override {
-        // float r = (m_roughness + 1.0f);
-        // float k = (r * r) / 8.0f;
-        float r = m_roughness;
-        float k = r * r / 2.0f;
+        float a = getAlpha();
         float z = std::abs(w_local.z);
 
-        float num   = z;
-        float denom = z * (1.0f - k) + k;
+        float num, denom;
+        if (true) { // smith ggx
+            float a2 = a * a;
+            float z2 = z * z;
+
+            num   = 2 * z;
+            denom = z + std::sqrt(a2 + (1 - a2) * z2);
+        } else { // schlick approximation
+            // for real-time rendering, k = (roughness + 1.0f)^2 / 8;
+            // for offline rendering, k = roughness^2 / 2;
+            float k = a / 2;
+
+            num   = z;
+            denom = z * (1.0f - k) + k;
+        }
 
         return num / denom;
     }
@@ -141,9 +205,6 @@ class GGXDistribution : public MicrofacetDistribution {
     float G(const Vec3<float>& wi_local, const Vec3<float>& wo_local) const override {
         return G1(wi_local) * G1(wo_local);
     }
-
-   private:
-    float m_roughness;
 };
 
 } // namespace spt
