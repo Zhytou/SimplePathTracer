@@ -27,8 +27,8 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
         AABB aabb;
     };
     std::vector<Bin> bins;
-    Vec3<float> center1(INFINITY), center2(-INFINITY); // minimum and maximum center of primitives
-    std::vector<AABB> prefix_aabbs, suffix_aabbs;      // shared bounding box of primitives  for both Binned-SAH and Exact-SAH
+    Vec3<float> center1(INF), center2(-INF);      // minimum and maximum center of primitives
+    std::vector<AABB> prefix_aabbs, suffix_aabbs; // shared bounding box of primitives  for both Binned-SAH and Exact-SAH
     std::vector<int> prefix_counts;
 
     if (use_binned_sah) { // Binned-SAH path
@@ -106,7 +106,7 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
     // 3. Evaluate SAH costs and find the optimal split candidate
     struct Split {
         int index  = -1;
-        float cost = INFINITY;
+        float cost = INF;
         AABB laabb, raabb;
     };
     Split best_split;

@@ -16,7 +16,7 @@ namespace spt {
 
 class Tracer {
    public:
-    Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32);
+    Tracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INF, int ts = 32, int thd = 32);
     virtual ~Tracer() {}
 
     virtual const char* getTypeName() const       = 0;
@@ -85,18 +85,18 @@ class Tracer {
     static bool V(const Scene& scene, const Vec3f& p, const Vec3f& pp);
 
    protected:
-    int m_depth   = 10;       // max depth of path trace
-    int m_rrdepth = 4;        // depth of russian roulette
-    int m_spp     = 32;       // samples per pixel
-    float m_rrp   = 0.8f;     // probability of russian roulette
-    float m_lum   = INFINITY; // luminance threshold for indirect light clamping, closed by default
-    int m_thd     = 32;       // number of threads used for rendering
-    int m_ts      = 32;       // size of tile for parallel rendering
+    int m_depth   = 10;   // max depth of path trace
+    int m_rrdepth = 4;    // depth of russian roulette
+    int m_spp     = 32;   // samples per pixel
+    float m_rrp   = 0.8f; // probability of russian roulette
+    float m_lum   = INF;  // luminance threshold for indirect light clamping, closed by default
+    int m_thd     = 32;   // number of threads used for rendering
+    int m_ts      = 32;   // size of tile for parallel rendering
 };
 
 class PathTracer : public Tracer {
    public:
-    PathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
+    PathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INF, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
     ~PathTracer() {}
 
     virtual const char* getTypeName() const override { return "PathTracer"; }
@@ -106,7 +106,7 @@ class PathTracer : public Tracer {
 
 class BidirectionalPathTracer : public Tracer {
    public:
-    BidirectionalPathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INFINITY, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
+    BidirectionalPathTracer(int d = 10, int rrd = 3, int spp = 3, float rrp = 0.8, float lum = INF, int ts = 32, int thd = 32) : Tracer(d, rrd, spp, rrp, lum, ts, thd) {}
     ~BidirectionalPathTracer() {}
 
     virtual const char* getTypeName() const override { return "BidirectionalPathTracer"; }

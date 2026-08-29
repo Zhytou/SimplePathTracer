@@ -65,7 +65,7 @@ AABB Primitive::wrap() const {
     };
 
     // 3. Convert all vertices to world space and compute new AABB bounds
-    Vec4<float> xyz1_world4(INFINITY), xyz2_world4(-INFINITY);
+    Vec4<float> xyz1_world4(INF), xyz2_world4(-INF);
     for (auto& xyz_local4 : xyzs_local4) {
         auto xyz_world4 = m_transform * xyz_local4;
         xyz1_world4     = min(xyz1_world4, xyz_world4);

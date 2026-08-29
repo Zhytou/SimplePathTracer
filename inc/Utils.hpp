@@ -31,7 +31,8 @@ constexpr float EPS     = 1e-12f;
 constexpr float DIS_EPS = 5e-3f;
 constexpr float PDF_EPS = 1e-9f;
 
-constexpr float PI = 3.14159265358979323846f;
+constexpr float PI  = 3.14159265358979323846f;
+constexpr float INF = std::numeric_limits<float>::infinity();
 
 template <typename T>
 T rand(T min, T max) {
