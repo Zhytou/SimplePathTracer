@@ -265,8 +265,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
     // 9. Print scene info
     {
-        constexpr int n     = 10;
-        constexpr int k     = 5;
+        constexpr int k     = 20;
         constexpr int width = 125; // width for box logging
 
         // 9.0 Lambda functors and temperol variables
@@ -281,12 +280,14 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
             ss << std::left
                << std::setw(10) << prm->getID()
-               << std::setw(15) << (spe ? spe->getTypeName() : "None")
-               << std::setw(20) << (mtl ? std::string(mtl->getTypeName()) + "_" + mtl->getName() : "None")
-               << std::setw(15) << (emt ? emt->getTypeName() : "None")
-               << std::setw(15) << (int_med ? int_med->getName() : "None")
-               << std::setw(15) << (ext_med ? ext_med->getName() : "None")
-               << std::setw(15) << (prm->isTransformIdentity() ? "Yes" : "No")
+               << std::setw(13) << (spe ? spe->getTypeName() : "None")
+               << std::setw(13) << (spe ? spe->getName() : "None")
+               << std::setw(13) << (mtl ? mtl->getTypeName() : "None")
+               << std::setw(13) << (mtl ? mtl->getName() : "None")
+               << std::setw(13) << (emt ? emt->getTypeName() : "None")
+               << std::setw(16) << (int_med ? int_med->getName() : "None")
+               << std::setw(16) << (ext_med ? ext_med->getName() : "None")
+               << std::setw(13) << (prm->isTransformIdentity() ? "Yes" : "No")
                << '\n';
         };
         auto printMtlInfo = [&ss](std::shared_ptr<Material> mtl) {
@@ -320,13 +321,15 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         }
         BOX_LOG("RENDERABLE PRIMITIVES", width)
             << std::left
-            << std::setw(10) << "ID"
-            << std::setw(15) << "Shape"
-            << std::setw(20) << "Material"
-            << std::setw(15) << "Emitter"
-            << std::setw(15) << "Int Medium"
-            << std::setw(15) << "Ext Medium"
-            << std::setw(15) << "Transform Identity"
+            << std::setw(10) << "PRM ID"
+            << std::setw(13) << "SPE Type"
+            << std::setw(13) << "SPE Name"
+            << std::setw(13) << "MTL Type"
+            << std::setw(13) << "MTL Name"
+            << std::setw(13) << "EMT Type"
+            << std::setw(16) << "MED Name(int)"
+            << std::setw(16) << "MED Name(ext)"
+            << std::setw(13) << "TRANS Identity"
             << '\n'
             << std::string(width - 4, '-') << '\n'
             << ss.rdbuf(); //
@@ -410,6 +413,7 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
 
                 // 2.4 Create triangle shape
                 auto spe = std::make_shared<Triangle>(m_shapes.size(), vertex, normal, uv);
+                spe->setName(obj_path.stem().string());
                 m_shapes.push_back(spe);
                 spe_count++;
             }
