@@ -35,7 +35,9 @@ Vec3<float> Mirror::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_loca
 }
 
 float Mirror::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    return 0.f;
+    Vec3f h_local = normalize(wi_local + wo_local);
+
+    return std::abs(h_local.x) < EPS && std::abs(h_local.y) < EPS && std::abs(h_local.z) - 1.f < EPS ? INF : 0.f;
 }
 
 Vec3<float> Dielectric::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, TransportMode mode) const {
@@ -69,7 +71,13 @@ Vec3<float> Dielectric::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_
 }
 
 float Dielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv) const {
-    return 0.f;
+    float eta_i     = m_ext_ior;
+    float eta_t     = m_int_ior;
+    float eta       = wi_local.z > 0 ? eta_i / eta_t : eta_t / eta_i;
+    bool is_reflect = wi_local.z * wo_local.z > 0.f;
+    Vec3f h_local   = is_reflect ? normalize(wi_local + wo_local) : normalize(eta * wi_local + wo_local);
+
+    return std::abs(h_local.x) < EPS && std::abs(h_local.y) < EPS && std::abs(h_local.z) - 1.f < EPS ? INF : 0.f;
 }
 
 Vec3<float> MicrofacetConductor::sample(const Vec3<float>& wi_local, Vec3<float>& wo_local, const Vec2<float>& uv, TransportMode mode) const {
@@ -115,7 +123,7 @@ Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float
     float eta_t     = m_int_ior;
 
     GGXDistribution distribution(roughness);
-    Vec3<float> h_local = distribution.sample();
+    Vec3<float> h_local = distribution.sample(wi_local);
 
     float prob      = rand(0.f, 1.f);
     float ref       = fresnel(dot(wi_local, h_local), eta_i, eta_t);
@@ -129,12 +137,14 @@ Vec3<float> MicrofacetDielectric::sample(const Vec3<float>& wi_local, Vec3<float
     float cos_theta_oh = dot(wo_local, h_local);
 
     // bsdf * cos_theta_i / pdf
-    float G = distribution.G(wi_local, wo_local);
+    float G  = distribution.G(wi_local, wo_local);
+    float G1 = distribution.G1(wi_local);
 
     float eta    = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
     float factor = !is_reflect && mode == RADIANCE ? eta * eta : 1.f;
 
-    return is_reflect ? Vec3<float>(G * std::abs(cos_theta_oh) / std::abs(cos_theta_i * cos_theta_h)) : Vec3<float>(G * std::abs(cos_theta_ih) / std::abs(cos_theta_i * cos_theta_h) * factor);
+    // return is_reflect ? Vec3<float>(G * std::abs(cos_theta_oh) / std::abs(cos_theta_i * cos_theta_h)) : Vec3<float>(G * std::abs(cos_theta_ih) / std::abs(cos_theta_i * cos_theta_h) * factor); normal ggx sampling
+    return Vec3<float>(G / G1 * factor); // visibile ggx sampling
 }
 
 Vec3<float> MicrofacetDielectric::eval(const Vec3<float>& wi_local, const Vec3<float>& wo_local, const Vec2<float>& uv, TransportMode mode) const {
@@ -178,7 +188,7 @@ float MicrofacetDielectric::pdf(const Vec3<float>& wi_local, const Vec3<float>& 
     float cos_theta_oh = dot(wo_local, h_local);
 
     float jacobian = is_reflect ? 4.f * std::abs(cos_theta_oh) : std::pow(eta * cos_theta_ih + cos_theta_oh, 2.f) / std::max(std::abs(cos_theta_oh), PDF_EPS);
-    float pdf_h    = distribution.pdf(h_local);
+    float pdf_h    = distribution.pdf(wi_local, h_local);
     float pdf_w    = pdf_h / std::max(jacobian, PDF_EPS);
 
     float F = fresnel(cos_theta_ih, eta_i, eta_t);
