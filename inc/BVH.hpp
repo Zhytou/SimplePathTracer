@@ -56,6 +56,8 @@ class BVH {
     bool isLeaf() const { return m_leaf; }
 
    private:
+    static constexpr int BVH_BIN_SAH_THRESHOLD = 2000; // primitive count threshold for binned-SAH to construct BVH
+
     bool m_leaf                  = false;
     std::shared_ptr<BVH> m_left  = nullptr;
     std::shared_ptr<BVH> m_right = nullptr;

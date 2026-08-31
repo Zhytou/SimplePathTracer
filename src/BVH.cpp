@@ -7,7 +7,7 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
     if (max_leaf_size < 1) { throw std::invalid_argument(std::format("BVH::init: maximum leaf node size {} must be greater than 0", max_leaf_size)); }
 
     // 0. Initialize config and bvh node
-    bool use_binned_sah = num_bins > 0; // binned-sah indicator
+    bool use_binned_sah = num_bins > 0 && primitives.size() > BVH_BIN_SAH_THRESHOLD; // binned-sah indicator
     int num_prms        = primitives.size();
     int num_splits      = use_binned_sah ? num_bins : num_prms;
 
@@ -28,31 +28,37 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
     };
     std::vector<Bin> bins;
     Vec3f center1(INF), center2(-INF);            // minimum and maximum center of primitives
-    std::vector<AABB> prefix_aabbs, suffix_aabbs; // shared bounding box of primitives  for both Binned-SAH and Exact-SAH
+    std::vector<AABB> prefix_aabbs, suffix_aabbs; // shared bounding box of primitives for both Binned-SAH and Exact-SAH
     std::vector<int> prefix_counts;
+
+    // 2.0 Define bin index function for Binned-SAH
+    Vec3f delta(0.f);
+    int axis         = -1;
+    auto getBinIndex = [&](std::shared_ptr<Primitive> prm) {
+        Vec3f center = prm->wrap().center();
+        int index    = (center[axis] - center1[axis]) / delta[axis] * num_bins;
+        return std::clamp(index, 0, num_bins - 1);
+    };
 
     if (use_binned_sah) { // Binned-SAH path
         // 2.1 Collect all primitive centers and compute centroid bounds
-        std::vector<Vec3f> centers;
         for (int i = 0; i < num_prms; i++) {
             auto center = primitives[i]->wrap().center();
             center1     = min(center1, center);
             center2     = max(center2, center);
-            centers.push_back(center);
         }
-
-        // 2.2 Assign primitives into spatial bins
-        bins.resize(num_bins);
-        auto delta = center2 - center1;
-        int axis   = argmax(delta);
-        if (delta[axis] == 0) {
+        delta = center2 - center1;
+        axis  = argmax(delta);
+        if (delta[axis] <= EPS) {
             bvh->m_leaf = true;
             bvh->m_primitives.assign(primitives.begin(), primitives.end());
             return bvh;
         }
+
+        // 2.2 Assign primitives into spatial bins
+        bins.resize(num_bins);
         for (int i = 0; i < num_prms; i++) {
-            int j = (centers[i][axis] - center1[axis]) / delta[axis] * num_bins; // j is bin index
-            j     = std::clamp(j, 0, num_bins - 1);
+            int j = getBinIndex(primitives[i]); // j is bin index
 
             bins[j].count++;
             bins[j].aabb.merge(primitives[i]->wrap());
@@ -77,9 +83,9 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
             suffix_aabbs[i].merge(suffix_aabbs[i + 1]);
         }
     } else { // Exact-SAH path(by default)
+        delta = bvh->m_aabb.extent();
+        axis  = argmax(delta);
         // 2.1 Sort primitives along the longest axis of node AABB
-        auto delta = bvh->m_aabb.extent();
-        int axis   = argmax(delta);
         std::stable_sort(primitives.begin(), primitives.end(), [axis](std::shared_ptr<Primitive> prm1, std::shared_ptr<Primitive> prm2) {
             auto center1 = prm1->wrap().center();
             auto center2 = prm2->wrap().center();
@@ -111,8 +117,10 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
     };
     Split best_split;
     for (int i = 1; i < num_splits; i++) { // split only happen ahead of i-th bin/primitive(in other words, i is the start index of the right child)
-        int lcnt   = use_binned_sah ? prefix_counts[i - 1] : i - 1;
-        int rcnt   = num_prms - lcnt;
+        int lcnt = use_binned_sah ? prefix_counts[i - 1] : i;
+        int rcnt = num_prms - lcnt;
+        if (lcnt <= 0 || rcnt <= 0) { continue; } // avoid empty left/right child
+
         auto laabb = prefix_aabbs[i - 1];
         auto raabb = suffix_aabbs[i];
 
@@ -129,27 +137,19 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
         return bvh;
     }
 
-    // 5. Partition primitives and recursively build left and right sub bvhs
-    if (use_binned_sah) {
-        Vec3f delta          = center2 - center1;
-        int axis             = argmax(delta);
-        float best_split_pos = delta[axis] / num_bins * best_split.index + center1[axis];
-        int idx              = std::distance(primitives.begin(), std::partition(primitives.begin(), primitives.end(), [&](std::shared_ptr<Primitive> prm) { return prm->wrap().center()[axis] <= best_split_pos; }));
+    // 5. Partition primitives at the best split position
+    int idx = use_binned_sah ? std::distance(primitives.begin(), std::partition(primitives.begin(), primitives.end(), [&](std::shared_ptr<Primitive> prm) { return getBinIndex(prm) < best_split.index; })) : best_split.index;
 
-        if (idx == 0 || idx == num_prms) {
-            bvh->m_leaf = true;
-            bvh->m_primitives.assign(primitives.begin(), primitives.end());
-            return bvh;
-        }
-
-        bvh->m_left  = create(primitives.subspan(0, idx), best_split.laabb, max_leaf_size, num_bins);
-        bvh->m_right = create(primitives.subspan(idx), best_split.raabb, max_leaf_size, num_bins);
-    } else {
-        int idx = best_split.index;
-
-        bvh->m_left  = create(primitives.subspan(0, idx), best_split.laabb, max_leaf_size, num_bins);
-        bvh->m_right = create(primitives.subspan(idx), best_split.raabb, max_leaf_size, num_bins);
+    // 6. Fallback to leaf if partition results in empty left/right child
+    if (idx == 0 || idx == num_prms) {
+        bvh->m_leaf = true;
+        bvh->m_primitives.assign(primitives.begin(), primitives.end());
+        return bvh;
     }
+
+    // 7. Recursively build left and right sub bvhs
+    bvh->m_left  = create(primitives.subspan(0, idx), best_split.laabb, max_leaf_size, num_bins);
+    bvh->m_right = create(primitives.subspan(idx), best_split.raabb, max_leaf_size, num_bins);
 
     return bvh;
 }
@@ -159,14 +159,12 @@ float BVH::eval(const AABB& parent, const AABB& left, const AABB& right, int lco
 }
 
 bool BVH::intersect(Ray& ray, Intersection& its) const {
-    // 0. Initialize variables
-    bool hit = false;
-
     // 1. Check AABB intersection and update ray t range
     if (!m_aabb.intersect(ray)) { return false; }
 
     // 2. Check triangle intersection and update ray t range if leaf node
     if (m_leaf) {
+        bool hit = false;
         for (auto prm : m_primitives) {
             Intersection cits; // current intersection info struct
             if (prm->intersect(ray, cits)) {
@@ -179,18 +177,13 @@ bool BVH::intersect(Ray& ray, Intersection& its) const {
     }
 
     // 3. Check sub bvh intersection, if not leaf node
-    Intersection lits, rits;
-    if (m_left->intersect(ray, lits)) {
-        hit = true;
-        its = lits;
-        ray.setTMax(std::min(lits.distance, ray.getTMax()));
-    }
-    if (m_right->intersect(ray, rits)) {
-        hit = true;
-        its = rits;
-    }
-
-    return hit;
+    float ldis      = distance(m_left->m_aabb.center(), ray.getOrigin());
+    float rdis      = distance(m_right->m_aabb.center(), ray.getOrigin());
+    auto first      = (ldis < rdis) ? m_left : m_right;
+    auto second     = (ldis < rdis) ? m_right : m_left;
+    bool hit_first  = first->intersect(ray, its);
+    bool hit_second = second->intersect(ray, its);
+    return hit_first || hit_second;
 }
 
 } // namespace spt
