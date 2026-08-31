@@ -103,6 +103,17 @@ struct VecBase<T, 3> {
         z = other.z;
         return *this;
     }
+    VecBase(const VecBase<T, 4>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+    }
+    VecBase& operator=(const VecBase<T, 4>& other) {
+        x = other.x;
+        y = other.y;
+        z = other.z;
+        return *this;
+    }
 };
 
 template <arithmetic T>
@@ -130,11 +141,11 @@ struct VecBase<T, 4> {
         z = t3;
         w = t4;
     }
-    VecBase(const VecBase<T, 4>& other) {
+    VecBase(const VecBase<T, 3>& other, T t4) {
         x = other.x;
         y = other.y;
         z = other.z;
-        w = other.w;
+        w = t4;
     }
     VecBase& operator=(const VecBase<T, 4>& other) {
         x = other.x;

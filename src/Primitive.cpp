@@ -6,17 +6,15 @@ bool Primitive::intersect(const Ray& ray, Intersection& its) const {
     // 0. Fall back to default hit test if transform matrix is identity
     if (m_is_identity) {
         bool hit = m_shape->intersect(ray, its);
-        its.id   = hit ? getID() : -1;
+        its.id   = hit ? m_id : -1;
         return hit;
     }
 
     // 1. Convert ray to local space
-    Vec3<float> org_world  = ray.getOrigin();
-    Vec3<float> dir_world  = ray.getDirection(); // normalized direction vector
-    Vec4<float> org_local4 = m_inv_transform * Vec4<float>(org_world.x, org_world.y, org_world.z, 1.0);
-    Vec4<float> dir_local4 = m_inv_transform * Vec4<float>(dir_world.x, dir_world.y, dir_world.z, 0.0);
-    Vec3<float> org_local  = Vec3<float>(org_local4.x, org_local4.y, org_local4.z);
-    Vec3<float> dir_local  = Vec3<float>(dir_local4.x, dir_local4.y, dir_local4.z);
+    Vec3f org_world = ray.getOrigin();
+    Vec3f dir_world = ray.getDirection(); // normalized direction vector
+    Vec3f org_local = Vec3f(m_inv_transform * Vec4f(org_world, 1.0));
+    Vec3f dir_local = Vec3f(m_inv_transform * Vec4f(dir_world, 0.0));
 
     // 2. Calculate the scale factor between distance in world space and distance in local space
     float tmin  = ray.getTMin();
@@ -29,12 +27,13 @@ bool Primitive::intersect(const Ray& ray, Intersection& its) const {
 
     // 3. Convert hit info into world space
     if (hit) {
-        Vec4<float> point_world4 = m_transform * Vec4<float>(its.point.x, its.point.y, its.point.z, 1.0);
-
-        its.id       = getID();
-        its.distance = its.distance / scale;
-        its.point    = Vec3<float>(point_world4.x, point_world4.y, point_world4.z);
-        its.normal   = normalize(m_n_transform * its.normal);
+        its.id        = m_id;
+        its.distance  = its.distance / scale;
+        its.point     = Vec3f(m_transform * Vec4f(its.point, 1.f));
+        its.normal    = normalize(m_n_transform * its.normal);
+        its.tangent   = normalize(m_transform * Vec4f(its.tangent, 0.f));
+        its.bitangent = normalize(cross(its.normal, its.tangent));
+        // its.bitangent = normalize(m_transform * Vec4f(its.bitangent, 0.f));
     }
 
     return hit;
@@ -47,46 +46,45 @@ AABB Primitive::wrap() const {
     }
 
     // 1. Get local space bounding box
-    AABB aabb_local        = m_shape->wrap();
-    Vec3<float> xyz1_local = aabb_local.getXYZ1();
-    Vec3<float> xyz2_local = aabb_local.getXYZ2();
+    AABB aabb_local  = m_shape->wrap();
+    Vec3f xyz1_local = aabb_local.getXYZ1();
+    Vec3f xyz2_local = aabb_local.getXYZ2();
 
     // 2. Generate eight corner vertices of local AABB
-    std::array<Vec4<float>, 8> xyzs_local4 = {
-        Vec4<float>(xyz1_local.x, xyz1_local.y, xyz1_local.z, 1.0),
-        Vec4<float>(xyz2_local.x, xyz1_local.y, xyz1_local.z, 1.0),
-        Vec4<float>(xyz1_local.x, xyz2_local.y, xyz1_local.z, 1.0),
-        Vec4<float>(xyz1_local.x, xyz1_local.y, xyz2_local.z, 1.0),
+    std::array<Vec3f, 8> xyzs_local = {
+        Vec3f(xyz1_local.x, xyz1_local.y, xyz1_local.z),
+        Vec3f(xyz2_local.x, xyz1_local.y, xyz1_local.z),
+        Vec3f(xyz1_local.x, xyz2_local.y, xyz1_local.z),
+        Vec3f(xyz1_local.x, xyz1_local.y, xyz2_local.z),
 
-        Vec4<float>(xyz2_local.x, xyz2_local.y, xyz2_local.z, 1.0),
-        Vec4<float>(xyz1_local.x, xyz2_local.y, xyz2_local.z, 1.0),
-        Vec4<float>(xyz2_local.x, xyz1_local.y, xyz2_local.z, 1.0),
-        Vec4<float>(xyz2_local.x, xyz2_local.y, xyz1_local.z, 1.0),
+        Vec3f(xyz2_local.x, xyz2_local.y, xyz2_local.z),
+        Vec3f(xyz1_local.x, xyz2_local.y, xyz2_local.z),
+        Vec3f(xyz2_local.x, xyz1_local.y, xyz2_local.z),
+        Vec3f(xyz2_local.x, xyz2_local.y, xyz1_local.z),
     };
 
     // 3. Convert all vertices to world space and compute new AABB bounds
-    Vec4<float> xyz1_world4(INF), xyz2_world4(-INF);
-    for (auto& xyz_local4 : xyzs_local4) {
-        auto xyz_world4 = m_transform * xyz_local4;
-        xyz1_world4     = min(xyz1_world4, xyz_world4);
-        xyz2_world4     = max(xyz2_world4, xyz_world4);
+    Vec3f xyz1_world(INF), xyz2_world(-INF);
+    for (auto& xyz_local : xyzs_local) {
+        auto xyz_world = Vec3f(m_transform * Vec4f(xyz_local, 1.f));
+        xyz1_world     = min(xyz1_world, xyz_world);
+        xyz2_world     = max(xyz2_world, xyz_world);
     }
 
-    AABB aabb_world = AABB({xyz1_world4.x, xyz1_world4.y, xyz1_world4.z}, {xyz2_world4.x, xyz2_world4.y, xyz2_world4.z});
+    AABB aabb_world(xyz1_world, xyz2_world);
     return aabb_world;
 }
 
-void Primitive::sample(Vec3<float>& point, Vec3<float>& normal) const {
+void Primitive::sample(Vec3f& point, Vec3f& normal) const {
     if (m_is_identity) {
         m_shape->sample(point, normal);
         return;
     }
 
-    Vec3<float> point_local, normal_local;
+    Vec3f point_local, normal_local;
     m_shape->sample(point_local, normal_local);
-    auto point_world4 = m_transform * Vec4<float>(point_local.x, point_local.y, point_local.z, 1.0);
 
-    point  = Vec3<float>(point_world4.x, point_world4.y, point_world4.z);
+    point  = Vec3f(m_transform * Vec4f(point_local, 1.f));
     normal = normalize(m_n_transform * normal_local);
 }
 

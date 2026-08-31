@@ -19,8 +19,8 @@ class Primitive {
     std::shared_ptr<AreaEmitter> getEmitter() const { return m_emitter; }
     std::shared_ptr<Medium> getInteriorMedium() const { return m_int_medium; }
     std::shared_ptr<Medium> getExteriorMedium() const { return m_ext_medium; }
-    const Mat4x4<float>& getTransform() const { return m_transform; }
-    const Mat4x4<float>& getInvTransform() const { return m_inv_transform; }
+    const Mat4x4f& getTransform() const { return m_transform; }
+    const Mat4x4f& getInvTransform() const { return m_inv_transform; }
     const Mat3x3<float>& getNormalTransform() const { return m_n_transform; }
     bool isTransformIdentity() const { return m_is_identity; }
 
@@ -30,8 +30,8 @@ class Primitive {
     void setEmitter(std::shared_ptr<AreaEmitter> emitter) { m_emitter = emitter; }
     void setInteriorMedium(std::shared_ptr<Medium> medium) { m_int_medium = medium; }
     void setExteriorMedium(std::shared_ptr<Medium> medium) { m_ext_medium = medium; }
-    void setTransform(const Mat4x4<float>& transform) {
-        m_is_identity   = transform == Mat4x4<float>::eye();
+    void setTransform(const Mat4x4f& transform) {
+        m_is_identity   = transform == Mat4x4f::eye();
         m_transform     = transform;
         m_inv_transform = inv_affine(transform);
         m_n_transform   = {
@@ -45,7 +45,7 @@ class Primitive {
 
     bool intersect(const Ray& ray, Intersection& its) const;
     AABB wrap() const;
-    void sample(Vec3<float>& p, Vec3<float>& n) const;
+    void sample(Vec3f& p, Vec3f& n) const;
 
    private:
     int m_id = -1;
@@ -56,10 +56,10 @@ class Primitive {
     std::shared_ptr<Medium> m_ext_medium   = nullptr;
     std::shared_ptr<AreaEmitter> m_emitter = nullptr;
 
-    bool m_is_identity            = true; // whether the transform matrix is identity
-    Mat4x4<float> m_transform     = Mat4x4<float>::eye();
-    Mat4x4<float> m_inv_transform = Mat4x4<float>::eye();
-    Mat3x3<float> m_n_transform   = Mat3x3<float>::eye(); // normal transform matrix
+    bool m_is_identity      = true; // whether the transform matrix is identity
+    Mat4x4f m_transform     = Mat4x4f::eye();
+    Mat4x4f m_inv_transform = Mat4x4f::eye();
+    Mat3x3f m_n_transform   = Mat3x3f::eye(); // normal transform matrix
 };
 
 } // namespace spt

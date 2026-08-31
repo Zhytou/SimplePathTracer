@@ -35,7 +35,7 @@ struct Mat {
         }
     }
     Mat(std::initializer_list<Vec<T, R>> columns) {
-        if (cols.size() != C) { throw std::invalid_argument(std::format("Mat: initializer_list col count {} does not match matrix cols {}", cols.size(), C)); }
+        if (columns.size() != C) { throw std::invalid_argument(std::format("Mat: initializer_list col count {} does not match matrix cols {}", columns.size(), C)); }
 
         for (int c = 0; c < C; ++c) { cols[c] = columns[c]; }
     }
@@ -141,7 +141,6 @@ Mat<T, C, R> transpose(const Mat<T, R, C>& m) {
 
 template <arithmetic T, size_t N>
 T det(const Mat<T, N, N>& m) {
-    // TODO: implement determinant calculation
     if constexpr (N == 1) {
         return m(0, 0);
     } else if constexpr (N == 2) {
@@ -156,12 +155,12 @@ T det(const Mat<T, N, N>& m) {
         T SubFactor04 = m(2, 0) * m(3, 2) - m(3, 0) * m(2, 2);
         T SubFactor05 = m(2, 0) * m(3, 1) - m(3, 0) * m(2, 1);
 
-        T det2_0 = (m(1, 1) * SubFactor00 - m(1, 2) * SubFactor01 + m(1, 3) * SubFactor02);
-        T det2_1 = -(m(1, 0) * SubFactor00 - m(1, 2) * SubFactor03 + m(1, 3) * SubFactor04);
-        T det2_2 = (m(1, 0) * SubFactor01 - m(1, 1) * SubFactor03 + m(1, 3) * SubFactor05);
-        T det2_3 = -(m(1, 0) * SubFactor02 - m(1, 1) * SubFactor04 + m(1, 2) * SubFactor05);
+        T det2_0 = m(1, 1) * SubFactor00 - m(1, 2) * SubFactor01 + m(1, 3) * SubFactor02;
+        T det2_1 = m(1, 0) * SubFactor00 - m(1, 2) * SubFactor03 + m(1, 3) * SubFactor04;
+        T det2_2 = m(1, 0) * SubFactor01 - m(1, 1) * SubFactor03 + m(1, 3) * SubFactor05;
+        T det2_3 = m(1, 0) * SubFactor02 - m(1, 1) * SubFactor04 + m(1, 2) * SubFactor05;
 
-        return m(0, 0) * det2_0 + m(0, 1) * det2_1 + m(0, 2) * det2_2 + m(0, 3) * det2_3;
+        return m(0, 0) * det2_0 - m(0, 1) * det2_1 + m(0, 2) * det2_2 - m(0, 3) * det2_3;
     } else {
         Mat<T, N, N> temp = m;
         T determinant     = static_cast<T>(1);
@@ -201,7 +200,6 @@ T det(const Mat<T, N, N>& m) {
 
 template <arithmetic T, size_t N>
 Mat<T, N, N> inv(const Mat<T, N, N>& m) {
-    // TODO: implement inverse calculation
     if constexpr (N == 1) {
         Mat<T, 1, 1> res;
         res(0, 0) = static_cast<T>(1) / m(0, 0);
@@ -353,6 +351,7 @@ Mat<T, N, N> inv(const Mat<T, N, N>& m) {
 template <arithmetic T>
 Mat<T, 4, 4> inv_affine(const Mat<T, 4, 4>& m) {
     // 1. Extract 3x3 affine matrix sub_m and translation vector t from m
+    // {{sub_m | t}, {0 | 0 | 0 |  1 |}}
     Vec<T, 3> t(m(0, 3), m(1, 3), m(2, 3));
     Mat<T, 3, 3> sub_m = {{m(0, 0), m(0, 1), m(0, 2)}, {m(1, 0), m(1, 1), m(1, 2)}, {m(2, 0), m(2, 1), m(2, 2)}};
 
@@ -365,6 +364,8 @@ Mat<T, 4, 4> inv_affine(const Mat<T, 4, 4>& m) {
     // 4. Calculate new translation vector t_inv = -sub_m_inv * t
     Vec<T, 3> t_inv = -(sub_m_inv * t);
 
+    // 5. Construct final result matrix
+    // std::nitializer_list constructor of Mat is row-major
     return {
         {sub_m_inv(0, 0), sub_m_inv(0, 1), sub_m_inv(0, 2), t_inv[0]},
         {sub_m_inv(1, 0), sub_m_inv(1, 1), sub_m_inv(1, 2), t_inv[1]},
