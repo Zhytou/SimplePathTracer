@@ -43,8 +43,8 @@ bool Sphere::intersect(const Ray& ray, Intersection& its) const {
     // - discriminant : Geometric indicator of the intersection state.
     // ===================================================================================
 
-    Vec3<float> origin    = ray.getOrigin();
-    Vec3<float> direction = ray.getDirection();
+    Vec3f origin    = ray.getOrigin();
+    Vec3f direction = ray.getDirection();
 
     float a = dot(direction, direction);
     float h = dot(origin - m_center, direction);
@@ -64,25 +64,25 @@ bool Sphere::intersect(const Ray& ray, Intersection& its) const {
         return false;
     }
 
-    float t       = t1 >= tmin && t1 <= tmax ? t1 : t2;
-    Vec3<float> p = ray.eval(t);
-    its.id        = -1;
-    its.distance  = t;
-    its.point     = p;
-    its.texcoord  = parameterize(p);
-    its.normal    = normalize(p - m_center);
+    float t      = t1 >= tmin && t1 <= tmax ? t1 : t2;
+    Vec3f p      = ray.eval(t);
+    its.id       = -1;
+    its.distance = t;
+    its.point    = p;
+    its.texcoord = parameterize(p);
+    its.normal   = normalize(p - m_center);
     TBN(its.normal, its.tangent, its.bitangent);
 
     return true;
 }
 
 AABB Sphere::wrap() const {
-    Vec3<float> xyz1(m_center.x - m_radius, m_center.y - m_radius, m_center.z - m_radius);
-    Vec3<float> xyz2(m_center.x + m_radius, m_center.y + m_radius, m_center.z + m_radius);
+    Vec3f xyz1(m_center.x - m_radius, m_center.y - m_radius, m_center.z - m_radius);
+    Vec3f xyz2(m_center.x + m_radius, m_center.y + m_radius, m_center.z + m_radius);
     return AABB(xyz1, xyz2);
 }
 
-void Sphere::sample(Vec3<float>& p, Vec3<float>& n) const {
+void Sphere::sample(Vec3f& p, Vec3f& n) const {
     float phi   = rand(0.0f, PI) - PI * 0.5f;
     float theta = rand(0.0f, 2 * PI);
 
@@ -90,19 +90,19 @@ void Sphere::sample(Vec3<float>& p, Vec3<float>& n) const {
     float y = ::cos(phi) * ::sin(theta);
     float z = ::sin(phi);
 
-    p = m_center + Vec3<float>(x, y, z) * m_radius;
+    p = m_center + Vec3f(x, y, z) * m_radius;
     n = {x, y, z};
 }
 
-Vec2<float> Sphere::parameterize(const Vec3<float>& point) const {
-    Vec3<float> dir = normalize(point - m_center);
-    float phi       = std::acos(dir.y);
-    float theta     = std::atan2(dir.z, dir.x) + PI;
+Vec2f Sphere::parameterize(const Vec3f& point) const {
+    Vec3f dir   = normalize(point - m_center);
+    float phi   = std::acos(dir.y);
+    float theta = std::atan2(dir.z, dir.x) + PI;
 
     float u = theta / (2 * PI);
     float v = phi / PI;
 
-    return Vec2<float>(u, v);
+    return Vec2f(u, v);
 }
 
 } // namespace spt

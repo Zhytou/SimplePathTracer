@@ -22,7 +22,7 @@ class Sampler {
     Sampler(WrapMode wrap, FilterMode filter) : m_wrap(wrap), m_filter(filter) {}
 
     template <typename T, size_t N>
-    Vec<T, N> sample(const std::shared_ptr<Image<T>> image, const Vec2<float>& texcoord) const {
+    Vec<T, N> sample(const std::shared_ptr<Image<T>> image, const Vec2f& texcoord) const {
         if (!image) { throw std::runtime_error("Sampler::sample: Image is null!"); }
 
         float u = wrap(texcoord.x, m_wrap);

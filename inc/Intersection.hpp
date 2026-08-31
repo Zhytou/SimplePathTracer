@@ -6,13 +6,13 @@
 namespace spt {
 
 struct Intersection {
-    int id                = -1; // hit primitive id if != -1
-    float distance        = INF;
-    Vec3<float> point     = Vec3<float>(0.f);
-    Vec2<float> texcoord  = Vec2<float>(0.f);
-    Vec3<float> normal    = Vec3<float>(0.f);
-    Vec3<float> tangent   = Vec3<float>(0.f);
-    Vec3<float> bitangent = Vec3<float>(0.f);
+    int id          = -1; // hit primitive id if != -1
+    float distance  = INF;
+    Vec3f point     = Vec3f(0.f);
+    Vec2f texcoord  = Vec2f(0.f);
+    Vec3f normal    = Vec3f(0.f);
+    Vec3f tangent   = Vec3f(0.f);
+    Vec3f bitangent = Vec3f(0.f);
 
     /**
      * @brief Transform a direction vector from local to world space
@@ -20,7 +20,7 @@ struct Intersection {
      * @param dir Direction vector in local space
      * @return Direction vector in world space
      */
-    Vec3<float> toWorld(const Vec3<float>& dir) const {
+    Vec3f toWorld(const Vec3f& dir) const {
         return spt::toWorld(dir, tangent, bitangent, normal);
     }
 
@@ -30,7 +30,7 @@ struct Intersection {
      * @param dir Direction vector in world space
      * @return Direction vector in local space
      */
-    Vec3<float> toLocal(const Vec3<float>& dir) const {
+    Vec3f toLocal(const Vec3f& dir) const {
         return spt::toLocal(dir, tangent, bitangent, normal);
     }
 };

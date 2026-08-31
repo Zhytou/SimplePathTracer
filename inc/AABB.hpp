@@ -13,12 +13,12 @@ class Primitive;
  */
 class AABB {
    public:
-    AABB(const Vec3<float>& xyz1 = Vec3<float>(INF), const Vec3<float>& xyz2 = Vec3<float>(-INF)) : m_xyz1(xyz1), m_xyz2(xyz2) {}
+    AABB(const Vec3f& xyz1 = Vec3f(INF), const Vec3f& xyz2 = Vec3f(-INF)) : m_xyz1(xyz1), m_xyz2(xyz2) {}
 
-    const Vec3<float>& getXYZ1() const { return m_xyz1; }
-    const Vec3<float>& getXYZ2() const { return m_xyz2; }
-    void setXYZ1(const Vec3<float>& xyz1) { m_xyz1 = xyz1; }
-    void setXYZ2(const Vec3<float>& xyz2) { m_xyz2 = xyz2; }
+    const Vec3f& getXYZ1() const { return m_xyz1; }
+    const Vec3f& getXYZ2() const { return m_xyz2; }
+    void setXYZ1(const Vec3f& xyz1) { m_xyz1 = xyz1; }
+    void setXYZ2(const Vec3f& xyz2) { m_xyz2 = xyz2; }
 
     bool operator==(const AABB& other) const { return m_xyz1 == other.m_xyz1 && m_xyz2 == other.m_xyz2; }
     bool operator!=(const AABB& other) const { return m_xyz1 != other.m_xyz1 || m_xyz2 != other.m_xyz2; }
@@ -27,16 +27,16 @@ class AABB {
     bool intersect(const Ray& ray) const;
     AABB& merge(const AABB& other);
 
-    Vec3<float> center() const { return (m_xyz1 + m_xyz2) / 2.f; }
-    Vec3<float> extent() const { return m_xyz2 - m_xyz1; }
+    Vec3f center() const { return (m_xyz1 + m_xyz2) / 2.f; }
+    Vec3f extent() const { return m_xyz2 - m_xyz1; }
     float area() const {
-        Vec3<float> xyz = m_xyz2 - m_xyz1;
+        Vec3f xyz = m_xyz2 - m_xyz1;
         return xyz.x * xyz.y + xyz.x * xyz.z + xyz.y * xyz.z;
     }
 
    private:
-    Vec3<float> m_xyz1 = Vec3<float>(INF);
-    Vec3<float> m_xyz2 = Vec3<float>(-INF);
+    Vec3f m_xyz1 = Vec3f(INF);
+    Vec3f m_xyz2 = Vec3f(-INF);
 };
 
 } // namespace spt

@@ -5,9 +5,9 @@
 
 namespace spt {
 
-void Triangle::sample(Vec3<float>& p, Vec3<float>& n) const {
-    Vec3<float> e1 = m_vertex[2] - m_vertex[0];
-    Vec3<float> e2 = m_vertex[1] - m_vertex[0];
+void Triangle::sample(Vec3f& p, Vec3f& n) const {
+    Vec3f e1 = m_vertex[2] - m_vertex[0];
+    Vec3f e2 = m_vertex[1] - m_vertex[0];
 
     float r1 = rand(0.f, 1.f);
     float r2 = rand(0.f, 1.f);
@@ -54,17 +54,17 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     // - DET_inv : 1.0f / det([ -D, E1, E2 ])
     // ===================================================================================
 
-    Vec3<float> org = ray.getOrigin();
-    Vec3<float> dir = ray.getDirection();
+    Vec3f org = ray.getOrigin();
+    Vec3f dir = ray.getDirection();
 
-    Vec3<float> e1 = m_vertex[1] - m_vertex[0];
-    Vec3<float> e2 = m_vertex[2] - m_vertex[0];
+    Vec3f e1 = m_vertex[1] - m_vertex[0];
+    Vec3f e2 = m_vertex[2] - m_vertex[0];
 
     // 1. Define intermediate variables and calculate determinant of matrix [-D, E1, E2]
-    Vec3<float> tvec = org - m_vertex[0];
-    Vec3<float> pvec = cross(dir, e2);
-    Vec3<float> qvec = cross(tvec, e1);
-    float det        = dot(e1, pvec);
+    Vec3f tvec = org - m_vertex[0];
+    Vec3f pvec = cross(dir, e2);
+    Vec3f qvec = cross(tvec, e1);
+    float det  = dot(e1, pvec);
 
     // 2. Check if the ray is parallel to the triangle plane
     if (std::abs(det) < EPS) {
@@ -93,9 +93,9 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     }
 
     // 6. Interpolate using weights: w = 1 - u - v
-    float w              = 1.0f - u - v;
-    Vec2<float> texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
-    Vec3<float> normal   = normalize(m_normal[0] * w + m_normal[1] * u + m_normal[2] * v);
+    float w        = 1.0f - u - v;
+    Vec2f texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
+    Vec3f normal   = normalize(m_normal[0] * w + m_normal[1] * u + m_normal[2] * v);
 
     // 7. Set hit record
     its.distance = t;
@@ -117,9 +117,9 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
     if (std::abs(det_uv) < EPS) {
         TBN(normal, its.tangent, its.bitangent);
     } else {
-        float det_uv_inv      = 1.0f / det_uv;
-        Vec3<float> tangent   = (e1 * dv2 - e2 * dv1) * det_uv_inv;
-        Vec3<float> bitangent = (-e1 * du2 + e2 * du1) * det_uv_inv;
+        float det_uv_inv = 1.0f / det_uv;
+        Vec3f tangent    = (e1 * dv2 - e2 * dv1) * det_uv_inv;
+        Vec3f bitangent  = (-e1 * du2 + e2 * du1) * det_uv_inv;
 
         // Gram‑Schmidt Orthogonalization Process
         tangent   = normalize(tangent - normal * dot(tangent, normal));
@@ -138,7 +138,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
 }
 
 AABB Triangle::wrap() const {
-    Vec3<float> xyz1, xyz2;
+    Vec3f xyz1, xyz2;
     xyz1.x = std::min(m_vertex[0].x, std::min(m_vertex[1].x, m_vertex[2].x));
     xyz1.y = std::min(m_vertex[0].y, std::min(m_vertex[1].y, m_vertex[2].y));
     xyz1.z = std::min(m_vertex[0].z, std::min(m_vertex[1].z, m_vertex[2].z));
@@ -148,15 +148,15 @@ AABB Triangle::wrap() const {
     return AABB(xyz1, xyz2);
 }
 
-Vec2<float> Triangle::parameterize(const Vec3<float>& point) const {
-    Vec3<float> p  = point;
-    Vec3<float> v0 = m_vertex[0];
-    Vec3<float> v1 = m_vertex[1];
-    Vec3<float> v2 = m_vertex[2];
+Vec2f Triangle::parameterize(const Vec3f& point) const {
+    Vec3f p  = point;
+    Vec3f v0 = m_vertex[0];
+    Vec3f v1 = m_vertex[1];
+    Vec3f v2 = m_vertex[2];
 
-    Vec3<float> e0 = v1 - v0;
-    Vec3<float> e1 = v2 - v0;
-    Vec3<float> n  = cross(e0, e1);
+    Vec3f e0 = v1 - v0;
+    Vec3f e1 = v2 - v0;
+    Vec3f n  = cross(e0, e1);
 
     float n2 = dot(n, n);
     if (n2 < EPS) {
@@ -164,9 +164,9 @@ Vec2<float> Triangle::parameterize(const Vec3<float>& point) const {
     }
     float n2_inv = 1.0f / n2;
 
-    Vec3<float> pv0 = v0 - p;
-    Vec3<float> pv1 = v1 - p;
-    Vec3<float> pv2 = v2 - p;
+    Vec3f pv0 = v0 - p;
+    Vec3f pv1 = v1 - p;
+    Vec3f pv2 = v2 - p;
 
     float u = dot(cross(pv2, pv0), n) * n2_inv;
     float v = dot(cross(pv0, pv1), n) * n2_inv;

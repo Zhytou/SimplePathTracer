@@ -14,9 +14,9 @@ AABB AABB::create(const std::vector<std::shared_ptr<Primitive>>& primitives) {
 }
 
 bool AABB::intersect(const Ray& ray) const {
-    Vec3<float> org = ray.getOrigin();
-    Vec3<float> dir = ray.getDirection();
-    Vec3<float> dir_inv(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
+    Vec3f org = ray.getOrigin();
+    Vec3f dir = ray.getDirection();
+    Vec3f dir_inv(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
     float tmin = ray.getTMin();
     float tmax = ray.getTMax();
 

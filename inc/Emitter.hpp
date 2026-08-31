@@ -10,7 +10,7 @@ class Ray;
 
 class Emitter {
    public:
-    Emitter(int id, const Vec3<float>& radiance) : m_id(id), m_radiance(radiance) {}
+    Emitter(int id, const Vec3f& radiance) : m_id(id), m_radiance(radiance) {}
     virtual ~Emitter() {}
 
     virtual bool isDelta() const { return true; }
@@ -28,7 +28,7 @@ class Emitter {
     * @param[out] normal The normal on the sampled point
     * @return The emitted radiance value divided by the probability density of the sampled point, namely radiance / pdf_a.
     */
-    virtual Vec3<float> sample(const Vec3<float>& point_ref, Vec3<float>& point, Vec3<float>& normal) const = 0;
+    virtual Vec3f sample(const Vec3f& point_ref, Vec3f& point, Vec3f& normal) const = 0;
     /**
      * @brief Sample the emitter and return the emitted radiance divided by the PDF.
      * 
@@ -36,14 +36,14 @@ class Emitter {
      * @param[out] normal The normal on the sampled point.
      * @return The emitted radiance value divided by the probability density of the sampled direction, namely radiance * cos / (pdf_a * pdf_w).
      */
-    virtual Vec3<float> sample(Ray& ray, Vec3<float>& normal) const = 0;
+    virtual Vec3f sample(Ray& ray, Vec3f& normal) const = 0;
     /**
      * @brief Evaluate the radiance of emitter at a given direction.
      * 
      * @param dir_local The direction to evaluate
      * @return The emitter radiance at the direction
      */
-    virtual Vec3<float> le(const Vec3<float>& dir_local) const { return m_radiance; }
+    virtual Vec3f le(const Vec3f& dir_local) const { return m_radiance; }
     /**
      *  @brief Calculate the PDF of area for NEE(direct light sampling).
      * 
@@ -56,26 +56,26 @@ class Emitter {
      * @param dir_local The direction to evaluate
      * @return The probability density of emitter ray direction.
      */
-    virtual float pdf(const Vec3<float>& dir_local) const = 0;
+    virtual float pdf(const Vec3f& dir_local) const = 0;
 
    protected:
     int m_id = -1;
-    Vec3<float> m_radiance{0.f};
+    Vec3f m_radiance{0.f};
     std::weak_ptr<Primitive> m_primitive;
 };
 
 class AreaEmitter : public Emitter {
    public:
-    AreaEmitter(int id, const Vec3<float>& radiance) : Emitter(id, radiance) {}
+    AreaEmitter(int id, const Vec3f& radiance) : Emitter(id, radiance) {}
     ~AreaEmitter() {}
 
     virtual bool isDelta() const override { return false; }
     virtual const char* getTypeName() const override { return "AreaEmitter"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& point_x, Vec3<float>& point_y, Vec3<float>& normal_y) const override;
-    virtual Vec3<float> sample(Ray& ray, Vec3<float>& normal) const override;
+    virtual Vec3f sample(const Vec3f& point_x, Vec3f& point_y, Vec3f& normal_y) const override;
+    virtual Vec3f sample(Ray& ray, Vec3f& normal) const override;
     virtual float pdf() const override;
-    virtual float pdf(const Vec3<float>& dir_local) const override;
+    virtual float pdf(const Vec3f& dir_local) const override;
 };
 
 class DES {

@@ -27,13 +27,13 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
         AABB aabb;
     };
     std::vector<Bin> bins;
-    Vec3<float> center1(INF), center2(-INF);      // minimum and maximum center of primitives
+    Vec3f center1(INF), center2(-INF);            // minimum and maximum center of primitives
     std::vector<AABB> prefix_aabbs, suffix_aabbs; // shared bounding box of primitives  for both Binned-SAH and Exact-SAH
     std::vector<int> prefix_counts;
 
     if (use_binned_sah) { // Binned-SAH path
         // 2.1 Collect all primitive centers and compute centroid bounds
-        std::vector<Vec3<float>> centers;
+        std::vector<Vec3f> centers;
         for (int i = 0; i < num_prms; i++) {
             auto center = primitives[i]->wrap().center();
             center1     = min(center1, center);
@@ -131,7 +131,7 @@ std::shared_ptr<BVH> BVH::create(std::span<std::shared_ptr<Primitive>> primitive
 
     // 5. Partition primitives and recursively build left and right sub bvhs
     if (use_binned_sah) {
-        Vec3<float> delta    = center2 - center1;
+        Vec3f delta          = center2 - center1;
         int axis             = argmax(delta);
         float best_split_pos = delta[axis] / num_bins * best_split.index + center1[axis];
         int idx              = std::distance(primitives.begin(), std::partition(primitives.begin(), primitives.end(), [&](std::shared_ptr<Primitive> prm) { return prm->wrap().center()[axis] <= best_split_pos; }));

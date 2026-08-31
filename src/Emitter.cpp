@@ -5,7 +5,7 @@
 
 namespace spt {
 
-Vec3<float> AreaEmitter::sample(const Vec3<float>& point_ref, Vec3<float>& point, Vec3<float>& normal) const {
+Vec3f AreaEmitter::sample(const Vec3f& point_ref, Vec3f& point, Vec3f& normal) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
     auto prm = m_primitive.lock();
@@ -22,10 +22,10 @@ Vec3<float> AreaEmitter::sample(const Vec3<float>& point_ref, Vec3<float>& point
     return radiance * area; // radiance / pdf_pos
 }
 
-Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
+Vec3f AreaEmitter::sample(Ray& ray, Vec3f& normal) const {
     if (m_primitive.expired()) { throw std::runtime_error("AreaEmitter::sample: invalid primitive!"); } // No light source
 
-    Vec3<float> origin, direction;
+    Vec3f origin, direction;
     auto prm = m_primitive.lock();
     auto spe = prm->getShape();
     prm->sample(origin, normal);
@@ -35,11 +35,11 @@ Vec3<float> AreaEmitter::sample(Ray& ray, Vec3<float>& normal) const {
     float pdf_pos = 1.f / area; // sample position pdf in area
 
     CosineDistribution distribution;
-    Vec3<float> dir_local = distribution.sample();
-    float pdf_dir         = distribution.pdf(dir_local); // sample direction pdf in solid angle
-    float cos_theta       = std::max(dir_local.z, 0.f);  // only consider forward direction
+    Vec3f dir_local = distribution.sample();
+    float pdf_dir   = distribution.pdf(dir_local); // sample direction pdf in solid angle
+    float cos_theta = std::max(dir_local.z, 0.f);  // only consider forward direction
 
-    Vec3<float> tangent, bitangent;
+    Vec3f tangent, bitangent;
     TBN(normal, tangent, bitangent);
     direction = toWorld(dir_local, tangent, bitangent, normal);
 
@@ -58,7 +58,7 @@ float AreaEmitter::pdf() const {
     return 1.f / area; // pdf_area
 }
 
-float AreaEmitter::pdf(const Vec3<float>& dir_local) const {
+float AreaEmitter::pdf(const Vec3f& dir_local) const {
     CosineDistribution distribution;
     return distribution.pdf(dir_local);
 }

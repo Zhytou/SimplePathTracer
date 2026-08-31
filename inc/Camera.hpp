@@ -80,21 +80,21 @@ class Camera {
     float getFovy() const { return m_fovy; }
     float getFocus() const { return m_focus; }
     float getPixel() const { return m_pixel; }
-    const Vec3<float>& getEye() const { return m_eye; }
-    const Vec3<float>& getTarget() const { return m_target; }
-    const Vec3<float>& getUp() const { return m_up; }
-    const Vec3<float>& getAxis(int index) const { return m_axises[index]; }
+    const Vec3f& getEye() const { return m_eye; }
+    const Vec3f& getTarget() const { return m_target; }
+    const Vec3f& getUp() const { return m_up; }
+    const Vec3f& getAxis(int index) const { return m_axises[index]; }
     std::shared_ptr<Film> getFilm() const { return m_film; }
 
-    void setEye(const Vec3<float>& eye) {
+    void setEye(const Vec3f& eye) {
         m_eye = eye;
         update();
     }
-    void setTarget(const Vec3<float>& target) {
+    void setTarget(const Vec3f& target) {
         m_target = target;
         update();
     }
-    void setUp(const Vec3<float>& up) {
+    void setUp(const Vec3f& up) {
         m_up = up;
         update();
     }
@@ -115,10 +115,10 @@ class Camera {
    protected:
     std::shared_ptr<Film> m_film;
 
-    Vec3<float> m_eye;
-    Vec3<float> m_target;
-    Vec3<float> m_up;
-    std::array<Vec3<float>, 3> m_axises;
+    Vec3f m_eye;
+    Vec3f m_target;
+    Vec3f m_up;
+    std::array<Vec3f, 3> m_axises;
 
     int m_width         = 0;
     int m_height        = 0;

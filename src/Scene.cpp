@@ -25,15 +25,15 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     // 1. Parse config file and define lambda functions
     rapidjson::Document doc;
     if (doc.Parse(buffer.str().c_str()).HasParseError()) { throw std::runtime_error("Scene::initialize: Error parsing JSON"); }
-    auto getVec2 = [](const rapidjson::Value& arr) -> Vec2<float> {
+    auto getVec2 = [](const rapidjson::Value& arr) -> Vec2f {
         if (!arr.IsArray() || arr.Size() != 2 || !arr[0].IsNumber() || !arr[1].IsNumber()) { throw std::runtime_error("Scene::init:getVec2: Invalid array size or element type"); }
 
-        return Vec2<float>{arr[0].GetFloat(), arr[1].GetFloat()};
+        return Vec2f{arr[0].GetFloat(), arr[1].GetFloat()};
     };
-    auto getVec3 = [](const rapidjson::Value& arr) -> Vec3<float> {
+    auto getVec3 = [](const rapidjson::Value& arr) -> Vec3f {
         if (!arr.IsArray() || arr.Size() != 3 || !arr[0].IsNumber() || !arr[1].IsNumber() || !arr[2].IsNumber()) { throw std::runtime_error("Scene::init:getVec3: Invalid array size or element type"); }
 
-        return Vec3<float>{arr[0].GetFloat(), arr[1].GetFloat(), arr[2].GetFloat()};
+        return Vec3f{arr[0].GetFloat(), arr[1].GetFloat(), arr[2].GetFloat()};
     };
     auto getArr = [](const rapidjson::Value& arr) -> std::vector<int> {
         if (!arr.IsArray()) { throw std::runtime_error("Scene::init:getArr: Invalid array size or element type"); }
@@ -52,7 +52,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             auto& mtl_doc                            = doc["material"]["diffuse"][i];
             std::string name                         = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
             fs::path dir                             = mtl_doc.HasMember("directory") ? fs::path(mtl_doc["directory"].GetString()) : fs::path();
-            Vec3<float> albedo                       = mtl_doc.HasMember("albedo") ? getVec3(mtl_doc["albedo"]) : Vec3<float>(0.f);
+            Vec3f albedo                             = mtl_doc.HasMember("albedo") ? getVec3(mtl_doc["albedo"]) : Vec3f(0.f);
             fs::path albedo_texpath                  = mtl_doc.HasMember("albedo_texture") ? dir / mtl_doc["albedo_texture"].GetString() : dir;
             std::shared_ptr<Image<float>> albedo_map = fs::is_regular_file(albedo_texpath) ? Image<float>::read(albedo_texpath, 0, true) : nullptr;
             auto mtl                                 = std::make_shared<Diffuse>(m_materials.size(), name, albedo, albedo_map);
@@ -105,11 +105,11 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     // 3. Load global mediums
     if (doc.HasMember("medium")) {
         for (int i = 0; i < doc["medium"].Size(); i++) {
-            auto& med_doc          = doc["medium"][i];
-            std::string name       = med_doc.HasMember("name") ? med_doc["name"].GetString() : "global_medium_" + std::to_string(i);
-            Vec3<float> absorption = med_doc.HasMember("absorption") ? getVec3(med_doc["absorption"]) : Vec3<float>(0.f);
-            Vec3<float> scattering = med_doc.HasMember("scattering") ? getVec3(med_doc["scattering"]) : Vec3<float>(0.f);
-            Vec3<float> extinction = med_doc.HasMember("extinction") ? getVec3(med_doc["extinction"]) : Vec3<float>(0.f);
+            auto& med_doc    = doc["medium"][i];
+            std::string name = med_doc.HasMember("name") ? med_doc["name"].GetString() : "global_medium_" + std::to_string(i);
+            Vec3f absorption = med_doc.HasMember("absorption") ? getVec3(med_doc["absorption"]) : Vec3f(0.f);
+            Vec3f scattering = med_doc.HasMember("scattering") ? getVec3(med_doc["scattering"]) : Vec3f(0.f);
+            Vec3f extinction = med_doc.HasMember("extinction") ? getVec3(med_doc["extinction"]) : Vec3f(0.f);
 
             auto med = std::make_shared<Medium>(m_mediums.size());
             med->setName(name);
@@ -123,10 +123,10 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     // 4. Load global shapes
     if (doc.HasMember("shape")) {
         for (int i = 0; i < (doc["shape"].HasMember("sphere") ? doc["shape"]["sphere"].Size() : 0); i++) {
-            auto& spe_doc      = doc["shape"]["sphere"][i];
-            Vec3<float> center = getVec3(spe_doc["center"]);
-            float radius       = spe_doc["radius"].GetFloat();
-            auto spe           = std::make_shared<Sphere>(m_shapes.size(), center, radius);
+            auto& spe_doc = doc["shape"]["sphere"][i];
+            Vec3f center  = getVec3(spe_doc["center"]);
+            float radius  = spe_doc["radius"].GetFloat();
+            auto spe      = std::make_shared<Sphere>(m_shapes.size(), center, radius);
             m_shapes.push_back(spe);
         }
     }
@@ -163,7 +163,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
             // 5.3 Load area emitter emission
             bool is_ems = prm_doc.HasMember("radiance") || prm_doc.HasMember("flux"); // is emissive
-            Vec3<float> emn(0.f);
+            Vec3f emn(0.f);
             if (is_ems) {
                 float area = 0.f;
                 for (auto prm : prms) { area += prm->getShape()->area(); }
@@ -227,13 +227,13 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         // 7.1 Load area light by material name
         if (doc["light"].HasMember("area")) {
             // 7.1.1 Get area light emission
-            std::unordered_map<std::string, Vec3<float>> emissions;
+            std::unordered_map<std::string, Vec3f> emissions;
             std::unordered_map<std::string, std::vector<std::shared_ptr<Primitive>>> primitives; // emissive primitives
             for (int i = 0; i < doc["light"]["area"].Size(); i++) {
-                auto& light_doc      = doc["light"]["area"][i];
-                std::string name     = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light_{}", i);
-                Vec3<float> radiance = light_doc.HasMember("radiance") ? getVec3(light_doc["radiance"]) : Vec3<float>(0.f);
-                emissions[name]      = radiance;
+                auto& light_doc  = doc["light"]["area"][i];
+                std::string name = light_doc.HasMember("material_name") ? light_doc["material_name"].GetString() : std::format("light_{}", i);
+                Vec3f radiance   = light_doc.HasMember("radiance") ? getVec3(light_doc["radiance"]) : Vec3f(0.f);
+                emissions[name]  = radiance;
             }
 
             // 7.1.2 Set corresponding primitive's emission
@@ -292,7 +292,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
         };
         auto printMtlInfo = [&ss](std::shared_ptr<Material> mtl) {
             if (!mtl) { throw std::runtime_error("Material is null"); }
-            Vec2<float> uv(0.5f);
+            Vec2f uv(0.5f);
             auto name = mtl->getName();
             auto type = typeid(*mtl).name();
             if (name.size() >= 25) {
@@ -379,35 +379,35 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
             for (int i = 0; i < shape.mesh.material_ids.size(); ++i) { // i is face index
                 // 2.0 Initialize vertex attributes
                 bool vn = true, vt = true;
-                std::array<Vec3<float>, 3> vertex, normal;
-                std::array<Vec2<float>, 3> uv;
+                std::array<Vec3f, 3> vertex, normal;
+                std::array<Vec2f, 3> uv;
 
                 // 2.1 Get vertex info from tinyobj::attrib_t and tinyobj::shape_t
                 for (int j = 0; j < 3; ++j) { // j is vertex index
                     tinyobj::index_t index = shape.mesh.indices[3 * i + j];
                     int v = index.vertex_index, n = index.normal_index, t = index.texcoord_index;
 
-                    vertex[j] = Vec3<float>(attrib.vertices[3 * v], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2]);
-                    if (n >= 0) { normal[j] = Vec3<float>(attrib.normals[3 * n], attrib.normals[3 * n + 1], attrib.normals[3 * n + 2]); }
-                    if (t >= 0) { uv[j] = Vec2<float>(attrib.texcoords[2 * t], attrib.texcoords[2 * t + 1]); }
+                    vertex[j] = Vec3f(attrib.vertices[3 * v], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2]);
+                    if (n >= 0) { normal[j] = Vec3f(attrib.normals[3 * n], attrib.normals[3 * n + 1], attrib.normals[3 * n + 2]); }
+                    if (t >= 0) { uv[j] = Vec2f(attrib.texcoords[2 * t], attrib.texcoords[2 * t + 1]); }
                     vn = (n >= 0) && vn;
                     vt = (t >= 0) && vt;
                 }
 
                 // 2.2 Get face normal if normal is not available
                 if (!vn) {
-                    Vec3<float> edge1 = vertex[1] - vertex[0], edge2 = vertex[2] - vertex[0];
-                    Vec3<float> fnormal = normalize(cross(edge1, edge2));
+                    Vec3f edge1 = vertex[1] - vertex[0], edge2 = vertex[2] - vertex[0];
+                    Vec3f fnormal = normalize(cross(edge1, edge2));
                     for (int j = 0; j < 3; ++j) { normal[j] = fnormal; }
                 }
 
                 // 2.3 Get texture coordinates if uv is not available
                 if (!vt) {
                     for (int j = 0; j < 3; ++j) {
-                        Vec3<float> d = normalize(vertex[j]);
-                        float u       = 0.5f + (std::atan2(d.z, d.x) / (2.0f * PI));
-                        float v       = 0.5f - (std::asin(d.y) / PI);
-                        uv[j]         = Vec2<float>(u, v);
+                        Vec3f d = normalize(vertex[j]);
+                        float u = 0.5f + (std::atan2(d.z, d.x) / (2.0f * PI));
+                        float v = 0.5f - (std::asin(d.y) / PI);
+                        uv[j]   = Vec2f(u, v);
                     }
                 }
 
@@ -431,7 +431,7 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
     } else {
         for (const auto& material : materials) {
             auto name       = material.name;
-            auto albedo     = Vec3<float>{material.diffuse[0], material.diffuse[1], material.diffuse[2]};
+            auto albedo     = Vec3f{material.diffuse[0], material.diffuse[1], material.diffuse[2]};
             auto albedo_map = fs::is_regular_file(mtl_dir / material.diffuse_texname) ? Image<float>::read(mtl_dir / material.diffuse_texname) : nullptr;
 
             auto mtl = std::make_shared<Diffuse>(m_materials.size(), name, albedo, albedo_map);

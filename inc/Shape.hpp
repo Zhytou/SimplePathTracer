@@ -40,14 +40,14 @@ class Shape {
      * @param[out] p Random point on the shape.
      * @param[out] n Normal at the point on the shape.
      */
-    virtual void sample(Vec3<float>& p, Vec3<float>& n) const = 0;
+    virtual void sample(Vec3f& p, Vec3f& n) const = 0;
     /**
      * @brief Get the texture coordinates of the corresponding point on the shape.
      * 
      * @param p Point on the shape.
      * @return Texture coordinates of the point.
      */
-    virtual Vec2<float> parameterize(const Vec3<float>& p) const = 0;
+    virtual Vec2f parameterize(const Vec3f& p) const = 0;
     /**
      * @brief Get the area of the shape.
      * 
@@ -59,7 +59,7 @@ class Shape {
      * 
      * @return Center of the shape.
      */
-    virtual Vec3<float> center() const = 0;
+    virtual Vec3f center() const = 0;
 
    protected:
     int m_id = -1;

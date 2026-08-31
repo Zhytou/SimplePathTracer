@@ -58,7 +58,7 @@ class DiskDistribution : public Distribution<Vec2f> {
    public:
     DiskDistribution() {}
 
-    virtual Vec2<float> sample() const override {
+    virtual Vec2f sample() const override {
         float a = rand(0.0f, 1.f);
         float b = rand(0.0f, 1.f);
 
@@ -67,7 +67,7 @@ class DiskDistribution : public Distribution<Vec2f> {
 
         return {radius * std::cos(phi), radius * std::sin(phi)};
     }
-    virtual float pdf(const Vec2<float>& p) const override {
+    virtual float pdf(const Vec2f& p) const override {
         return 1.f / PI;
     }
 };
@@ -76,7 +76,7 @@ class CosineDistribution : public Distribution<Vec3f> {
    public:
     CosineDistribution() {}
 
-    virtual Vec3<float> sample() const override {
+    virtual Vec3f sample() const override {
         float a = rand(0.0f, 1.f);
         float b = rand(0.0f, 1.f);
 
@@ -86,7 +86,7 @@ class CosineDistribution : public Distribution<Vec3f> {
 
         return {cosf(phi) * sin_theta, sinf(phi) * sin_theta, cos_theta};
     }
-    virtual float pdf(const Vec3<float>& wo_local) const override {
+    virtual float pdf(const Vec3f& wo_local) const override {
         return std::max(0.f, wo_local.z) / PI;
     }
 };
@@ -95,14 +95,14 @@ class MicrofacetDistribution : public Distribution<Vec3f> {
    public:
     MicrofacetDistribution(float roughness) : m_roughness(roughness), m_alpha(roughness * roughness) {}
 
-    virtual Vec3<float> sample() const                                              = 0;
-    virtual float pdf(const Vec3<float>& h_local) const                             = 0;
-    virtual Vec3<float> sample(const Vec3<float>& w_local) const                    = 0;
-    virtual float pdf(const Vec3<float>& w_local, const Vec3<float>& h_local) const = 0;
+    virtual Vec3f sample() const                                        = 0;
+    virtual float pdf(const Vec3f& h_local) const                       = 0;
+    virtual Vec3f sample(const Vec3f& w_local) const                    = 0;
+    virtual float pdf(const Vec3f& w_local, const Vec3f& h_local) const = 0;
 
-    virtual float D(const Vec3<float>& h_local) const                               = 0;
-    virtual float G1(const Vec3<float>& w_local) const                              = 0;
-    virtual float G(const Vec3<float>& wo_local, const Vec3<float>& wi_local) const = 0;
+    virtual float D(const Vec3f& h_local) const                         = 0;
+    virtual float G1(const Vec3f& w_local) const                        = 0;
+    virtual float G(const Vec3f& wo_local, const Vec3f& wi_local) const = 0;
 
     float getAlpha() const { return m_alpha; }
     float getRoughness() const { return m_roughness; }
@@ -117,7 +117,7 @@ class GGXDistribution : public MicrofacetDistribution {
    public:
     GGXDistribution(float roughness) : MicrofacetDistribution(roughness) {}
 
-    virtual Vec3<float> sample() const override {
+    virtual Vec3f sample() const override {
         float a = rand(0.0f, 1.f);
         float b = rand(0.0f, 1.f);
 
@@ -131,16 +131,16 @@ class GGXDistribution : public MicrofacetDistribution {
         return {cosf(phi) * sin_theta, sinf(phi) * sin_theta, cos_theta};
     }
 
-    virtual float pdf(const Vec3<float>& h_local) const override {
+    virtual float pdf(const Vec3f& h_local) const override {
         return D(h_local) * h_local.z;
     }
 
-    virtual Vec3<float> sample(const Vec3<float>& w_local) const override {
+    virtual Vec3f sample(const Vec3f& w_local) const override {
         // transform to hemisphere coordinate
-        float alpha          = getAlpha();
-        Vec3<float> ww_local = {alpha * w_local.x, alpha * w_local.y, w_local.z};
-        ww_local             = normalize(ww_local.z < 0 ? -ww_local : ww_local);
-        Vec3<float> ww_e1, ww_e2;
+        float alpha    = getAlpha();
+        Vec3f ww_local = {alpha * w_local.x, alpha * w_local.y, w_local.z};
+        ww_local       = normalize(ww_local.z < 0 ? -ww_local : ww_local);
+        Vec3f ww_e1, ww_e2;
         TBN(ww_local, ww_e1, ww_e2);
 
         // disk sampling
@@ -158,17 +158,17 @@ class GGXDistribution : public MicrofacetDistribution {
         float z = std::sqrt(std::max(0.f, 1.f - x * x - y * y));
 
         // transform to hemisphere coordinate
-        Vec3<float> hh_local = x * ww_e1 + y * ww_e2 + z * ww_local;
-        Vec3<float> h_local  = {alpha * hh_local.x, alpha * hh_local.y, std::max(hh_local.z, EPS)};
+        Vec3f hh_local = x * ww_e1 + y * ww_e2 + z * ww_local;
+        Vec3f h_local  = {alpha * hh_local.x, alpha * hh_local.y, std::max(hh_local.z, EPS)};
 
         return normalize(h_local);
     }
 
-    virtual float pdf(const Vec3<float>& w_local, const Vec3<float>& h_local) const override {
+    virtual float pdf(const Vec3f& w_local, const Vec3f& h_local) const override {
         return G1(w_local) / std::max(std::abs(w_local.z), PDF_EPS) * D(h_local) * std::abs(dot(w_local, h_local));
     }
 
-    virtual float D(const Vec3<float>& h_local) const override {
+    virtual float D(const Vec3f& h_local) const override {
         float alpha  = getAlpha();
         float alpha2 = alpha * alpha;
 
@@ -179,7 +179,7 @@ class GGXDistribution : public MicrofacetDistribution {
         return num / denom;
     }
 
-    virtual float G1(const Vec3<float>& w_local) const override {
+    virtual float G1(const Vec3f& w_local) const override {
         float a = getAlpha();
         float z = std::abs(w_local.z);
 
@@ -202,7 +202,7 @@ class GGXDistribution : public MicrofacetDistribution {
         return num / denom;
     }
 
-    float G(const Vec3<float>& wi_local, const Vec3<float>& wo_local) const override {
+    float G(const Vec3f& wi_local, const Vec3f& wo_local) const override {
         return G1(wi_local) * G1(wo_local);
     }
 };

@@ -7,8 +7,8 @@ void TBN(const Vec3f& normal, Vec3f& tangent, Vec3f& bitangent) {
     float sign = std::copysign(1.0f, normal.z);
     float a    = -1.0f / (sign + normal.z);
     float c    = normal.x * normal.y * a;
-    tangent    = Vec3<float>(1.0f + sign * normal.x * normal.x * a, sign * c, -sign * normal.x);
-    bitangent  = Vec3<float>(c, sign + normal.y * normal.y * a, -normal.y);
+    tangent    = Vec3f(1.0f + sign * normal.x * normal.x * a, sign * c, -sign * normal.x);
+    bitangent  = Vec3f(c, sign + normal.y * normal.y * a, -normal.y);
 }
 
 Vec3f toLocal(const Vec3f& point, const Vec3f& tangent, const Vec3f& bitangent, const Vec3f& normal) {
@@ -82,9 +82,9 @@ Vec3f reflect(const Vec3f& wi, const Vec3f& n, bool tir) {
     if (cos_theta_i < 0 && !tir) {
         throw std::runtime_error("reflect: Cosine of incident angle is negative and total internal reflection is not allowed.");
     }
-    Vec3<float> nn = cos_theta_i > 0 ? n : -n;
-    cos_theta_i    = std::abs(cos_theta_i);
-    Vec3<float> wo = 2 * nn * cos_theta_i - wi;
+    Vec3f nn    = cos_theta_i > 0 ? n : -n;
+    cos_theta_i = std::abs(cos_theta_i);
+    Vec3f wo    = 2 * nn * cos_theta_i - wi;
     return wo;
 }
 
@@ -94,7 +94,7 @@ Vec3f transmit(const Vec3f& wi, const Vec3f& n, float eta_i, float eta_t) {
     // relative IOR
     float eta = cos_theta_i > 0 ? eta_i / eta_t : eta_t / eta_i;
     // temporary normal vector same hemisphere with wi
-    Vec3<float> nn = cos_theta_i > 0 ? n : -n;
+    Vec3f nn = cos_theta_i > 0 ? n : -n;
 
     // aboslute value of cosine incident theta
     cos_theta_i = std::abs(cos_theta_i);
@@ -108,7 +108,7 @@ Vec3f transmit(const Vec3f& wi, const Vec3f& n, float eta_i, float eta_t) {
     float cos_theta_t = std::sqrt(1.f - sin_theta_t2);
 
     // snell's law (ior₁·sinθ₁ = ior₂·sinθ₂)
-    Vec3<float> wo = -wi * eta + nn * (eta * cos_theta_i - cos_theta_t);
+    Vec3f wo = -wi * eta + nn * (eta * cos_theta_i - cos_theta_t);
     return wo;
 }
 
@@ -139,19 +139,19 @@ Vec3f fresnel(float cos_theta_i, const Vec3f& eta, const Vec3f& k) {
 
     float cos_theta_i2 = cos_theta_i * cos_theta_i;
     float sin_theta_i2 = 1. - cos_theta_i2;
-    Vec3<float> eta2   = eta * eta;
-    Vec3<float> etak2  = k * k;
+    Vec3f eta2         = eta * eta;
+    Vec3f etak2        = k * k;
 
-    Vec3<float> t0       = eta2 - etak2 - Vec3<float>(sin_theta_i2);
-    Vec3<float> a2plusb2 = pow(t0 * t0 + 4 * eta2 * etak2, 0.5f);
-    Vec3<float> t1       = a2plusb2 + Vec3<float>(cos_theta_i2);
-    Vec3<float> a        = pow(0.5f * (a2plusb2 + t0), 0.5f);
-    Vec3<float> t2       = 2.f * cos_theta_i * a;
-    Vec3<float> Rs       = (t1 - t2) / (t1 + t2);
+    Vec3f t0       = eta2 - etak2 - Vec3f(sin_theta_i2);
+    Vec3f a2plusb2 = pow(t0 * t0 + 4 * eta2 * etak2, 0.5f);
+    Vec3f t1       = a2plusb2 + Vec3f(cos_theta_i2);
+    Vec3f a        = pow(0.5f * (a2plusb2 + t0), 0.5f);
+    Vec3f t2       = 2.f * cos_theta_i * a;
+    Vec3f Rs       = (t1 - t2) / (t1 + t2);
 
-    Vec3<float> t3 = cos_theta_i2 * a2plusb2 + Vec3<float>(sin_theta_i2 * sin_theta_i2);
-    Vec3<float> t4 = t2 * sin_theta_i2;
-    Vec3<float> Rp = Rs * (t3 - t4) / (t3 + t4);
+    Vec3f t3 = cos_theta_i2 * a2plusb2 + Vec3f(sin_theta_i2 * sin_theta_i2);
+    Vec3f t4 = t2 * sin_theta_i2;
+    Vec3f Rp = Rs * (t3 - t4) / (t3 + t4);
 
     return (Rp + Rs) * 0.5f;
 }
