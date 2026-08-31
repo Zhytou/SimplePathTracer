@@ -257,7 +257,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     }
 
     // 8. Set bounding volume hierarchy and direct light sampler
-    m_bvh = BVH::create(m_primitives, AABB::create(m_primitives), max_leaf_size, m_primitives.size() > 1000 ? 16 : -1); // init BVH with m_primitives copy, otherwise m_primitives have to reorder by ascending id to keep scene::getPrimitive correct
+    m_bvh = BVH::create(m_primitives, AABB::create(m_primitives), max_leaf_size, 16); // init BVH with m_primitives copy, otherwise m_primitives have to reorder by ascending id to keep scene::getPrimitive correct
     m_des = DES::create(m_emitters);
     std::stable_sort(m_primitives.begin(), m_primitives.end(), [](std::shared_ptr<Primitive> prm1, std::shared_ptr<Primitive> prm2) {
         return prm1->getID() < prm2->getID();
