@@ -9,15 +9,19 @@ namespace spt {
 class Ray {
    public:
     Ray() {}
-    Ray(const Vec3f& org, const Vec3f& dir, float tmin = DIS_EPS, float tmax = INF, std::shared_ptr<Medium> medium = nullptr) : m_origin(org), m_direction(normalize(dir)), m_tmin(tmin), m_tmax(tmax), m_medium(medium) {}
+    Ray(const Vec3f& org, const Vec3f& dir, float tmin = DIS_EPS, float tmax = INF, std::shared_ptr<Medium> medium = nullptr) : m_origin(org), m_tmin(tmin), m_tmax(tmax), m_medium(medium) { setDirection(dir); }
 
     const Vec3f& getOrigin() const { return m_origin; }
     const Vec3f& getDirection() const { return m_direction; }
+    const Vec3f& getInvDirection() const { return m_inv_direction; }
     float getTMin() const { return m_tmin; }
     float getTMax() const { return m_tmax; }
     std::shared_ptr<Medium> getMedium() const { return !m_medium.expired() ? m_medium.lock() : nullptr; }
     void setOrigin(const Vec3f& org) { m_origin = org; }
-    void setDirection(const Vec3f& dir) { m_direction = normalize(dir); }
+    void setDirection(const Vec3f& dir) {
+        m_direction     = normalize(dir);
+        m_inv_direction = Vec3f(1.0f) / m_direction;
+    }
     void setTMin(float tmin) { m_tmin = tmin; }
     void setTMax(float tmax) { m_tmax = tmax; }
     void setMedium(const std::shared_ptr<Medium>& medium) { m_medium = medium; }
@@ -30,6 +34,7 @@ class Ray {
    private:
     Vec3f m_origin;
     Vec3f m_direction;
+    Vec3f m_inv_direction;
 
     float m_tmin = DIS_EPS;
     float m_tmax = INF;
