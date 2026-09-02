@@ -162,12 +162,13 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             }
 
             // 5.3 Load area emitter emission
-            bool is_ems = prm_doc.HasMember("radiance") || prm_doc.HasMember("flux"); // is emissive
             Vec3f emn(0.f);
-            if (is_ems) {
+            if (prm_doc.HasMember("radiance")) {
+                emn = getVec3(prm_doc["radiance"]);
+            } else if (prm_doc.HasMember("flux")) {
                 float area = 0.f;
                 for (auto prm : prms) { area += prm->getShape()->area(); }
-                emn = prm_doc.HasMember("radiance") ? getVec3(prm_doc["radiance"]) : getVec3(prm_doc["flux"]) / area;
+                emn = getVec3(prm_doc["flux"]) / area;
             }
 
             // 5.4 Load transform matrix
@@ -181,8 +182,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
 
             // 5.5 Set primitives properties
             for (auto prm : prms) {
-                auto mtl = prm->getMaterial();
-                auto emt = is_ems ? std::make_shared<AreaEmitter>(m_emitters.size(), emn) : nullptr;
+                auto emt = emn != Vec3f(0.f) ? std::make_shared<AreaEmitter>(m_emitters.size(), emn) : nullptr;
                 if (emt) {
                     prm->setEmitter(emt);
                     emt->setPrimitive(prm);
@@ -388,7 +388,7 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
                     int v = index.vertex_index, n = index.normal_index, t = index.texcoord_index;
 
                     vertex[j] = Vec3f(attrib.vertices[3 * v], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2]);
-                    if (n >= 0) { normal[j] = Vec3f(attrib.normals[3 * n], attrib.normals[3 * n + 1], attrib.normals[3 * n + 2]); }
+                    if (n >= 0) { normal[j] = normalize(Vec3f(attrib.normals[3 * n], attrib.normals[3 * n + 1], attrib.normals[3 * n + 2])); }
                     if (t >= 0) { uv[j] = Vec2f(attrib.texcoords[2 * t], attrib.texcoords[2 * t + 1]); }
                     vn = (n >= 0) && vn;
                     vt = (t >= 0) && vt;
