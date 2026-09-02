@@ -14,29 +14,23 @@ AABB AABB::create(const std::vector<std::shared_ptr<Primitive>>& primitives) {
 }
 
 bool AABB::intersect(const Ray& ray) const {
-    Vec3f org = ray.getOrigin();
-    Vec3f dir = ray.getDirection();
-    Vec3f dir_inv(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
-    float tmin = ray.getTMin();
-    float tmax = ray.getTMax();
+    Vec3f org     = ray.getOrigin();
+    Vec3f dir     = ray.getDirection();
+    Vec3f dir_inv = ray.getInvDirection();
+    float tmin    = ray.getTMin();
+    float tmax    = ray.getTMax();
 
-    float tx1 = (m_xyz1.x - org.x) * dir_inv.x;
-    float tx2 = (m_xyz2.x - org.x) * dir_inv.x;
-    tmin      = std::max(tmin, std::min(tx1, tx2));
-    tmax      = std::min(tmax, std::max(tx1, tx2));
-    if (tmin > tmax) { return false; }
-
-    float ty1 = (m_xyz1.y - org.y) * dir_inv.y;
-    float ty2 = (m_xyz2.y - org.y) * dir_inv.y;
-    tmin      = std::max(tmin, std::min(ty1, ty2));
-    tmax      = std::min(tmax, std::max(ty1, ty2));
-    if (tmin > tmax) { return false; }
-
-    float tz1 = (m_xyz1.z - org.z) * dir_inv.z;
-    float tz2 = (m_xyz2.z - org.z) * dir_inv.z;
-    tmin      = std::max(tmin, std::min(tz1, tz2));
-    tmax      = std::min(tmax, std::max(tz1, tz2));
-    if (tmin > tmax) { return false; }
+    for (int i = 0; i < 3; ++i) {
+        if (std::abs(dir[i]) < EPS || std::isinf(dir_inv[i])) {
+            if (org[i] < m_xyz1[i] || org[i] > m_xyz2[i]) { return false; }
+            continue;
+        }
+        float t1 = (m_xyz1[i] - org[i]) * dir_inv[i];
+        float t2 = (m_xyz2[i] - org[i]) * dir_inv[i];
+        tmin     = std::max(tmin, std::min(t1, t2));
+        tmax     = std::min(tmax, std::max(t1, t2));
+        if (tmin > tmax) { return false; }
+    }
 
     return true;
 }
