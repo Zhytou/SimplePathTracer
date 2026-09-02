@@ -17,7 +17,7 @@ void Triangle::sample(Vec3f& p, Vec3f& n) const {
     float w = 1 - u - v;
 
     p = w * m_vertex[0] + u * m_vertex[1] + v * m_vertex[2];
-    n = w * m_normal[0] + u * m_normal[1] + v * m_normal[2];
+    n = normalize(w * m_normal[0] + u * m_normal[1] + v * m_normal[2]);
 }
 
 bool Triangle::intersect(const Ray& ray, Intersection& its) const {
@@ -74,13 +74,13 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
 
     // 3. Calculate and validate Barycentric coordinate 'u'
     float u = dot(tvec, pvec) * det_inv;
-    if (u < 0.0f || u > 1.0f) {
+    if (u < -EPS || u > 1.0f + EPS) {
         return false;
     }
 
     // 4. Calculate and validate Barycentric coordinate 'v'
     float v = dot(dir, qvec) * det_inv;
-    if (v < 0.0f || u + v > 1.0f) {
+    if (v < -EPS || u + v > 1.0f + EPS) {
         return false;
     }
 
@@ -94,44 +94,48 @@ bool Triangle::intersect(const Ray& ray, Intersection& its) const {
 
     // 6. Interpolate using weights: w = 1 - u - v
     float w        = 1.0f - u - v;
+    Vec3f point    = m_vertex[0] * w + m_vertex[1] * u + m_vertex[2] * v;
     Vec2f texcoord = m_texcoord[0] * w + m_texcoord[1] * u + m_texcoord[2] * v;
     Vec3f normal   = normalize(m_normal[0] * w + m_normal[1] * u + m_normal[2] * v);
 
     // 7. Set hit record
     its.distance = t;
-    its.point    = ray.eval(t);
+    its.point    = point; // ray.eval(t);
     its.texcoord = texcoord;
     its.normal   = normal;
+    TBN(normal, its.tangent, its.bitangent);
 
-    // 7. Construct TBN space if uv coordinates are available
-    auto& uv0 = m_texcoord[0];
-    auto& uv1 = m_texcoord[1];
-    auto& uv2 = m_texcoord[2];
+    // 8. Construct TBN space if uv coordinates are available
+    if (0) {
+        auto& uv0 = m_texcoord[0];
+        auto& uv1 = m_texcoord[1];
+        auto& uv2 = m_texcoord[2];
 
-    float du1 = uv1.x - uv0.x;
-    float dv1 = uv1.y - uv0.y;
-    float du2 = uv2.x - uv0.x;
-    float dv2 = uv2.y - uv0.y;
+        float du1 = uv1.x - uv0.x;
+        float dv1 = uv1.y - uv0.y;
+        float du2 = uv2.x - uv0.x;
+        float dv2 = uv2.y - uv0.y;
 
-    float det_uv = du1 * dv2 - dv1 * du2;
-    if (std::abs(det_uv) < EPS) {
-        TBN(normal, its.tangent, its.bitangent);
-    } else {
-        float det_uv_inv = 1.0f / det_uv;
-        Vec3f tangent    = (e1 * dv2 - e2 * dv1) * det_uv_inv;
-        Vec3f bitangent  = (-e1 * du2 + e2 * du1) * det_uv_inv;
+        float det_uv = du1 * dv2 - dv1 * du2;
+        if (std::abs(det_uv) < EPS) {
+            TBN(normal, its.tangent, its.bitangent);
+        } else {
+            float det_uv_inv = 1.0f / det_uv;
+            Vec3f tangent    = (e1 * dv2 - e2 * dv1) * det_uv_inv;
+            Vec3f bitangent  = (-e1 * du2 + e2 * du1) * det_uv_inv;
 
-        // Gram‑Schmidt Orthogonalization Process
-        tangent   = normalize(tangent - normal * dot(tangent, normal));
-        bitangent = normalize(bitangent - normal * dot(bitangent, normal) - tangent * dot(bitangent, tangent));
+            // Gram‑Schmidt Orthogonalization Process
+            tangent   = normalize(tangent - normal * dot(tangent, normal));
+            bitangent = normalize(bitangent - normal * dot(bitangent, normal) - tangent * dot(bitangent, tangent));
 
-        // Ensure right-hand coordinate system
-        if (dot(cross(normal, tangent), bitangent) < 0.f) {
-            bitangent = -bitangent;
+            // Ensure right-hand coordinate system
+            if (dot(cross(normal, tangent), bitangent) < 0.f) {
+                bitangent = -bitangent;
+            }
+
+            its.tangent   = tangent;
+            its.bitangent = bitangent;
         }
-
-        its.tangent   = tangent;
-        its.bitangent = bitangent;
     }
 
     return true;
@@ -145,6 +149,13 @@ AABB Triangle::wrap() const {
     xyz2.x = std::max(m_vertex[0].x, std::max(m_vertex[1].x, m_vertex[2].x));
     xyz2.y = std::max(m_vertex[0].y, std::max(m_vertex[1].y, m_vertex[2].y));
     xyz2.z = std::max(m_vertex[0].z, std::max(m_vertex[1].z, m_vertex[2].z));
+
+    for (int i = 0; i < 3; i++) { // avoid degenerate aabb(sheet/panel)
+        if (xyz2[i] - xyz1[i] < EPS) {
+            xyz1[i] -= EPS;
+            xyz2[i] += EPS;
+        }
+    }
     return AABB(xyz1, xyz2);
 }
 
