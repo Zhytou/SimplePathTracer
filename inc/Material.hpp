@@ -48,7 +48,7 @@ class Material {
      *       the Fresnel factor F cancels with the sampling probability P = F, leaving 
      *       a net throughput free of both F and cos(theta).
      */
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const = 0;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const = 0;
 
     /**
      * @brief Evaluates the BSDF value for given direction and point.
@@ -60,7 +60,7 @@ class Material {
      * 
      * @return The computed BSDF value.
      */
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const = 0;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const = 0;
 
     /**
      * @brief Computes the probability density function (PDF) for the given direction and point.
@@ -71,7 +71,7 @@ class Material {
      * 
      * @return The computed PDF value.
      */
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const = 0;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const = 0;
 
    protected:
     int m_id = -1;
@@ -81,19 +81,19 @@ class Material {
 
 class Diffuse : public Material {
    public:
-    Diffuse(int id, const std::string& name, const Vec3<float>& albedo, const std::shared_ptr<Image<float>>& albedo_map = nullptr) : Material(id, name), m_albedo(albedo), m_albedo_map(albedo_map) {}
+    Diffuse(int id, const std::string& name, const Vec3f& albedo, const std::shared_ptr<Image<float>>& albedo_map = nullptr) : Material(id, name), m_albedo(albedo), m_albedo_map(albedo_map) {}
 
     virtual const char* getTypeName() const override { return "Diffuse"; }
-    Vec3<float> getAlbedo(const Vec2<float>& uv) const { return m_albedo_map ? m_sampler.sample<float, 3>(m_albedo_map, uv) : m_albedo; }
-    void setAlbedo(const Vec3<float>& albedo) { m_albedo = albedo; }
+    Vec3f getAlbedo(const Vec2f& uv) const { return m_albedo_map ? m_sampler.sample<float, 3>(m_albedo_map, uv) : m_albedo; }
+    void setAlbedo(const Vec3f& albedo) { m_albedo = albedo; }
     void setAlbedoMap(const std::shared_ptr<Image<float>>& albedo_map) { m_albedo_map = albedo_map; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const override;
 
    private:
-    Vec3<float> m_albedo = Vec3<float>(0.f);
+    Vec3f m_albedo = Vec3f(0.f);
     std::shared_ptr<Image<float>> m_albedo_map;
 };
 
@@ -104,9 +104,9 @@ class Mirror : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Mirror"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const override;
 };
 
 class Dielectric : public Material {
@@ -116,9 +116,9 @@ class Dielectric : public Material {
     virtual bool isDelta() const override { return true; }
     virtual const char* getTypeName() const override { return "Dielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const override;
 
    private:
     float m_int_ior = 1.f;
@@ -131,7 +131,7 @@ class MicrofacetMaterial : public Material {
 
     virtual bool isDelta() const override { return false; }
 
-    float getRoughness(const Vec2<float>& uv) const { return m_roughness_map ? m_sampler.sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
+    float getRoughness(const Vec2f& uv) const { return m_roughness_map ? m_sampler.sample<float, 1>(m_roughness_map, uv)[0] : m_roughness; }
     void setRoughness(float roughness) { m_roughness = roughness; }
     void setRoughnessMap(std::shared_ptr<Image<float>> roughness_map) { m_roughness_map = roughness_map; }
 
@@ -146,13 +146,13 @@ class MicrofacetConductor : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetConductor"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const override;
 
    private:
-    float m_real_ior; // index of refraction eta
-    float m_imag_ior; // extinction index k
+    Vec3f m_real_ior; // index of refraction eta
+    Vec3f m_imag_ior; // extinction index k
 };
 
 class MicrofacetDielectric : public MicrofacetMaterial {
@@ -161,9 +161,9 @@ class MicrofacetDielectric : public MicrofacetMaterial {
 
     virtual const char* getTypeName() const override { return "MicrofacetDielectric"; }
 
-    virtual Vec3<float> sample(const Vec3<float>& wi, Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual Vec3<float> eval(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv, TransportMode m = RADIANCE) const override;
-    virtual float pdf(const Vec3<float>& wi, const Vec3<float>& wo, const Vec2<float>& uv) const override;
+    virtual Vec3f sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual Vec3f eval(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv, TransportMode m = RADIANCE) const override;
+    virtual float pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const override;
 
    private:
     float m_ext_ior = 1.f;
