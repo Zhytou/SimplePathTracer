@@ -27,11 +27,11 @@ bool Primitive::intersect(const Ray& ray, Intersection& its) const {
 
     // 3. Convert hit info into world space
     if (hit) {
-        its.id        = m_id;
-        its.distance  = its.distance / scale;
+        its.id = m_id;
+        its.distance /= scale;
         its.point     = Vec3f(m_transform * Vec4f(its.point, 1.f));
         its.normal    = normalize(m_n_transform * its.normal);
-        its.tangent   = normalize(m_transform * Vec4f(its.tangent, 0.f));
+        its.tangent   = normalize(Vec3f(m_transform * Vec4f(its.tangent, 0.f)));
         its.bitangent = normalize(cross(its.normal, its.tangent));
         // its.bitangent = normalize(m_transform * Vec4f(its.bitangent, 0.f));
     }
