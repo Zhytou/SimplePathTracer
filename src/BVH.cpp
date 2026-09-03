@@ -160,6 +160,11 @@ float BVH::eval(const AABB& parent, const AABB& left, const AABB& right, int lco
 }
 
 bool BVH::intersect(Ray& ray, Intersection& its) const {
+    // 0. Update tmin
+    float tmin = ray.getTMin();
+    Vec3f org  = ray.getOrigin();
+    if (tmin == DIS_EPS) { ray.setTMin(tmin * std::max(1.f, std::abs(max(org)))); }
+
     // 1. Check AABB intersection and update ray t range
     if (!m_aabb.intersect(ray)) { return false; }
 
@@ -167,19 +172,17 @@ bool BVH::intersect(Ray& ray, Intersection& its) const {
     if (m_leaf) {
         bool hit = false;
         for (auto prm : m_primitives) {
-            Intersection cits; // current intersection info struct
-            if (prm->intersect(ray, cits)) {
+            if (prm->intersect(ray, its)) {
                 hit = true;
-                its = cits;
-                ray.setTMax(std::min(cits.distance, ray.getTMax()));
+                ray.setTMax(std::min(its.distance, ray.getTMax()));
             }
         }
         return hit;
     }
 
     // 3. Check sub bvh intersection, if not leaf node
-    float ldis      = distance(m_left->m_aabb.center(), ray.getOrigin());
-    float rdis      = distance(m_right->m_aabb.center(), ray.getOrigin());
+    float ldis      = distance(m_left->m_aabb.center(), org);
+    float rdis      = distance(m_right->m_aabb.center(), org);
     auto first      = (ldis < rdis) ? m_left : m_right;
     auto second     = (ldis < rdis) ? m_right : m_left;
     bool hit_first  = first->intersect(ray, its);

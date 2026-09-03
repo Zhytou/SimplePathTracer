@@ -6,7 +6,7 @@ bool Primitive::intersect(const Ray& ray, Intersection& its) const {
     // 0. Fall back to default hit test if transform matrix is identity
     if (m_is_identity) {
         bool hit = m_shape->intersect(ray, its);
-        its.id   = hit ? m_id : -1;
+        if (hit) { its.id = m_id; }
         return hit;
     }
 
