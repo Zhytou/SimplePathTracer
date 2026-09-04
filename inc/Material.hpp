@@ -142,7 +142,7 @@ class MicrofacetMaterial : public Material {
 
 class MicrofacetConductor : public MicrofacetMaterial {
    public:
-    MicrofacetConductor(int id, const std::string& name, float real_ior, float imag_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_real_ior(real_ior), m_imag_ior(imag_ior) {}
+    MicrofacetConductor(int id, const std::string& name, const Vec3f& real_ior, const Vec3f& imag_ior, float roughness, std::shared_ptr<Image<float>> roughness_map = nullptr) : MicrofacetMaterial(id, name, roughness, roughness_map), m_real_ior(real_ior), m_imag_ior(imag_ior) {}
 
     virtual const char* getTypeName() const override { return "MicrofacetConductor"; }
 

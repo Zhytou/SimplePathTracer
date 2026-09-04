@@ -36,7 +36,7 @@ float Mirror::pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const {
 
 Vec3f Dielectric::sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode mode) const {
     float eta    = wi.z > 0 ? m_ext_ior / m_int_ior : m_int_ior / m_ext_ior;
-    float factor = mode == RADIANCE ? eta * eta : 1.f;
+    float factor = mode == RADIANCE ? 1.f / (eta * eta) : 1.f;
 
     float cos_theta_i  = wi.z;
     float sin_theta_i2 = 1.f - cos_theta_i * cos_theta_i;
@@ -66,10 +66,12 @@ float Dielectric::pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv) const {
 }
 
 Vec3f MicrofacetConductor::sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode mode) const {
+    if (wi.z < 0.f) { return Vec3f(0.f); }
+
     float roughness = getRoughness(uv);
     GGXDistribution distribution(roughness);
 
-    Vec3f h = distribution.sample();
+    Vec3f h = distribution.sample(wi);
     wo      = reflect(wi, h);
 
     Vec3f F  = fresnel(dot(wi, h), m_real_ior, m_imag_ior);
@@ -98,8 +100,8 @@ float MicrofacetConductor::pdf(const Vec3f& wi, const Vec3f& wo, const Vec2f& uv
     GGXDistribution distribution(roughness);
     Vec3f h = normalize(wi + wo);
 
-    float jaccobian = 4.f * dot(wi, h) * dot(wo, h);
-    return distribution.pdf(h) / std::max(jaccobian, PDF_EPS);
+    float jaccobian = 4.f * dot(wo, h);
+    return distribution.pdf(wi, h) / std::max(jaccobian, PDF_EPS);
 }
 
 Vec3f MicrofacetDielectric::sample(const Vec3f& wi, Vec3f& wo, const Vec2f& uv, TransportMode mode) const {

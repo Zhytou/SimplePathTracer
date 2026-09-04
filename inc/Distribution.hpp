@@ -138,10 +138,14 @@ class GGXDistribution : public MicrofacetDistribution {
     virtual Vec3f sample(const Vec3f& w_local) const override {
         // transform to hemisphere coordinate
         float alpha    = getAlpha();
-        Vec3f ww_local = {alpha * w_local.x, alpha * w_local.y, w_local.z};
-        ww_local       = normalize(ww_local.z < 0 ? -ww_local : ww_local);
+        Vec3f ww_local = normalize(Vec3f{alpha * w_local.x, alpha * w_local.y, w_local.z});
+        if (ww_local.z < 0) { ww_local = -ww_local; }
+
         Vec3f ww_e1, ww_e2;
         TBN(ww_local, ww_e1, ww_e2);
+        // ww_e1 = (ww_local.z < 0.99999f) ? normalize(cross(Vec3f{0, 0, 1}, ww_local))
+        //                                 : Vec3f{1, 0, 0};
+        // ww_e2 = cross(ww_local, ww_e1);
 
         // disk sampling
         float a      = rand(0.0f, 1.f);
