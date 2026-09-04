@@ -36,11 +36,10 @@ class Primitive {
         m_inv_transform = inv_affine(transform);
         m_n_transform   = {
             // dont use operator[], otherwise col first
-            {transform(0, 0), transform(0, 1), transform(0, 2)},
-            {transform(1, 0), transform(1, 1), transform(1, 2)},
-            {transform(2, 0), transform(2, 1), transform(2, 2)},
+            {m_inv_transform(0, 0), m_inv_transform(1, 0), m_inv_transform(2, 0)},
+            {m_inv_transform(0, 1), m_inv_transform(1, 1), m_inv_transform(2, 1)},
+            {m_inv_transform(0, 2), m_inv_transform(1, 2), m_inv_transform(2, 2)},
         };
-        m_n_transform = transpose(inv(m_n_transform));
     }
 
     bool intersect(const Ray& ray, Intersection& its) const;
