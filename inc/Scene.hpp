@@ -52,7 +52,7 @@ class Scene {
         return m_mediums[id];
     }
     std::shared_ptr<Primitive> getPrimitive(int id) const {
-        if (id < 0 || id >= m_primitives.size()) { throw std::out_of_range("Scene::getPrimitive: Invalid primitive id"); }
+        if (id < 0 || id >= m_primitives.size()) { throw std::out_of_range(std::format("Scene::getPrimitive: Invalid primitive id {}", id)); }
         return m_primitives[id];
     }
 

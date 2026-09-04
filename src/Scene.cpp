@@ -79,8 +79,8 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
             auto& mtl_doc                               = doc["material"]["microfacet_conductor"][i];
             std::string name                            = mtl_doc.HasMember("name") ? mtl_doc["name"].GetString() : std::format("global_material_{}", i);
             fs::path dir                                = mtl_doc.HasMember("directory") ? fs::path(mtl_doc["directory"].GetString()) : fs::path();
-            float real_ior                              = mtl_doc.HasMember("real_ior") ? mtl_doc["real_ior"].GetFloat() : 0.f;
-            float imag_ior                              = mtl_doc.HasMember("imag_ior") ? mtl_doc["imag_ior"].GetFloat() : 0.f;
+            Vec3f real_ior                              = mtl_doc.HasMember("real_ior") ? getVec3(mtl_doc["real_ior"]) : Vec3f(0.f);
+            Vec3f imag_ior                              = mtl_doc.HasMember("imag_ior") ? getVec3(mtl_doc["imag_ior"]) : Vec3f(0.f);
             float roughness                             = mtl_doc.HasMember("roughness") ? mtl_doc["roughness"].GetFloat() : 0.f;
             fs::path roughness_texpath                  = mtl_doc.HasMember("roughness_texture") ? dir / mtl_doc["roughness_texture"].GetString() : dir;
             std::shared_ptr<Image<float>> roughness_map = fs::is_regular_file(roughness_texpath) ? Image<float>::read(roughness_texpath, 0, true) : nullptr;
@@ -123,10 +123,12 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
     // 4. Load global shapes
     if (doc.HasMember("shape")) {
         for (int i = 0; i < (doc["shape"].HasMember("sphere") ? doc["shape"]["sphere"].Size() : 0); i++) {
-            auto& spe_doc = doc["shape"]["sphere"][i];
-            Vec3f center  = getVec3(spe_doc["center"]);
-            float radius  = spe_doc["radius"].GetFloat();
-            auto spe      = std::make_shared<Sphere>(m_shapes.size(), center, radius);
+            auto& spe_doc    = doc["shape"]["sphere"][i];
+            Vec3f center     = getVec3(spe_doc["center"]);
+            std::string name = spe_doc.HasMember("name") ? spe_doc["name"].GetString() : "global_shape_" + std::to_string(i);
+            float radius     = spe_doc["radius"].GetFloat();
+            auto spe         = std::make_shared<Sphere>(m_shapes.size(), center, radius);
+            spe->setName(name);
             m_shapes.push_back(spe);
         }
     }
@@ -144,7 +146,7 @@ void Scene::init(const fs::path& path, int max_leaf_size) {
                 prms              = loadPrimitives(obj_path, mtl_dir, mtl_id);
             } else {
                 auto spe_ids = getArr(prm_doc["shape_ids"]);
-                auto mtl_ids = getArr(prm_doc["material_ids"]);
+                auto mtl_ids = prm_doc.HasMember("material_ids") ? getArr(prm_doc["material_ids"]) : std::vector<int>();
                 prms         = loadPrimitives(spe_ids, mtl_ids);
             }
 
@@ -344,10 +346,9 @@ void Scene::clear() {
 
 std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::vector<int>& spe_ids, const std::vector<int>& mtl_ids) {
     int start = m_primitives.size(), count = 0;
-    assert(spe_ids.size() == mtl_ids.size());
     for (int i = 0; i < spe_ids.size(); i++) {
         auto sid = spe_ids[i];
-        auto mid = mtl_ids[i];
+        auto mid = i < mtl_ids.size() ? mtl_ids[i] : -1;
         auto spe = m_shapes[sid];
         auto mtl = mid != -1 ? m_materials[mid] : nullptr;
         auto prm = std::make_shared<Primitive>(m_primitives.size(), spe, mtl);
@@ -430,11 +431,31 @@ std::span<std::shared_ptr<Primitive>> Scene::loadPrimitives(const std::filesyste
         mtl_count = mtl_cache[obj_path.string()].second;
     } else {
         for (const auto& material : materials) {
-            auto name       = material.name;
-            auto albedo     = Vec3f{material.diffuse[0], material.diffuse[1], material.diffuse[2]};
-            auto albedo_map = fs::is_regular_file(mtl_dir / material.diffuse_texname) ? Image<float>::read(mtl_dir / material.diffuse_texname) : nullptr;
+            std::string name = material.name;
+            Vec3f albedo     = Vec3f{material.diffuse[0], material.diffuse[1], material.diffuse[2]};
+            float roughness  = material.roughness;
+            float metallic   = material.metallic;
+            float opacity    = material.dissolve;
+            float ior        = material.ior;
+            Vec3f eta_k      = {3.91, 2.45, 2.14}; // default extinction coefficient(from copper), .mtl file may not provide eta_k, so we use a default value for common metals
+            Vec3f eta_n      = {0.20, 0.92, 1.10}; // default refractive index(from copper), .mtl file may not provide eta_n, so we use a default value for common metals
 
-            auto mtl = std::make_shared<Diffuse>(m_materials.size(), name, albedo, albedo_map);
+            auto albedo_map    = fs::is_regular_file(mtl_dir / material.diffuse_texname) ? Image<float>::read(mtl_dir / material.diffuse_texname) : nullptr;
+            auto roughness_map = fs::is_regular_file(mtl_dir / material.roughness_texname) ? Image<float>::read(mtl_dir / material.roughness_texname) : nullptr;
+
+            // TODO: add uber material to avoid boundary condition
+            std::shared_ptr<Material> mtl = nullptr;
+            if (roughness == 1.f) { // diffuse
+                mtl = std::make_shared<Diffuse>(m_materials.size(), name, albedo, albedo_map);
+            } else if (roughness == 0.f) { // delta mirror or dielectric
+                mtl = std::make_shared<Mirror>(m_materials.size(), name);
+            } else { // microfacet conductor or dielectric
+                if (opacity == 1.f || metallic > 0.f) {
+                    mtl = std::make_shared<MicrofacetConductor>(m_materials.size(), name, eta_n, eta_k, roughness, roughness_map);
+                } else {
+                    mtl = std::make_shared<MicrofacetDielectric>(m_materials.size(), name, ior, 1.f, roughness, roughness_map);
+                }
+            }
             mtl_count++;
             m_materials.push_back(mtl);
         }
